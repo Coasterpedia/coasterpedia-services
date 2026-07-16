@@ -1,6 +1,6 @@
 services:
   coasterpedia-services:
-    image: ghcr.io/coasterpedia/archivebot/archivebot@${ARCHIVEBOT_IMAGE}
+    image: ghcr.io/coasterpedia/coasterpedia-services/services@${SERVICES_IMAGE}
     restart: always
     networks:
       - coasterpedia_web
