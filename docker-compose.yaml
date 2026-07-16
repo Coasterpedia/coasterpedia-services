@@ -4,6 +4,8 @@ services:
     restart: always
     networks:
       - coasterpedia_web
+    ports:
+      - "9004:8080"
     environment:
       CoasterpediaConfig__BaseUrl: http://coasterpedia-mediawiki-1
       ArchiveBotConfig__BotUsername: ArchiveBot
