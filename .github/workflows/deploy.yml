@@ -77,7 +77,7 @@ jobs:
           ssh ${{ secrets.DOCKER_HOST_2 }} '
             export SERVICES_IMAGE="${{needs.dotnet_build.outputs.digest}}" &&
             export ARCHIVE_BOT_PASSWORD="${{secrets.ARCHIVE_BOT_PASSWORD}}" &&
-            if cd archivebot; then git pull; else git clone --depth 1 -b main https://github.com/${{ github.repository }}; fi &&
+            if cd coasterpedia-services; then git pull; else git clone --depth 1 -b main https://github.com/${{ github.repository }} coasterpedia-services && cd coasterpedia-services; fi &&
             docker compose pull &&
             docker compose up -d -V &&
             docker system prune -f &&
