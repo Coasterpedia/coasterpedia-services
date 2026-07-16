@@ -24,16 +24,9 @@ builder.Services.AddHangfire(config => config
     .UseRedisStorage(redisOptions.ConnectionString, new RedisStorageOptions { Db = redisOptions.Db }));
 builder.Services.AddHangfireServer();
 
-builder.Services.AddOpenApi();
-
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
-
-app.UseHangfireDashboard("/", new DashboardOptions
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
 {
     Authorization = [new CloudflareAccessAuthorizationFilter()]
 });
