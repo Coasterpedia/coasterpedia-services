@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/Solution items/">
+    <File Path="docker-compose.yaml" />
+    <File Path=".github/workflows/deploy.yml" />
+  </Folder>
+  <Project Path="ArchiveBot\ArchiveBot.csproj" />
+  <Project Path="Common/Common.csproj" />
+  <Project Path="InternalApi\InternalApi.csproj" />
+</Solution>

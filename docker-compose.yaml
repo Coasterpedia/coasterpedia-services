@@ -1,0 +1,15 @@
+services:
+  coasterpedia-services:
+    image: ghcr.io/coasterpedia/archivebot/archivebot@${ARCHIVEBOT_IMAGE}
+    restart: always
+    networks:
+      - coasterpedia_web
+    environment:
+      CoasterpediaConfig__BaseUrl: http://coasterpedia-mediawiki-1
+      ArchiveBotConfig__BotUsername: ArchiveBot
+      ArchiveBotConfig__BotPassword: ${ARCHIVE_BOT_PASSWORD}
+      RedisOptions__ConnectionString: redis:6379
+      RedisOptions__Db: 1
+networks:
+  coasterpedia_web:
+    external: true
