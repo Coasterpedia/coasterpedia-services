@@ -13,7 +13,7 @@ public class CloudflareAccessAuthorizationFilter : IDashboardAuthorizationFilter
     public bool Authorize(DashboardContext context)
     {
         var httpContext = context.GetHttpContext();
-        Console.WriteLine(JsonSerializer.Serialize(httpContext.Response.Headers));
+        Console.WriteLine(JsonSerializer.Serialize(httpContext.Request.Headers));
         var email = httpContext.Request.Headers["Cf-Access-Authenticated-User-Email"].ToString();
         return !string.IsNullOrEmpty(email) && AllowedEmails.Contains(email);
     }
