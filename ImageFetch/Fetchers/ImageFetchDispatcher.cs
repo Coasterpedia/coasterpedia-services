@@ -22,7 +22,7 @@ public class ImageFetchDispatcher
         if (fetcher == null)
         {
             throw new ImageFetchException(400,
-                "Unrecognised source. Supported: Wikimedia Commons, Geograph, Flickr.");
+                "Unrecognised source. Supported: Wikimedia Commons, Geograph, Flickr, Wikimapia.");
         }
 
         return await fetcher.FetchAsync(uri, cancellationToken);

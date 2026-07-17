@@ -5,6 +5,7 @@ using CoasterpediaServices.ImageFetch.Auth;
 using CoasterpediaServices.ImageFetch.Clients.Commons;
 using CoasterpediaServices.ImageFetch.Clients.Flickr;
 using CoasterpediaServices.ImageFetch.Clients.Geograph;
+using CoasterpediaServices.ImageFetch.Clients.Wikimapia;
 using CoasterpediaServices.ImageFetch.Fetchers;
 using CoasterpediaServices.ImageFetch.Options;
 using Microsoft.Extensions.Configuration;
@@ -31,6 +32,10 @@ public static class ImageFetchServiceCollectionExtensions
             .Bind(configuration.GetSection(nameof(GeographConfig)))
             .ValidateOnStart();
 
+        services.AddOptions<WikimapiaConfig>()
+            .Bind(configuration.GetSection(nameof(WikimapiaConfig)))
+            .ValidateOnStart();
+
         var commonsConfig = configuration.GetRequiredSection(nameof(CommonsConfig)).Get<CommonsConfig>()
                              ?? throw new InvalidOperationException("CommonsConfig configuration is missing");
 
@@ -49,6 +54,19 @@ public static class ImageFetchServiceCollectionExtensions
                 c.BaseAddress = new Uri("https://api.geograph.org.uk");
                 c.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
                 c.DefaultRequestHeaders.Add("X-Api-Key", geographConfig.ApiKey);
+            });
+
+        services.AddRefitClient<IWikimapiaClient>(new RefitSettings
+            {
+                ContentSerializer = new SystemTextJsonContentSerializer(new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+                })
+            })
+            .ConfigureHttpClient(c =>
+            {
+                c.BaseAddress = new Uri("http://api.wikimapia.org");
+                c.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
             });
 
         services.AddRefitClient<IFlickrClient>(new RefitSettings
@@ -94,6 +112,10 @@ public static class ImageFetchServiceCollectionExtensions
         services.AddTransient<CommonsFetcher>();
         services.AddTransient<ISourceFetcher>(sp => sp.GetRequiredService<CommonsFetcher>());
 
+        services.AddHttpClient<WikimapiaFetcher>()
+            .ConfigureHttpClient(c => c.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent));
+        services.AddTransient<ISourceFetcher>(sp => sp.GetRequiredService<WikimapiaFetcher>());
+
         services.AddSingleton<ImageFetchDispatcher>();
 
         services.AddTransient<FlickrAlbumFetcher>();
@@ -101,6 +123,9 @@ public static class ImageFetchServiceCollectionExtensions
 
         services.AddTransient<CommonsCategoryFetcher>();
         services.AddTransient<ICollectionFetcher>(sp => sp.GetRequiredService<CommonsCategoryFetcher>());
+
+        services.AddTransient<WikimapiaCollectionFetcher>();
+        services.AddTransient<ICollectionFetcher>(sp => sp.GetRequiredService<WikimapiaCollectionFetcher>());
 
         services.AddSingleton<ImageFetchCollectionDispatcher>();
 
