@@ -10,6 +10,8 @@ services:
       CoasterpediaConfig__BaseUrl: http://coasterpedia-mediawiki-1
       ArchiveBotConfig__BotUsername: ArchiveBot
       ArchiveBotConfig__BotPassword: ${ARCHIVE_BOT_PASSWORD}
+      FlickrConfig__ApiKey: ${FLICKR_API_KEY}
+      CommonsConfig__AccessToken: ${COMMONS_ACCESS_TOKEN}
       RedisOptions__ConnectionString: redis:6379
       RedisOptions__Db: 1
 networks:

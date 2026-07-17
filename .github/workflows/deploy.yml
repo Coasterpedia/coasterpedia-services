@@ -77,6 +77,8 @@ jobs:
           ssh ${{ secrets.DOCKER_HOST_2 }} '
             export SERVICES_IMAGE="${{needs.dotnet_build.outputs.digest}}" &&
             export ARCHIVE_BOT_PASSWORD="${{secrets.ARCHIVE_BOT_PASSWORD}}" &&
+            export FLICKR_API_KEY="${{secrets.FLICKR_API_KEY}}" &&
+            export COMMONS_ACCESS_TOKEN="${{secrets.COMMONS_ACCESS_TOKEN}}" &&
             if cd coasterpedia-services; then git pull; else git clone --depth 1 -b main https://github.com/${{ github.repository }} coasterpedia-services && cd coasterpedia-services; fi &&
             docker compose pull &&
             docker compose up -d -V &&
