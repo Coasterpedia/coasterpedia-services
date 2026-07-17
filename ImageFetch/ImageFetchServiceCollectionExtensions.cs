@@ -80,7 +80,11 @@ public static class ImageFetchServiceCollectionExtensions
         services.AddSingleton<FlickrLicenseCache>();
 
         services.AddHttpClient<GeographFetcher>()
-            .ConfigureHttpClient(c => c.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent));
+            .ConfigureHttpClient(c =>
+            {
+                c.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
+                c.DefaultRequestHeaders.Add("X-Api-Key", geographConfig.ApiKey);
+            });
         services.AddTransient<ISourceFetcher>(sp => sp.GetRequiredService<GeographFetcher>());
 
         services.AddHttpClient<FlickrFetcher>()
