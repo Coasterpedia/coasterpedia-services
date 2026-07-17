@@ -14,8 +14,8 @@ public record ImageFetchCollectionResponse(IReadOnlyList<CollectionItem> Items);
 
 [ApiController]
 [Route("imagefetch")]
-[ServiceFilter(typeof(SameOriginCsrfFilter))]
-[ServiceFilter(typeof(WikiUserInfoGateFilter))]
+// [ServiceFilter(typeof(SameOriginCsrfFilter))]
+// [ServiceFilter(typeof(WikiUserInfoGateFilter))]
 public class ImageFetchController : ControllerBase
 {
     private readonly ImageFetchDispatcher _dispatcher;

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 using CoasterpediaServices.ImageFetch.Clients.Commons;
 using CoasterpediaServices.ImageFetch.Provenance;
@@ -23,6 +24,12 @@ public class CommonsFetcher : ISourceFetcher
     private static readonly Regex GeographUrlPattern = new(
         @"https?://(?:www\.)?geograph\.org\.uk/photo/[^\s""'<>]+",
         RegexOptions.Compiled);
+
+    // Panoramio imports use {{Taken on|yyyy-MM-dd}} in the Information template's date field,
+    // which Commons' extmetadata renders through as prose (e.g. "Taken on 6 July 2011")
+    // instead of the underlying ISO date.
+    private static readonly Regex TakenOnPrefixPattern = new(
+        @"^Taken\s+on\s+", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private readonly CommonsSiteAccessor _siteAccessor;
     private readonly CommonsClient _commonsClient;
@@ -143,11 +150,11 @@ public class CommonsFetcher : ISourceFetcher
         string? date = null;
         if (extMetadata.TryGetValue("DateTimeOriginal", out var taken))
         {
-            date = taken.Value.ToString();
+            date = NormalizeDate(taken.Value.ToString());
         }
         else if (extMetadata.TryGetValue("DateTime", out var uploaded))
         {
-            date = uploaded.Value.ToString();
+            date = NormalizeDate(uploaded.Value.ToString());
         }
 
         string? latitude = null;
@@ -156,6 +163,14 @@ public class CommonsFetcher : ISourceFetcher
         {
             latitude = lat.Value.ToString();
             longitude = lon.Value.ToString();
+        }
+
+        // Bot-uploaded files (e.g. Panoramio imports) have the bot as the Commons uploader,
+        // but extmetadata's Attribution field carries the real photographer's plain-text name.
+        string? author = null;
+        if (extMetadata.TryGetValue("Attribution", out var attribution) && !string.IsNullOrWhiteSpace(attribution.Value.ToString()))
+        {
+            author = attribution.Value.ToString();
         }
 
         var extension = Path.GetExtension(filename);
@@ -174,7 +189,7 @@ public class CommonsFetcher : ISourceFetcher
             ContentType = MimeTypes.FromExtension(extension),
             SuggestedFileName = filename,
             Title = filename[..^extension.Length].Replace('_', ' '),
-            Author = fileInfo.UserName,
+            Author = author ?? fileInfo.UserName,
             SourceUrl = fileInfo.DescriptionUrl,
             Source = provenance.Source,
             License = provenance.License,
@@ -183,5 +198,13 @@ public class CommonsFetcher : ISourceFetcher
             Latitude = latitude,
             Longitude = longitude
         };
+    }
+
+    private static string NormalizeDate(string raw)
+    {
+        var value = TakenOnPrefixPattern.Replace(raw, string.Empty).Trim();
+        return DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed)
+            ? parsed.ToString("yyyy-MM-dd")
+            : value;
     }
 }
