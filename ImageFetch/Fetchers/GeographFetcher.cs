@@ -1,4 +1,6 @@
 using CoasterpediaServices.ImageFetch.Clients.Geograph;
+using CoasterpediaServices.ImageFetch.Options;
+using Microsoft.Extensions.Options;
 
 namespace CoasterpediaServices.ImageFetch.Fetchers;
 
@@ -8,11 +10,13 @@ public class GeographFetcher : ISourceFetcher
 
     private readonly IGeographClient _geographClient;
     private readonly HttpClient _downloadClient;
+    private readonly GeographConfig _geographConfig;
 
-    public GeographFetcher(IGeographClient geographClient, HttpClient downloadClient)
+    public GeographFetcher(IGeographClient geographClient, HttpClient downloadClient, IOptions<GeographConfig> geographConfig)
     {
         _geographClient = geographClient;
         _downloadClient = downloadClient;
+        _geographConfig = geographConfig.Value;
     }
 
     public bool CanHandle(Uri uri) => uri.Host == "www.geograph.org.uk";
@@ -26,7 +30,7 @@ public class GeographFetcher : ISourceFetcher
         }
 
         var photoId = uri.AbsolutePath[PhotoPathPrefix.Length..];
-        var page = await _geographClient.GetPhotoAsync(photoId);
+        var page = await _geographClient.GetPhotoAsync(photoId, _geographConfig.ApiKey);
 
         if (page.Error != null)
         {

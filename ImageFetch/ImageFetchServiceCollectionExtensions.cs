@@ -27,8 +27,15 @@ public static class ImageFetchServiceCollectionExtensions
             .Bind(configuration.GetSection(nameof(CommonsConfig)))
             .ValidateOnStart();
 
+        services.AddOptions<GeographConfig>()
+            .Bind(configuration.GetSection(nameof(GeographConfig)))
+            .ValidateOnStart();
+
         var commonsConfig = configuration.GetRequiredSection(nameof(CommonsConfig)).Get<CommonsConfig>()
                              ?? throw new InvalidOperationException("CommonsConfig configuration is missing");
+
+        var geographConfig = configuration.GetRequiredSection(nameof(GeographConfig)).Get<GeographConfig>()
+                              ?? throw new InvalidOperationException("GeographConfig configuration is missing");
 
         services.AddRefitClient<IGeographClient>(new RefitSettings
             {
@@ -41,6 +48,7 @@ public static class ImageFetchServiceCollectionExtensions
             {
                 c.BaseAddress = new Uri("https://api.geograph.org.uk");
                 c.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
+                c.DefaultRequestHeaders.Add("X-Api-Key", geographConfig.ApiKey);
             });
 
         services.AddRefitClient<IFlickrClient>(new RefitSettings

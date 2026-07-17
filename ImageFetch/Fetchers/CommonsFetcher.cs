@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 using CoasterpediaServices.ImageFetch.Clients.Commons;
-using WikiClientLibrary.Files;
+using Microsoft.Extensions.Logging;
 using WikiClientLibrary.Pages;
 using WikiClientLibrary.Pages.Queries;
 using WikiClientLibrary.Pages.Queries.Properties;
@@ -27,14 +27,16 @@ public class CommonsFetcher : ISourceFetcher
     private readonly CommonsClient _commonsClient;
     private readonly FlickrFetcher _flickrFetcher;
     private readonly GeographFetcher _geographFetcher;
+    private readonly ILogger<CommonsFetcher> _logger;
 
     public CommonsFetcher(CommonsSiteAccessor siteAccessor, CommonsClient commonsClient, FlickrFetcher flickrFetcher,
-        GeographFetcher geographFetcher)
+        GeographFetcher geographFetcher, ILogger<CommonsFetcher> logger)
     {
         _siteAccessor = siteAccessor;
         _commonsClient = commonsClient;
         _flickrFetcher = flickrFetcher;
         _geographFetcher = geographFetcher;
+        _logger = logger;
     }
 
     public bool CanHandle(Uri uri) => uri.Host == "commons.wikimedia.org";
@@ -101,14 +103,33 @@ public class CommonsFetcher : ISourceFetcher
 
         if (flickrSourceUrl != null)
         {
-            var chased = await _flickrFetcher.FetchAsync(new Uri(flickrSourceUrl), cancellationToken);
-            return chased with { OriginUrl = fileInfo.DescriptionUrl };
+            try
+            {
+                var chased = await _flickrFetcher.FetchAsync(new Uri(flickrSourceUrl), cancellationToken);
+                return chased with { OriginUrl = fileInfo.DescriptionUrl };
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // The chase is a nice-to-have (better credit/GPS than Commons' re-encoded copy) -
+                // if the origin site is down or blocking us, fall back to Commons' own copy below
+                // rather than failing the whole fetch.
+                _logger.LogWarning(ex, "Failed to chase Flickr mirror {FlickrUrl} for {CommonsUrl}, falling back to Commons copy",
+                    flickrSourceUrl, uri);
+            }
         }
 
         if (geographSourceUrl != null)
         {
-            var chased = await _geographFetcher.FetchAsync(new Uri(geographSourceUrl), cancellationToken);
-            return chased with { OriginUrl = fileInfo.DescriptionUrl };
+            try
+            {
+                var chased = await _geographFetcher.FetchAsync(new Uri(geographSourceUrl), cancellationToken);
+                return chased with { OriginUrl = fileInfo.DescriptionUrl };
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogWarning(ex, "Failed to chase Geograph mirror {GeographUrl} for {CommonsUrl}, falling back to Commons copy",
+                    geographSourceUrl, uri);
+            }
         }
 
         if (!extMetadata.TryGetValue("License", out var license) || string.IsNullOrWhiteSpace(license.Value.ToString()))

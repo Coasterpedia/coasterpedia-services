@@ -12,6 +12,7 @@ services:
       ArchiveBotConfig__BotPassword: ${ARCHIVE_BOT_PASSWORD}
       FlickrConfig__ApiKey: ${FLICKR_API_KEY}
       CommonsConfig__AccessToken: ${COMMONS_ACCESS_TOKEN}
+      GeographConfig__ApiKey: ${GEOGRAPH_API_KEY}
       RedisOptions__ConnectionString: redis:6379
       RedisOptions__Db: 1
 networks:
