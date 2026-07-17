@@ -10,7 +10,10 @@ public record FlickrPhoto(
     FlickrContent? Title,
     FlickrContent? Description,
     FlickrDates Dates,
-    FlickrUrls Urls);
+    FlickrUrls Urls,
+    FlickrLocation? Location);
+
+public record FlickrLocation(string Latitude, string Longitude);
 
 public record FlickrOwner(string Nsid, string Username, string? Realname);
 

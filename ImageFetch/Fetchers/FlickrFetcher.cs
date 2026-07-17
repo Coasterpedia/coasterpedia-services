@@ -60,7 +60,9 @@ public class FlickrFetcher : ISourceFetcher
             SourceUrl = photoPageUrl,
             License = licenseName,
             AdditionalLicenseWikitext = template,
-            Date = photo.Dates.Taken
+            Date = photo.Dates.Taken,
+            Latitude = photo.Location?.Latitude,
+            Longitude = photo.Location?.Longitude
         };
     }
 
