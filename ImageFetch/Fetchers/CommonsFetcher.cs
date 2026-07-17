@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using CoasterpediaServices.ImageFetch.Clients.Commons;
+using CoasterpediaServices.ImageFetch.Provenance;
 using Microsoft.Extensions.Logging;
 using WikiClientLibrary.Pages;
 using WikiClientLibrary.Pages.Queries;
@@ -159,13 +160,13 @@ public class CommonsFetcher : ISourceFetcher
 
         var extension = Path.GetExtension(filename);
 
-        var additionalLicenseWikitext = $"{{{{Wikimedia Commons|{fileInfo.DescriptionUrl}}}}}";
-        if (panoramioSourceUrl != null)
-        {
-            // Panoramio is dead, so the card links back to the Commons page rather than the
-            // now-404ing panoramio.com URL.
-            additionalLicenseWikitext += $"{{{{Panoramio|{fileInfo.DescriptionUrl}}}}}";
-        }
+        // Panoramio is dead, so its card links back to the Commons page rather than the
+        // now-404ing panoramio.com URL.
+        var extraCards = panoramioSourceUrl != null
+            ? new[] { $"{{{{Panoramio|{fileInfo.DescriptionUrl}}}}}" }
+            : null;
+        var slug = license.Value.ToString().Trim().ToLowerInvariant();
+        var provenance = ProvenanceBuilder.Build(SourceRegistry.Commons, slug, fileInfo.DescriptionUrl, extraCards);
 
         return new FetchResult
         {
@@ -175,8 +176,9 @@ public class CommonsFetcher : ISourceFetcher
             Title = filename[..^extension.Length].Replace('_', ' '),
             Author = fileInfo.UserName,
             SourceUrl = fileInfo.DescriptionUrl,
-            License = license.Value.ToString(),
-            AdditionalLicenseWikitext = additionalLicenseWikitext,
+            Source = provenance.Source,
+            License = provenance.License,
+            Cards = provenance.Cards,
             Date = date,
             Latitude = latitude,
             Longitude = longitude

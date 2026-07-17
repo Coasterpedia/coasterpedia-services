@@ -1,5 +1,6 @@
 using CoasterpediaServices.ImageFetch.Clients.Flickr;
 using CoasterpediaServices.ImageFetch.Options;
+using CoasterpediaServices.ImageFetch.Provenance;
 using Microsoft.Extensions.Options;
 
 namespace CoasterpediaServices.ImageFetch.Fetchers;
@@ -36,9 +37,9 @@ public class FlickrFetcher : ISourceFetcher
         var licenseName = await _licenseCache.GetLicenseNameAsync(licenseId, cancellationToken)
                            ?? throw new ImageFetchException(422, "Unrecognised Flickr licence.");
 
-        var template = FlickrLicenses.ToCommonsTemplate(licenseName)
-                       ?? throw new ImageFetchException(422,
-                           $"Flickr photo is not under a free licence ({licenseName}); it can't be imported.");
+        var slug = FlickrLicenses.ToSlug(licenseName)
+                   ?? throw new ImageFetchException(422,
+                       $"Flickr photo is not under a free licence ({licenseName}); it can't be imported.");
 
         var sizesEnvelope = await _flickrClient.GetPhotoSizesAsync(_config.ApiKey, photoId);
         var sizes = FlickrApiResult.EnsureOk(sizesEnvelope.Stat, sizesEnvelope.Message, sizesEnvelope.Sizes);
@@ -49,6 +50,7 @@ public class FlickrFetcher : ISourceFetcher
         var extension = Path.GetExtension(new Uri(largest.Source).AbsolutePath);
         var photoPageUrl = photo.Urls.Url.FirstOrDefault(u => u.Type == "photopage")?.Content
                            ?? $"https://www.flickr.com/photos/{photo.Owner.Nsid}/{photoId}/";
+        var provenance = ProvenanceBuilder.Build(SourceRegistry.Flickr, slug, photoPageUrl);
 
         return new FetchResult
         {
@@ -58,8 +60,9 @@ public class FlickrFetcher : ISourceFetcher
             Title = string.IsNullOrWhiteSpace(photo.Title?.Content) ? photoId : photo.Title!.Content,
             Author = string.IsNullOrWhiteSpace(photo.Owner.Realname) ? photo.Owner.Username : photo.Owner.Realname,
             SourceUrl = photoPageUrl,
-            License = licenseName,
-            AdditionalLicenseWikitext = template,
+            Source = provenance.Source,
+            License = provenance.License,
+            Cards = provenance.Cards,
             Date = photo.Dates.Taken,
             Latitude = photo.Location?.Latitude,
             Longitude = photo.Location?.Longitude

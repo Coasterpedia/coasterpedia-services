@@ -1,6 +1,7 @@
 using System.Globalization;
 using CoasterpediaServices.ImageFetch.Clients.Wikimapia;
 using CoasterpediaServices.ImageFetch.Options;
+using CoasterpediaServices.ImageFetch.Provenance;
 using Microsoft.Extensions.Options;
 
 namespace CoasterpediaServices.ImageFetch.Fetchers;
@@ -35,6 +36,7 @@ public class WikimapiaFetcher : ISourceFetcher
         var bytes = await BoundedDownloader.DownloadAsync(_downloadClient, photo.FullUrl, cancellationToken);
         var extension = Path.GetExtension(new Uri(photo.FullUrl).AbsolutePath);
         var sourceUrl = $"https://wikimapia.org/{objectId}/photo/{photoId}";
+        var provenance = ProvenanceBuilder.Build(SourceRegistry.Wikimapia, "cc-by-sa-3.0", sourceUrl);
 
         return new FetchResult
         {
@@ -44,8 +46,9 @@ public class WikimapiaFetcher : ISourceFetcher
             Title = string.IsNullOrWhiteSpace(place.Title) ? objectId : place.Title,
             Author = photo.UserName,
             SourceUrl = sourceUrl,
-            License = "cc-by-sa-3.0",
-            AdditionalLicenseWikitext = $"{{{{Wikimapia|{sourceUrl}}}}}",
+            Source = provenance.Source,
+            License = provenance.License,
+            Cards = provenance.Cards,
             Date = DateTimeOffset.FromUnixTimeSeconds(photo.Time).UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             Latitude = place.Location?.Lat.ToString(CultureInfo.InvariantCulture),
             Longitude = place.Location?.Lon.ToString(CultureInfo.InvariantCulture)

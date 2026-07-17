@@ -1,5 +1,6 @@
 using CoasterpediaServices.ImageFetch.Clients.Geograph;
 using CoasterpediaServices.ImageFetch.Options;
+using CoasterpediaServices.ImageFetch.Provenance;
 using Microsoft.Extensions.Options;
 
 namespace CoasterpediaServices.ImageFetch.Fetchers;
@@ -41,6 +42,7 @@ public class GeographFetcher : ISourceFetcher
         var bytes = await BoundedDownloader.DownloadAsync(_downloadClient, imageUrl, cancellationToken);
         var extension = Path.GetExtension(page.Image ?? string.Empty);
         var sourceUrl = $"https://www.geograph.org.uk/photo/{photoId}";
+        var provenance = ProvenanceBuilder.Build(SourceRegistry.Geograph, "cc-by-sa-2.0", sourceUrl);
 
         return new FetchResult
         {
@@ -50,8 +52,9 @@ public class GeographFetcher : ISourceFetcher
             Title = page.Title ?? photoId,
             Author = page.Realname,
             SourceUrl = sourceUrl,
-            License = "cc-by-sa-2.0",
-            AdditionalLicenseWikitext = $"{{{{Geograph|{sourceUrl}}}}}",
+            Source = provenance.Source,
+            License = provenance.License,
+            Cards = provenance.Cards,
             Date = page.Taken,
             Latitude = page.Wgs84Lat,
             Longitude = page.Wgs84Long

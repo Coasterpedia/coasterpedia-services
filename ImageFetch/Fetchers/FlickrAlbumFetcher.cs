@@ -73,6 +73,6 @@ public class FlickrAlbumFetcher : ICollectionFetcher
         }
 
         var licenseName = await _licenseCache.GetLicenseNameAsync(licenseId, cancellationToken);
-        return licenseName != null && FlickrLicenses.ToCommonsTemplate(licenseName) != null;
+        return licenseName != null && FlickrLicenses.ToSlug(licenseName) != null;
     }
 }
