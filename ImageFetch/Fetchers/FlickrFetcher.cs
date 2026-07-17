@@ -20,7 +20,7 @@ public class FlickrFetcher : ISourceFetcher
         _licenseCache = licenseCache;
     }
 
-    public bool CanHandle(Uri uri) => uri.Host is "www.flickr.com" or "flickr.com";
+    public bool CanHandle(Uri uri) => uri.Host is "www.flickr.com" or "flickr.com" or "flic.kr";
 
     public async Task<FetchResult> FetchAsync(Uri uri, CancellationToken cancellationToken)
     {
@@ -72,6 +72,18 @@ public class FlickrFetcher : ISourceFetcher
     private static string ExtractPhotoId(Uri uri)
     {
         var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+        if (uri.Host == "flic.kr")
+        {
+            if (segments.Length == 2 && segments[0] == "p")
+            {
+                return FlickrShortUrl.Decode(segments[1]);
+            }
+
+            throw new ImageFetchException(400,
+                "Unrecognised Flickr short URL, please link to a photo (flic.kr/p/<code>).");
+        }
+
         var photosIndex = Array.IndexOf(segments, "photos");
         if (photosIndex >= 0 && photosIndex + 2 < segments.Length)
         {

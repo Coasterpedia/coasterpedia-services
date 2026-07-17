@@ -39,6 +39,6 @@ public record FlickrLicenseEntry(int Id, string Name);
 
 public record FlickrPhotosetPhotosEnvelope(string Stat, string? Message, FlickrPhotoset? Photoset);
 
-public record FlickrPhotoset(List<FlickrAlbumPhoto> Photo);
+public record FlickrPhotoset(string Owner, List<FlickrAlbumPhoto> Photo);
 
 public record FlickrAlbumPhoto(string Id, string Title, [property: JsonPropertyName("url_s")] string? UrlS, string License);

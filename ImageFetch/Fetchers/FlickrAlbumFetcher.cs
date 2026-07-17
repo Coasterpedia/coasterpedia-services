@@ -21,12 +21,18 @@ public class FlickrAlbumFetcher : ICollectionFetcher
 
     public bool CanHandle(Uri uri)
     {
+        var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+        if (uri.Host == "flic.kr")
+        {
+            return segments.Length == 2 && segments[0] == "s";
+        }
+
         if (uri.Host is not ("www.flickr.com" or "flickr.com"))
         {
             return false;
         }
 
-        var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
         var photosIndex = Array.IndexOf(segments, "photos");
         return photosIndex >= 0
                && photosIndex + 3 < segments.Length
@@ -36,12 +42,24 @@ public class FlickrAlbumFetcher : ICollectionFetcher
     public async Task<IReadOnlyList<CollectionItem>> FetchAsync(Uri uri, CancellationToken cancellationToken)
     {
         var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
-        var photosIndex = Array.IndexOf(segments, "photos");
-        var userSegment = segments[photosIndex + 1];
-        var photosetId = segments[photosIndex + 3];
+
+        string photosetId;
+        string? userSegment;
+        if (uri.Host == "flic.kr")
+        {
+            photosetId = FlickrShortUrl.Decode(segments[1]);
+            userSegment = null;
+        }
+        else
+        {
+            var photosIndex = Array.IndexOf(segments, "photos");
+            userSegment = segments[photosIndex + 1];
+            photosetId = segments[photosIndex + 3];
+        }
 
         var envelope = await _flickrClient.GetPhotosetPhotosAsync(_config.ApiKey, photosetId, MaxItems);
         var photoset = FlickrApiResult.EnsureOk(envelope.Stat, envelope.Message, envelope.Photoset);
+        userSegment ??= photoset.Owner;
 
         var items = new List<CollectionItem>();
         foreach (var photo in photoset.Photo)
