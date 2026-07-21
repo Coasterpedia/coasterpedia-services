@@ -23,13 +23,15 @@ public class EventsController : ControllerBase
     {
         try
         {
-            var body = await JsonSerializer.DeserializeAsync<JsonArray>(Request.Body, cancellationToken: HttpContext.RequestAborted);
+            var body = await JsonSerializer.DeserializeAsync<JsonNode>(Request.Body, cancellationToken: HttpContext.RequestAborted);
             if (body == null)
             {
                 return Ok();
             }
 
-            foreach (var eventBody in body)
+            var events = body is JsonArray array ? array : [body];
+
+            foreach (var eventBody in events)
             {
                 var evt = EventBusEvent.FromJson(eventBody);
                 if (evt == null)
