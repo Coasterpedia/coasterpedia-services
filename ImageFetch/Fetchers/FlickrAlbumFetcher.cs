@@ -6,8 +6,10 @@ namespace CoasterpediaServices.ImageFetch.Fetchers;
 
 public class FlickrAlbumFetcher : ICollectionFetcher
 {
-    // Usable (free-licensed) photos handed back to the client.
-    private const int MaxItems = 500;
+    // Usable (free-licensed) photos handed back to the client. 1,500 is where the
+    // cull grid was measured to still toggle inside a frame; it degrades from
+    // around 3,000, so this is the display ceiling rather than an API one.
+    private const int MaxItems = 1500;
     // Flickr's own per_page ceiling - asking for more is silently clamped.
     private const int PageSize = 500;
     // Hard stop on how much of a huge album we're willing to scan looking for

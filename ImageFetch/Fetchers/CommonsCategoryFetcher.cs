@@ -6,7 +6,9 @@ namespace CoasterpediaServices.ImageFetch.Fetchers;
 public class CommonsCategoryFetcher : ICollectionFetcher
 {
     private const string CategoryPathPrefix = "/wiki/Category:";
-    private const int MaxItems = 500;
+    // Kept in step with FlickrAlbumFetcher so a category and an album of the same
+    // size behave the same in the cull grid.
+    private const int MaxItems = 1500;
 
     private readonly CommonsSiteAccessor _siteAccessor;
 
