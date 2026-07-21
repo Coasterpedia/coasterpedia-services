@@ -8,6 +8,7 @@ public class WikiSiteAccessor
 {
     private readonly IOptions<CoasterpediaConfig> _coasterpediaConfig;
     private readonly CoasterpediaClient _coasterpediaClient;
+    private readonly SemaphoreSlim _lock = new(1, 1);
     private WikiSite? _coasterpediaSite;
 
     public WikiSiteAccessor(CoasterpediaClient coasterpediaClient, IOptions<CoasterpediaConfig> coasterpediaConfig)
@@ -18,11 +19,27 @@ public class WikiSiteAccessor
 
     public async Task<WikiSite> GetCoasterpedia(string botUsername, string botPassword)
     {
-        if (_coasterpediaSite == null)
+        if (_coasterpediaSite != null)
         {
-            _coasterpediaSite = new WikiSite(_coasterpediaClient.GetSite(), _coasterpediaConfig.Value.BaseUrl + "/w/api.php");
-            await _coasterpediaSite.Initialization;
-            await _coasterpediaSite.LoginAsync(botUsername, botPassword);
+            return _coasterpediaSite;
+        }
+
+        await _lock.WaitAsync();
+        try
+        {
+            if (_coasterpediaSite != null)
+            {
+                return _coasterpediaSite;
+            }
+
+            var site = new WikiSite(_coasterpediaClient.GetSite(), _coasterpediaConfig.Value.BaseUrl + "/w/api.php");
+            await site.Initialization;
+            await site.LoginAsync(botUsername, botPassword);
+            _coasterpediaSite = site;
+        }
+        finally
+        {
+            _lock.Release();
         }
 
         return _coasterpediaSite;
