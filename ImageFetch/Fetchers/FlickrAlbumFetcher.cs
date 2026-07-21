@@ -6,7 +6,14 @@ namespace CoasterpediaServices.ImageFetch.Fetchers;
 
 public class FlickrAlbumFetcher : ICollectionFetcher
 {
+    // Usable (free-licensed) photos handed back to the client.
     private const int MaxItems = 500;
+    // Flickr's own per_page ceiling - asking for more is silently clamped.
+    private const int PageSize = 500;
+    // Hard stop on how much of a huge album we're willing to scan looking for
+    // MaxItems usable photos: an album that is mostly all-rights-reserved would
+    // otherwise page on and on. 10 pages = 5,000 photos examined.
+    private const int MaxPages = 10;
 
     private readonly IFlickrClient _flickrClient;
     private readonly FlickrConfig _config;
@@ -57,22 +64,43 @@ public class FlickrAlbumFetcher : ICollectionFetcher
             photosetId = segments[photosIndex + 3];
         }
 
-        var envelope = await _flickrClient.GetPhotosetPhotosAsync(_config.ApiKey, photosetId, MaxItems);
-        var photoset = FlickrApiResult.EnsureOk(envelope.Stat, envelope.Message, envelope.Photoset);
-        userSegment ??= photoset.Owner;
-
+        // The licence filter runs per photo, so capping the FETCH at MaxItems would
+        // cap the wrong thing: a 1,500-photo album whose free-licensed shots are
+        // spread throughout would surface only those inside the first page, with no
+        // hint the rest existed. Page until MaxItems *usable* photos are in hand.
         var items = new List<CollectionItem>();
-        foreach (var photo in photoset.Photo)
+        for (var page = 1; page <= MaxPages && items.Count < MaxItems; page++)
         {
-            if (!await HasUsableLicenseAsync(photo.License, cancellationToken))
+            var envelope = await _flickrClient.GetPhotosetPhotosAsync(
+                _config.ApiKey, photosetId, PageSize, page, cancellationToken);
+            var photoset = FlickrApiResult.EnsureOk(envelope.Stat, envelope.Message, envelope.Photoset);
+            userSegment ??= photoset.Owner;
+
+            foreach (var photo in photoset.Photo)
             {
-                continue;
+                if (!await HasUsableLicenseAsync(photo.License, cancellationToken))
+                {
+                    continue;
+                }
+
+                items.Add(new CollectionItem(
+                    $"https://www.flickr.com/photos/{userSegment}/{photo.Id}/",
+                    string.IsNullOrWhiteSpace(photo.Title) ? null : photo.Title,
+                    photo.UrlS));
+
+                if (items.Count >= MaxItems)
+                {
+                    break;
+                }
             }
 
-            items.Add(new CollectionItem(
-                $"https://www.flickr.com/photos/{userSegment}/{photo.Id}/",
-                string.IsNullOrWhiteSpace(photo.Title) ? null : photo.Title,
-                photo.UrlS));
+            // A short page is the last page. Inferring it this way (rather than
+            // reading the envelope's `pages`) keeps us off a field whose JSON type
+            // Flickr is not consistent about across endpoints.
+            if (photoset.Photo.Count < PageSize)
+            {
+                break;
+            }
         }
 
         if (items.Count == 0)
