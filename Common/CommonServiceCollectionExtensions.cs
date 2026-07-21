@@ -23,8 +23,10 @@ public static class CommonServiceCollectionExtensions
             })
             .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
             {
-                AutomaticDecompression = DecompressionMethods.All
+                AutomaticDecompression = DecompressionMethods.All,
+                UseCookies = false
             })
+            .AddHttpMessageHandler(() => new LenientCookieHandler())
             .ConfigureHttpClient(c => { c.DefaultRequestHeaders.UserAgent.ParseAdd("ArchiveBot/1.0"); });
         
         services.AddSingleton<WikiSiteAccessor>();
