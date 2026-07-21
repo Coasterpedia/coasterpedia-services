@@ -5,7 +5,7 @@ namespace CoasterpediaServices.ArchiveBot.Events;
 
 public class ArchiveBotSubscriber : IEventSubscriber
 {
-    private static readonly TimeSpan Delay = TimeSpan.FromMinutes(20);
+    private static readonly TimeSpan Delay = TimeSpan.FromMinutes(0);
 
     public EventFilter Filter { get; } = new()
     {
