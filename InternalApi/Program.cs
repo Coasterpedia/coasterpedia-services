@@ -26,18 +26,18 @@ builder.Services.AddControllers()
 var redisOptions = builder.Configuration.GetRequiredSection(nameof(RedisOptions)).Get<RedisOptions>()
                     ?? throw new InvalidOperationException("RedisOptions configuration is missing");
 
-// builder.Services.AddHangfire(config => config
-//     .UseSimpleAssemblyNameTypeSerializer()
-//     .UseRecommendedSerializerSettings()
-//     .UseRedisStorage(redisOptions.ConnectionString, new RedisStorageOptions { Db = redisOptions.Db }));
-// builder.Services.AddHangfireServer();
+builder.Services.AddHangfire(config => config
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings()
+    .UseRedisStorage(redisOptions.ConnectionString, new RedisStorageOptions { Db = redisOptions.Db }));
+builder.Services.AddHangfireServer();
 
 var app = builder.Build();
 
-// app.UseHangfireDashboard("/hangfire", new DashboardOptions
-// {
-//     Authorization = [new CloudflareAccessAuthorizationFilter()]
-// });
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = [new CloudflareAccessAuthorizationFilter()]
+});
 
 app.MapControllers();
 
