@@ -1,6 +1,7 @@
 using CoasterpediaServices.ImageFetch.Clients.Flickr;
 using CoasterpediaServices.ImageFetch.Options;
 using CoasterpediaServices.ImageFetch.Provenance;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace CoasterpediaServices.ImageFetch.Fetchers;
@@ -11,13 +12,15 @@ public class FlickrFetcher : ISourceFetcher
     private readonly FlickrConfig _config;
     private readonly HttpClient _downloadClient;
     private readonly FlickrLicenseCache _licenseCache;
+    private readonly ILogger<FlickrFetcher> _logger;
 
-    public FlickrFetcher(IFlickrClient flickrClient, IOptions<FlickrConfig> config, HttpClient downloadClient, FlickrLicenseCache licenseCache)
+    public FlickrFetcher(IFlickrClient flickrClient, IOptions<FlickrConfig> config, HttpClient downloadClient, FlickrLicenseCache licenseCache, ILogger<FlickrFetcher> logger)
     {
         _flickrClient = flickrClient;
         _config = config.Value;
         _downloadClient = downloadClient;
         _licenseCache = licenseCache;
+        _logger = logger;
     }
 
     public bool CanHandle(Uri uri) => uri.Host is "www.flickr.com" or "flickr.com" or "flic.kr";
@@ -46,8 +49,15 @@ public class FlickrFetcher : ISourceFetcher
         var largest = sizes.Size.LastOrDefault()
                       ?? throw new ImageFetchException(502, "Flickr photo has no available sizes.");
 
+        // The largest size Flickr rendered itself, as the right-way-up reference for the
+        // rotation fix-up below. getSizes is ordered smallest-first with "Original" last,
+        // so this is the last non-Original entry - and where a photo exposes no original,
+        // `largest` IS that entry, already correct, and the check below no-ops.
+        var reference = sizes.Size.LastOrDefault(s => s.Label != "Original");
+
         var bytes = await BoundedDownloader.DownloadAsync(_downloadClient, largest.Source, cancellationToken);
         var extension = Path.GetExtension(new Uri(largest.Source).AbsolutePath);
+        bytes = CorrectRotation(bytes, extension, photo.Rotation, reference);
         var photoPageUrl = photo.Urls.Url.FirstOrDefault(u => u.Type == "photopage")?.Content
                            ?? $"https://www.flickr.com/photos/{photo.Owner.Nsid}/{photoId}/";
         var provenance = ProvenanceBuilder.Build(SourceRegistry.Flickr, slug, photoPageUrl);
@@ -67,6 +77,24 @@ public class FlickrFetcher : ISourceFetcher
             Latitude = photo.Location?.Latitude,
             Longitude = photo.Location?.Longitude
         };
+    }
+
+    // Deliberately fail-soft. A photo whose rotation could not be corrected is still a
+    // perfectly good import that the user can straighten with the ImageRotate gadget in
+    // one click; refusing the fetch outright over it would be the worse trade. The log
+    // line is what makes a systematic failure (a bad decode path, a missing native lib)
+    // visible rather than silent.
+    private byte[] CorrectRotation(byte[] bytes, string extension, int rotation, FlickrSize? reference)
+    {
+        try
+        {
+            return FlickrRotation.Apply(bytes, extension, rotation, reference);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not apply Flickr rotation {Rotation} to a {Extension} import.", rotation, extension);
+            return bytes;
+        }
     }
 
     private static string ExtractPhotoId(Uri uri)

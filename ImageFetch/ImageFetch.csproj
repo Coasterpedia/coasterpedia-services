@@ -11,6 +11,22 @@
       <FrameworkReference Include="Microsoft.AspNetCore.App" />
     </ItemGroup>
 
+    <!-- libvips, for baking Flickr's out-of-band rotation flag into imported pixels
+         (see FlickrRotation). The NetVips.Native packages carry the native library
+         itself, so the Dockerfile needs no apt install; each lands in the publish
+         output under runtimes/<rid>/native and costs ~17 MB. The all-RID
+         `NetVips.Native` meta-package would pull every platform's copy, so the two
+         arches the container is actually built for are named instead. -->
+    <ItemGroup>
+      <PackageReference Include="NetVips" Version="3.2.0" />
+      <PackageReference Include="NetVips.Native.linux-x64" Version="8.18.4" />
+      <PackageReference Include="NetVips.Native.linux-arm64" Version="8.18.4" />
+      <!-- Local debugging on a Mac only; the SDK image builds on Linux, so this one
+           never reaches the container. -->
+      <PackageReference Include="NetVips.Native.osx-arm64" Version="8.18.4"
+                        Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
+    </ItemGroup>
+
     <ItemGroup>
       <ProjectReference Include="..\Common\Common.csproj" />
     </ItemGroup>

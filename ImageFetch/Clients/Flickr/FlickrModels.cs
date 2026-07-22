@@ -11,7 +11,13 @@ public record FlickrPhoto(
     FlickrContent? Description,
     FlickrDates Dates,
     FlickrUrls Urls,
-    FlickrLocation? Location);
+    FlickrLocation? Location,
+    // Degrees CLOCKWISE the original bytes must be turned to read the right way up -
+    // Flickr's own rotate button, stored beside the photo rather than written into the
+    // file. Flickr bakes it into every derivative size but leaves the original alone,
+    // and writes no EXIF Orientation tag, so a downloaded original arrives on its side
+    // with nothing in the file to say so. See FlickrRotation.
+    [property: JsonConverter(typeof(FlickrLooseIntConverter))] int Rotation = 0);
 
 public record FlickrLocation(string Latitude, string Longitude);
 
@@ -29,7 +35,14 @@ public record FlickrPhotoSizesEnvelope(string Stat, string? Message, FlickrSizes
 
 public record FlickrSizes(List<FlickrSize> Size);
 
-public record FlickrSize(string Label, string Source);
+// Width/Height are as DISPLAYED: every size except "Original" has the rotation flag
+// already applied, which is what makes a derivative's aspect a usable cross-check on
+// whether the original still needs turning.
+public record FlickrSize(
+    string Label,
+    string Source,
+    [property: JsonConverter(typeof(FlickrLooseIntConverter))] int Width = 0,
+    [property: JsonConverter(typeof(FlickrLooseIntConverter))] int Height = 0);
 
 public record FlickrLicensesEnvelope(string Stat, string? Message, FlickrLicenseList? Licenses);
 
