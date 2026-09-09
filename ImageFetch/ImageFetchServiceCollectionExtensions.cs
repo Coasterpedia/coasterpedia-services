@@ -5,6 +5,7 @@ using CoasterpediaServices.ImageFetch.Auth;
 using CoasterpediaServices.ImageFetch.Clients.Commons;
 using CoasterpediaServices.ImageFetch.Clients.Flickr;
 using CoasterpediaServices.ImageFetch.Clients.Geograph;
+using CoasterpediaServices.ImageFetch.Clients.GeographDe;
 using CoasterpediaServices.ImageFetch.Clients.Wikimapia;
 using CoasterpediaServices.ImageFetch.Fetchers;
 using CoasterpediaServices.ImageFetch.Options;
@@ -104,6 +105,19 @@ public static class ImageFetchServiceCollectionExtensions
                 c.DefaultRequestHeaders.Add("X-Api-Key", geographConfig.ApiKey);
             });
         services.AddTransient<ISourceFetcher>(sp => sp.GetRequiredService<GeographFetcher>());
+
+        // Geograph Deutschland: no API key and no Refit client — the endpoint is read as XML,
+        // because the site's JSON encoder corrupts every umlaut. See GeographDeClient.
+        services.AddHttpClient<IGeographDeClient, GeographDeClient>()
+            .ConfigureHttpClient(c =>
+            {
+                c.BaseAddress = new Uri("https://geo.hlipp.de");
+                c.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
+            });
+
+        services.AddHttpClient<GeographDeFetcher>()
+            .ConfigureHttpClient(c => c.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent));
+        services.AddTransient<ISourceFetcher>(sp => sp.GetRequiredService<GeographDeFetcher>());
 
         services.AddHttpClient<FlickrFetcher>()
             .ConfigureHttpClient(c => c.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent));
