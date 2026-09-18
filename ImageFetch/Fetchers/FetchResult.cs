@@ -12,7 +12,7 @@ public record FetchResult
     /// <summary>The Cargo <c>Source</c> label (e.g. "Flickr", "Wikimedia Commons").</summary>
     public required string Source { get; init; }
 
-    /// <summary>The Cargo <c>Licence</c> short string (e.g. "CC-BY-SA", "CC0", "PD").</summary>
+    /// <summary>The Cargo <c>Licence</c> value: the canonical lowercase licence slug (e.g. "cc-by-sa-3.0-de", "cc0", "pd").</summary>
     public required string License { get; init; }
 
     /// <summary>The file-page notice cards, in order — source-attribution card, licence card, any

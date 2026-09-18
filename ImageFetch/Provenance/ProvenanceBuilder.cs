@@ -1,7 +1,7 @@
 namespace CoasterpediaServices.ImageFetch.Provenance;
 
 /// <summary>The resolved file-page provenance for a fetched image: Cargo <c>Source</c> label +
-/// <c>Licence</c> short, and the ordered notice cards.</summary>
+/// <c>Licence</c> slug (e.g. "cc-by-sa-3.0-de"), and the ordered notice cards.</summary>
 public sealed record ResolvedProvenance(string Source, string License, IReadOnlyList<string> Cards);
 
 /// <summary>
@@ -29,6 +29,6 @@ public static class ProvenanceBuilder
             cards.AddRange(extraCards);
         }
 
-        return new ResolvedProvenance(source.Label, licence.Short, cards);
+        return new ResolvedProvenance(source.Label, licence.Slug, cards);
     }
 }
