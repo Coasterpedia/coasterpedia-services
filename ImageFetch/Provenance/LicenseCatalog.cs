@@ -41,7 +41,7 @@ public static class LicenseCatalog
         ];
         foreach (var (slug, template) in ccFamilies)
         {
-            foreach (var version in new[] { "2.0", "3.0", "4.0" })
+            foreach (var version in new[] { "1.0", "2.0", "3.0", "4.0" })
             {
                 Add($"{slug}-{version}", $"{{{{{template}|type={version}}}}}");
             }

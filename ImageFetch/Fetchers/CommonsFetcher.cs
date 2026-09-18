@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Net;
 using System.Text.RegularExpressions;
 using CoasterpediaServices.ImageFetch.Clients.Commons;
 using CoasterpediaServices.ImageFetch.Provenance;
@@ -30,6 +31,9 @@ public class CommonsFetcher : ISourceFetcher
     // instead of the underlying ISO date.
     private static readonly Regex TakenOnPrefixPattern = new(
         @"^Taken\s+on\s+", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex HtmlTagPattern = new(@"<[^>]*>", RegexOptions.Compiled);
+    private static readonly Regex WhitespacePattern = new(@"\s+", RegexOptions.Compiled);
 
     private readonly CommonsSiteAccessor _siteAccessor;
     private readonly CommonsClient _commonsClient;
@@ -165,13 +169,12 @@ public class CommonsFetcher : ISourceFetcher
             longitude = lon.Value.ToString();
         }
 
-        // Bot-uploaded files (e.g. Panoramio imports) have the bot as the Commons uploader,
-        // but extmetadata's Attribution field carries the real photographer's plain-text name.
-        string? author = null;
-        if (extMetadata.TryGetValue("Attribution", out var attribution) && !string.IsNullOrWhiteSpace(attribution.Value.ToString()))
-        {
-            author = attribution.Value.ToString();
-        }
+        // Bot-uploaded files (e.g. Panoramio imports, Magnus' File Upload Bot) have the bot as the
+        // Commons uploader, so prefer the real photographer from extmetadata: Attribution, then
+        // Artist. Both are rendered HTML (typically a link to the user's page), so strip to text.
+        string? PlainTextField(string key) =>
+            extMetadata.TryGetValue(key, out var field) ? PlainText(field.Value.ToString()) : null;
+        var author = PlainTextField("Attribution") ?? PlainTextField("Artist");
 
         var extension = Path.GetExtension(filename);
 
@@ -198,6 +201,13 @@ public class CommonsFetcher : ISourceFetcher
             Latitude = latitude,
             Longitude = longitude
         };
+    }
+
+    private static string? PlainText(string html)
+    {
+        var text = HtmlTagPattern.Replace(html, " ");
+        text = WhitespacePattern.Replace(WebUtility.HtmlDecode(text), " ").Trim();
+        return text.Length > 0 ? text : null;
     }
 
     private static string NormalizeDate(string raw)
