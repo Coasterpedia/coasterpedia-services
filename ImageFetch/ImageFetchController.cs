@@ -88,7 +88,7 @@ public class ImageFetchController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unhandled error fetching {Url}", request.Url);
-            return Problem(detail: "Failed to fetch the source image.", statusCode: StatusCodes.Status502BadGateway);
+            return Problem(detail: "Failed to fetch the source image.", statusCode: StatusCodes.Status500InternalServerError);
         }
     }
 }

@@ -33,8 +33,12 @@ public class WikimapiaFetcher : ISourceFetcher
         var photo = place.Photos?.FirstOrDefault(p => p.Id.ToString(CultureInfo.InvariantCulture) == photoId)
                     ?? throw new ImageFetchException(404, "Photo not found on Wikimapia.");
 
-        var bytes = await BoundedDownloader.DownloadAsync(_downloadClient, photo.FullUrl, cancellationToken);
-        var extension = Path.GetExtension(new Uri(photo.FullUrl).AbsolutePath);
+        // full_url is missing for some (older) photos; big_url is the largest size served for those.
+        var imageUrl = photo.FullUrl ?? photo.BigUrl
+                       ?? throw new ImageFetchException(422, "Wikimapia didn't return a download URL for this photo.");
+
+        var bytes = await BoundedDownloader.DownloadAsync(_downloadClient, imageUrl, cancellationToken);
+        var extension = Path.GetExtension(new Uri(imageUrl).AbsolutePath);
         var sourceUrl = $"https://wikimapia.org/{objectId}/photo/{photoId}";
         var provenance = ProvenanceBuilder.Build(SourceRegistry.Wikimapia, "cc-by-sa-3.0", sourceUrl);
 

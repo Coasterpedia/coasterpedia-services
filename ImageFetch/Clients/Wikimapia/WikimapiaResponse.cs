@@ -11,7 +11,8 @@ public record WikimapiaPhoto(
     long ObjectId,
     string? UserName,
     long Time,
-    string FullUrl,
+    string? FullUrl,
+    string? BigUrl,
     string? ThumbnailUrl
 );
 
