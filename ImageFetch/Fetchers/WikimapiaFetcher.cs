@@ -30,6 +30,10 @@ public class WikimapiaFetcher : ISourceFetcher
         }
 
         var place = await _wikimapiaClient.GetPlaceAsync(objectId, _config.ApiKey);
+        if (place.Debug is { } debug)
+        {
+            throw new ImageFetchException(502, $"Wikimapia API error: {debug.Message ?? $"code {debug.Code}"}");
+        }
         var photo = place.Photos?.FirstOrDefault(p => p.Id.ToString(CultureInfo.InvariantCulture) == photoId)
                     ?? throw new ImageFetchException(404, "Photo not found on Wikimapia.");
 
@@ -53,7 +57,10 @@ public class WikimapiaFetcher : ISourceFetcher
             Source = provenance.Source,
             License = provenance.License,
             Cards = provenance.Cards,
-            Date = DateTimeOffset.FromUnixTimeSeconds(photo.Time).UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            // Some older photos come back with "time": 0 (unknown), which would otherwise read as 1970-01-01.
+            Date = photo.Time > 0
+                ? DateTimeOffset.FromUnixTimeSeconds(photo.Time).UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+                : null,
             Latitude = place.Location?.Lat.ToString(CultureInfo.InvariantCulture),
             Longitude = place.Location?.Lon.ToString(CultureInfo.InvariantCulture)
         };

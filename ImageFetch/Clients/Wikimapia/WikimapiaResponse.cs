@@ -3,7 +3,14 @@ namespace CoasterpediaServices.ImageFetch.Clients.Wikimapia;
 public record WikimapiaPlaceResponse(
     string? Title,
     List<WikimapiaPhoto>? Photos,
-    WikimapiaLocation? Location
+    WikimapiaLocation? Location,
+    WikimapiaDebug? Debug
+);
+
+// Wikimapia reports errors (bad key, rate limit, missing object) as HTTP 200 with only a "debug" block.
+public record WikimapiaDebug(
+    int Code,
+    string? Message
 );
 
 public record WikimapiaPhoto(

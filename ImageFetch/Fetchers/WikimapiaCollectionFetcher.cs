@@ -25,6 +25,10 @@ public class WikimapiaCollectionFetcher : ICollectionFetcher
         }
 
         var place = await _wikimapiaClient.GetPlaceAsync(objectId, _config.ApiKey);
+        if (place.Debug is { } debug)
+        {
+            throw new ImageFetchException(502, $"Wikimapia API error: {debug.Message ?? $"code {debug.Code}"}");
+        }
         var photos = place.Photos ?? [];
 
         if (photos.Count == 0)
