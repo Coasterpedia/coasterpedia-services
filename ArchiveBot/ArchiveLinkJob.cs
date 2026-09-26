@@ -40,7 +40,7 @@ public class ArchiveLinkJob
 
         var page = new WikiPage(site, pageName);
         await page.RefreshAsync(PageQueryOptions.FetchContent | PageQueryOptions.ResolveRedirects);
-        if (page.LastRevision != null && page.LastRevision.TimeStamp > DateTime.UtcNow.AddMinutes(-15))
+        if (page.LastRevision != null && page.LastRevision.TimeStamp > DateTime.UtcNow.Add(ArchiveBotConfig.Delay))
         {
             return;
         }

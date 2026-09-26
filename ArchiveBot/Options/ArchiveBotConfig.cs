@@ -4,4 +4,5 @@ public record ArchiveBotConfig
 {
     public required string BotUsername { get; init; }
     public required string BotPassword { get; init; }
+    public static readonly TimeSpan Delay = TimeSpan.FromHours(6);
 }
