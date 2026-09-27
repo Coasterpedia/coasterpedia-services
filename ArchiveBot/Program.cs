@@ -26,6 +26,12 @@ services.AddLogging(b => b.AddConsole().AddConfiguration(configuration.GetSectio
 services.AddArchiveBot(configuration);
 
 var provider = services.BuildServiceProvider();
-var job = provider.GetRequiredService<ArchiveLinkJob>();
-await job.Run(args[0]);
+if (args[0].StartsWith("File:", StringComparison.OrdinalIgnoreCase))
+{
+    await provider.GetRequiredService<ArchiveFileSourceJob>().Run(args[0]);
+}
+else
+{
+    await provider.GetRequiredService<ArchiveLinkJob>().Run(args[0]);
+}
 return 0;

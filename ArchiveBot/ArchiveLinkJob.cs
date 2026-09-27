@@ -1,4 +1,3 @@
-using System.Text.Json;
 using CoasterpediaServices.ArchiveBot.Clients.Archive;
 using CoasterpediaServices.ArchiveBot.Clients.Wayback;
 using CoasterpediaServices.ArchiveBot.Clients.WebClient;
@@ -10,26 +9,28 @@ using MarketAlly.IronWiki.Parsing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using WikiClientLibrary.Pages;
+using static CoasterpediaServices.ArchiveBot.ArgumentUtilities;
 
 namespace CoasterpediaServices.ArchiveBot;
 
 public class ArchiveLinkJob
 {
-    private BotConfig? _botConfig;
     private readonly WikiSiteAccessor _siteAccessor;
     private readonly IWaybackClient _waybackClient;
     private readonly IArchiveClient _archiveClient;
     private readonly WebClient _webClient;
+    private readonly BotConfigProvider _botConfigProvider;
     private readonly ILogger<ArchiveLinkJob> _logger;
     private readonly ArchiveBotConfig _archiveBotConfig;
 
     public ArchiveLinkJob(WikiSiteAccessor siteAccessor, IWaybackClient waybackClient, IArchiveClient archiveClient, WebClient webClient,
-        ILogger<ArchiveLinkJob> logger, IOptions<ArchiveBotConfig> archiveBotConfig)
+        BotConfigProvider botConfigProvider, ILogger<ArchiveLinkJob> logger, IOptions<ArchiveBotConfig> archiveBotConfig)
     {
         _siteAccessor = siteAccessor;
         _waybackClient = waybackClient;
         _archiveClient = archiveClient;
         _webClient = webClient;
+        _botConfigProvider = botConfigProvider;
         _logger = logger;
         _archiveBotConfig = archiveBotConfig.Value;
     }
@@ -55,19 +56,7 @@ public class ArchiveLinkJob
             return;
         }
 
-        if (_botConfig == null)
-        {
-            _logger.LogInformation("Fetching bot config");
-            var configPage = new WikiPage(site, "User:ArchiveBot/Config.json");
-            await configPage.RefreshAsync(PageQueryOptions.FetchContent);
-            if (configPage.Content != null)
-            {
-                _botConfig = JsonSerializer.Deserialize<BotConfig>(configPage.Content, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
-            }
-        }
+        var botConfig = await _botConfigProvider.Get(site);
 
         var newContent = page.Content;
         var editedReferences = false;
@@ -75,7 +64,7 @@ public class ArchiveLinkJob
         {
             var referenceMetadata = await parser.ParseAsync(reference.Content);
             var citationTemplate = referenceMetadata.EnumerateDescendants<Template>().FirstOrDefault();
-            if (citationTemplate?.Name == null || !_botConfig!.CitationTemplates.Contains(citationTemplate.Name.ToString().Trim().ToLower()))
+            if (citationTemplate?.Name == null || !botConfig.CitationTemplates.Contains(citationTemplate.Name.ToString().Trim().ToLower()))
             {
                 _logger.LogInformation("Citation invalid, skipping {CitationTemplate}", citationTemplate);
                 continue;
@@ -94,10 +83,10 @@ public class ArchiveLinkJob
                 continue;
             }
 
-            var statusOverride = _botConfig.SiteConfig
+            var statusOverride = botConfig.SiteConfig
                 ?.FirstOrDefault(x => x.Key == uri.Host && !x.Value.Equals("IgnoreRedirect", StringComparison.CurrentCultureIgnoreCase)).Value;
             var ignoreRedirect =
-                _botConfig.SiteConfig?.Any(x => x.Key == uri.Host && x.Value.Equals("IgnoreRedirect", StringComparison.CurrentCultureIgnoreCase)) ?? false;
+                botConfig.SiteConfig?.Any(x => x.Key == uri.Host && x.Value.Equals("IgnoreRedirect", StringComparison.CurrentCultureIgnoreCase)) ?? false;
 
             if (statusOverride?.ToLower() is "ignore")
             {
@@ -231,36 +220,6 @@ public class ArchiveLinkJob
             Summary = "Add archive links",
             Bot = true
         });
-    }
-
-    private static void UpdateArgument(Template citationTemplate, string key, string value)
-    {
-        var currentValue = citationTemplate.Arguments.Where(x => x.Name?.ToString().Trim().ToLower() == key).ToList();
-        switch (currentValue.Count)
-        {
-            case > 1:
-            {
-                foreach (var currentUrlStatus in currentValue)
-                {
-                    citationTemplate.Arguments.Remove(currentUrlStatus);
-                }
-
-                break;
-            }
-            case 1:
-            {
-                if (currentValue.Single().Value.ToString() == value)
-                {
-                    return;
-                }
-
-                citationTemplate.Arguments.Remove(currentValue.Single());
-
-                break;
-            }
-        }
-
-        citationTemplate.Arguments.Add(ArgumentUtilities.CreateArgument(key, value));
     }
 
     private bool IsRedirect(StatusResponse statusResponse, string originalUrl, out string? newUrl)
