@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using CoasterpediaServices.ArchiveBot.Clients.Archive;
 using CoasterpediaServices.ArchiveBot.Options;
 using CoasterpediaServices.Common.Wiki;
+using Hangfire;
 using MarketAlly.IronWiki.Nodes;
 using MarketAlly.IronWiki.Parsing;
 using Microsoft.Extensions.Logging;
@@ -18,12 +19,12 @@ public partial class ArchiveFileSourceJob
     private static readonly string[] InformationTemplates = ["information", "image documentation"];
 
     private readonly WikiSiteAccessor _siteAccessor;
-    private readonly IArchiveClient _archiveClient;
+    private readonly PacedArchiveClient _archiveClient;
     private readonly BotConfigProvider _botConfigProvider;
     private readonly ILogger<ArchiveFileSourceJob> _logger;
     private readonly ArchiveBotConfig _archiveBotConfig;
 
-    public ArchiveFileSourceJob(WikiSiteAccessor siteAccessor, IArchiveClient archiveClient, BotConfigProvider botConfigProvider,
+    public ArchiveFileSourceJob(WikiSiteAccessor siteAccessor, PacedArchiveClient archiveClient, BotConfigProvider botConfigProvider,
         ILogger<ArchiveFileSourceJob> logger, IOptions<ArchiveBotConfig> archiveBotConfig)
     {
         _siteAccessor = siteAccessor;
@@ -33,6 +34,7 @@ public partial class ArchiveFileSourceJob
         _archiveBotConfig = archiveBotConfig.Value;
     }
 
+    [Queue(ArchiveBotConfig.ArchiveQueue)]
     public async Task Run(string pageName)
     {
         var site = await _siteAccessor.GetCoasterpedia(_archiveBotConfig.BotUsername, _archiveBotConfig.BotPassword);

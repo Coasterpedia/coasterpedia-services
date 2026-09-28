@@ -3,6 +3,7 @@ using CoasterpediaServices.ArchiveBot.Clients.Wayback;
 using CoasterpediaServices.ArchiveBot.Clients.WebClient;
 using CoasterpediaServices.ArchiveBot.Options;
 using CoasterpediaServices.Common.Wiki;
+using Hangfire;
 using MarketAlly.IronWiki.Analysis;
 using MarketAlly.IronWiki.Nodes;
 using MarketAlly.IronWiki.Parsing;
@@ -17,13 +18,13 @@ public class ArchiveLinkJob
 {
     private readonly WikiSiteAccessor _siteAccessor;
     private readonly IWaybackClient _waybackClient;
-    private readonly IArchiveClient _archiveClient;
+    private readonly PacedArchiveClient _archiveClient;
     private readonly WebClient _webClient;
     private readonly BotConfigProvider _botConfigProvider;
     private readonly ILogger<ArchiveLinkJob> _logger;
     private readonly ArchiveBotConfig _archiveBotConfig;
 
-    public ArchiveLinkJob(WikiSiteAccessor siteAccessor, IWaybackClient waybackClient, IArchiveClient archiveClient, WebClient webClient,
+    public ArchiveLinkJob(WikiSiteAccessor siteAccessor, IWaybackClient waybackClient, PacedArchiveClient archiveClient, WebClient webClient,
         BotConfigProvider botConfigProvider, ILogger<ArchiveLinkJob> logger, IOptions<ArchiveBotConfig> archiveBotConfig)
     {
         _siteAccessor = siteAccessor;
@@ -35,6 +36,7 @@ public class ArchiveLinkJob
         _archiveBotConfig = archiveBotConfig.Value;
     }
 
+    [Queue(ArchiveBotConfig.ArchiveQueue)]
     public async Task Run(string pageName)
     {
         var site = await _siteAccessor.GetCoasterpedia(_archiveBotConfig.BotUsername, _archiveBotConfig.BotPassword);
@@ -143,7 +145,7 @@ public class ArchiveLinkJob
                 {
                     _logger.LogInformation("Archive not found, saving page");
                     var saveResponse = await _archiveClient.SavePage(newUrl ?? url);
-                    var location = saveResponse.Headers.Location;
+                    var location = saveResponse.Headers?.Location;
 
                     if (location != null)
                     {

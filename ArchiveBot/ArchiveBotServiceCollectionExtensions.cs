@@ -19,6 +19,7 @@ public static class ArchiveBotServiceCollectionExtensions
         services.AddSingleton<ArchiveLinkJob>();
         services.AddSingleton<ArchiveFileSourceJob>();
         services.AddSingleton<BotConfigProvider>();
+        services.AddSingleton<PacedArchiveClient>();
 
         services.AddOptions<ArchiveBotConfig>()
             .Bind(configuration.GetSection(nameof(ArchiveBotConfig)))
