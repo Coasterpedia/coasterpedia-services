@@ -37,6 +37,9 @@ public static class ImageFetchServiceCollectionExtensions
             .Bind(configuration.GetSection(nameof(WikimapiaConfig)))
             .ValidateOnStart();
 
+        services.AddOptions<GeographDeConfig>()
+            .Bind(configuration.GetSection(nameof(GeographDeConfig)));
+
         var commonsConfig = configuration.GetRequiredSection(nameof(CommonsConfig)).Get<CommonsConfig>()
                              ?? throw new InvalidOperationException("CommonsConfig configuration is missing");
 
@@ -106,8 +109,9 @@ public static class ImageFetchServiceCollectionExtensions
             });
         services.AddTransient<ISourceFetcher>(sp => sp.GetRequiredService<GeographFetcher>());
 
-        // Geograph Deutschland: no API key and no Refit client — the endpoint is read as XML,
-        // because the site's JSON encoder corrupts every umlaut. See GeographDeClient.
+        // Geograph Deutschland: no Refit client — the endpoint is read as XML, because the site's
+        // JSON encoder corrupts every umlaut. The API key is optional and read from options, so an
+        // unset GeographDeConfig is a working configuration. See GeographDeClient.
         services.AddHttpClient<IGeographDeClient, GeographDeClient>()
             .ConfigureHttpClient(c =>
             {
