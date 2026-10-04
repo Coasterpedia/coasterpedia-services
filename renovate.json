@@ -1,0 +1,51 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "enabledManagers": [
+    "nuget",
+    "dockerfile",
+    "github-actions"
+  ],
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "packageRules": [
+    {
+      "description": "Keep the .NET runtime/SDK images and Microsoft.Extensions packages in step",
+      "groupName": ".NET",
+      "matchPackageNames": [
+        "mcr.microsoft.com/dotnet/**",
+        "Microsoft.Extensions.**"
+      ]
+    },
+    {
+      "description": "The native libvips packages must all ship the same version",
+      "groupName": "NetVips.Native",
+      "matchPackageNames": [
+        "NetVips.Native.**"
+      ]
+    },
+    {
+      "description": "Hangfire core packages are released together",
+      "groupName": "Hangfire",
+      "matchPackageNames": [
+        "Hangfire.Core",
+        "Hangfire.AspNetCore"
+      ]
+    },
+    {
+      "description": "Batch non-major GitHub Actions updates into one PR",
+      "groupName": "GitHub Actions",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "digest"
+      ]
+    }
+  ]
+}
