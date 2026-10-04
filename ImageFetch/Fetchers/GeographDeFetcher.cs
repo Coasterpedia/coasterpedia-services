@@ -1,5 +1,7 @@
 using CoasterpediaServices.ImageFetch.Clients.GeographDe;
+using CoasterpediaServices.ImageFetch.Options;
 using CoasterpediaServices.ImageFetch.Provenance;
+using Microsoft.Extensions.Options;
 
 namespace CoasterpediaServices.ImageFetch.Fetchers;
 
@@ -18,11 +20,14 @@ public class GeographDeFetcher : ISourceFetcher
 
     private readonly IGeographDeClient _geographDeClient;
     private readonly HttpClient _downloadClient;
+    private readonly GeographDeConfig _config;
 
-    public GeographDeFetcher(IGeographDeClient geographDeClient, HttpClient downloadClient)
+    public GeographDeFetcher(IGeographDeClient geographDeClient, HttpClient downloadClient,
+        IOptions<GeographDeConfig> config)
     {
         _geographDeClient = geographDeClient;
         _downloadClient = downloadClient;
+        _config = config.Value;
     }
 
     public bool CanHandle(Uri uri) => Hosts.Contains(uri.Host, StringComparer.OrdinalIgnoreCase);
@@ -49,7 +54,7 @@ public class GeographDeFetcher : ISourceFetcher
         // The API hands back http:// URLs throughout (the site still declares an http canonical),
         // but https serves the same bytes. Upgrade rather than downgrade the fetch.
         var imageUrl = Https(photo.ImageUrl);
-        var bytes = await BoundedDownloader.DownloadAsync(_downloadClient, imageUrl, cancellationToken);
+        var bytes = await BoundedDownloader.DownloadAsync(_downloadClient, WithKey(imageUrl), cancellationToken);
         var extension = Path.GetExtension(new Uri(imageUrl).AbsolutePath);
 
         // Canonicalised to the German host, which is what the photo page's own rel="canonical"
@@ -93,6 +98,16 @@ public class GeographDeFetcher : ISourceFetcher
 
         return id.Length > 0 && id.All(char.IsAsciiDigit) ? id : null;
     }
+
+    /// <summary>
+    /// The image server refuses keyless requests with a 403 ("No access…"), separately from the API.
+    /// It takes the same key as a query parameter. Only the download gets it: <c>imageUrl</c> itself
+    /// feeds the filename and never carries the key, so the key can't reach the gadget.
+    /// </summary>
+    private string WithKey(string url) =>
+        string.IsNullOrEmpty(_config.ApiKey)
+            ? url
+            : $"{url}{(url.Contains('?') ? '&' : '?')}key={Uri.EscapeDataString(_config.ApiKey)}";
 
     private static string Https(string url) =>
         url.StartsWith("http://", StringComparison.OrdinalIgnoreCase)

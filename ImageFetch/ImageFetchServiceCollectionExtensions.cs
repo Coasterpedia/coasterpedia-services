@@ -110,8 +110,8 @@ public static class ImageFetchServiceCollectionExtensions
         services.AddTransient<ISourceFetcher>(sp => sp.GetRequiredService<GeographFetcher>());
 
         // Geograph Deutschland: no Refit client — the endpoint is read as XML, because the site's
-        // JSON encoder corrupts every umlaut. The API key is optional and read from options, so an
-        // unset GeographDeConfig is a working configuration. See GeographDeClient.
+        // JSON encoder corrupts every umlaut. The API key is read from options by both the client
+        // and GeographDeFetcher; the image server 403s keyless downloads, so it is required in practice.
         services.AddHttpClient<IGeographDeClient, GeographDeClient>()
             .ConfigureHttpClient(c =>
             {
