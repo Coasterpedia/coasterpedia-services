@@ -46,7 +46,7 @@ public static class ImageFetchServiceCollectionExtensions
         var geographConfig = configuration.GetRequiredSection(nameof(GeographConfig)).Get<GeographConfig>()
                               ?? throw new InvalidOperationException("GeographConfig configuration is missing");
 
-        services.AddRefitClient<IGeographClient>(new RefitSettings
+        services.AddRefitGeneratedClient<IGeographClient>(new RefitSettings
             {
                 ContentSerializer = new SystemTextJsonContentSerializer(new JsonSerializerOptions
                 {
@@ -60,7 +60,7 @@ public static class ImageFetchServiceCollectionExtensions
                 c.DefaultRequestHeaders.Add("X-Api-Key", geographConfig.ApiKey);
             });
 
-        services.AddRefitClient<IWikimapiaClient>(new RefitSettings
+        services.AddRefitGeneratedClient<IWikimapiaClient>(new RefitSettings
             {
                 ContentSerializer = new SystemTextJsonContentSerializer(new JsonSerializerOptions
                 {
@@ -73,7 +73,7 @@ public static class ImageFetchServiceCollectionExtensions
                 c.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
             });
 
-        services.AddRefitClient<IFlickrClient>(new RefitSettings
+        services.AddRefitGeneratedClient<IFlickrClient>(new RefitSettings
             {
                 ContentSerializer = new SystemTextJsonContentSerializer(new JsonSerializerOptions
                 {

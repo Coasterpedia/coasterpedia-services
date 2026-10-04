@@ -32,7 +32,7 @@ public static class ArchiveBotServiceCollectionExtensions
                 c.Timeout = TimeSpan.FromSeconds(30);
             });
 
-        services.AddRefitClient<IWaybackClient>(new RefitSettings
+        services.AddRefitGeneratedClient<IWaybackClient>(new RefitSettings
         {
             ContentSerializer = new SystemTextJsonContentSerializer(new JsonSerializerOptions
             {
@@ -45,7 +45,7 @@ public static class ArchiveBotServiceCollectionExtensions
             c.Timeout = TimeSpan.FromSeconds(65);
         });
 
-        services.AddRefitClient<IArchiveClient>(new RefitSettings
+        services.AddRefitGeneratedClient<IArchiveClient>(new RefitSettings
         {
             HttpMessageHandlerFactory = () => new HttpClientHandler
             {

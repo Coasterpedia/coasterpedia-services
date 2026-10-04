@@ -19,12 +19,11 @@
          arches the container is actually built for are named instead. -->
     <ItemGroup>
       <PackageReference Include="NetVips" Version="3.2.0" />
-      <PackageReference Include="NetVips.Native.linux-x64" Version="8.18.4" />
-      <PackageReference Include="NetVips.Native.linux-arm64" Version="8.18.4" />
+      <PackageReference Include="NetVips.Native.linux-x64" Version="8.18.7" />
+      <PackageReference Include="NetVips.Native.linux-arm64" Version="8.18.7" />
       <!-- Local debugging on a Mac only; the SDK image builds on Linux, so this one
            never reaches the container. -->
-      <PackageReference Include="NetVips.Native.osx-arm64" Version="8.18.4"
-                        Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
+      <PackageReference Include="NetVips.Native.osx-arm64" Version="8.18.7" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
     </ItemGroup>
 
     <ItemGroup>
