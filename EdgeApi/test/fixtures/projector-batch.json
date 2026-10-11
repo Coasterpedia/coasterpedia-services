@@ -1,12 +1,20 @@
 {
   "as_of": "2026-10-11T12:00:00Z",
+  "settle_after": "P7D",
   "upsert": [
     {
       "kind": "attraction",
       "id": 171,
       "revision": 401,
       "updated_at": "2026-10-11T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
       "sort_name": "gold rusher",
+      "sort_values": {
+        "height": 21.3,
+        "speed": 56.3,
+        "length": 789.4
+      },
       "filters": {
         "type": "coaster",
         "status": "operating",
@@ -27,6 +35,32 @@
             "name": "Arrow Development"
           }
         ],
+        "stats": {
+          "height": {
+            "value": 21.3,
+            "unit": "m",
+            "entered": {
+              "value": 70,
+              "unit": "ft"
+            }
+          },
+          "length": {
+            "value": 789.4,
+            "unit": "m",
+            "entered": {
+              "value": 2590,
+              "unit": "ft"
+            }
+          },
+          "speed": {
+            "value": 56.3,
+            "unit": "km/h",
+            "entered": {
+              "value": 35,
+              "unit": "mph"
+            }
+          }
+        },
         "updated_at": "2026-10-11T12:00:00Z"
       },
       "record": {
@@ -52,6 +86,43 @@
             "name": "Arrow Development"
           }
         ],
+        "stats": {
+          "height": {
+            "value": 21.3,
+            "unit": "m",
+            "entered": {
+              "value": 70,
+              "unit": "ft"
+            }
+          },
+          "length": {
+            "value": 789.4,
+            "unit": "m",
+            "entered": {
+              "value": 2590,
+              "unit": "ft"
+            }
+          },
+          "speed": {
+            "value": 56.3,
+            "unit": "km/h",
+            "entered": {
+              "value": 35,
+              "unit": "mph"
+            }
+          },
+          "inversions": {
+            "track": 0
+          },
+          "g_force": 3.4,
+          "duration": {
+            "value": 150,
+            "unit": "s"
+          },
+          "riders_per_hour": 1750,
+          "riders_per_train": 30,
+          "tracks": 1
+        },
         "revision": 401,
         "updated_at": "2026-10-11T12:00:00Z"
       }
@@ -61,7 +132,14 @@
       "id": 165,
       "revision": 402,
       "updated_at": "2026-10-11T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
       "sort_name": "batman the ride",
+      "sort_values": {
+        "height": 32,
+        "speed": 80.5,
+        "length": 823
+      },
       "filters": {
         "type": "coaster",
         "status": "operating",
@@ -82,6 +160,32 @@
             "name": "Bolliger \u0026 Mabillard"
           }
         ],
+        "stats": {
+          "height": {
+            "value": 32,
+            "unit": "m",
+            "entered": {
+              "value": 105,
+              "unit": "ft"
+            }
+          },
+          "length": {
+            "value": 823,
+            "unit": "m",
+            "entered": {
+              "value": 2700,
+              "unit": "ft"
+            }
+          },
+          "speed": {
+            "value": 80.5,
+            "unit": "km/h",
+            "entered": {
+              "value": 50,
+              "unit": "mph"
+            }
+          }
+        },
         "updated_at": "2026-10-11T12:00:00Z"
       },
       "record": {
@@ -107,6 +211,52 @@
             "name": "Bolliger \u0026 Mabillard"
           }
         ],
+        "stats": {
+          "height": {
+            "value": 32,
+            "unit": "m",
+            "entered": {
+              "value": 105,
+              "unit": "ft"
+            }
+          },
+          "drop": {
+            "value": 25.76,
+            "unit": "m",
+            "entered": {
+              "value": 84.5,
+              "unit": "ft"
+            }
+          },
+          "length": {
+            "value": 823,
+            "unit": "m",
+            "entered": {
+              "value": 2700,
+              "unit": "ft"
+            }
+          },
+          "speed": {
+            "value": 80.5,
+            "unit": "km/h",
+            "entered": {
+              "value": 50,
+              "unit": "mph"
+            }
+          },
+          "inversions": {
+            "track": 5
+          },
+          "max_angle": 59,
+          "g_force": 4,
+          "duration": {
+            "value": 120,
+            "unit": "s"
+          },
+          "riders_per_hour": 1400,
+          "riders_per_train": 32,
+          "tracks": 1
+        },
         "revision": 402,
         "updated_at": "2026-10-11T12:00:00Z"
       }
@@ -116,7 +266,14 @@
       "id": 169,
       "revision": 403,
       "updated_at": "2026-10-11T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
       "sort_name": "colossus",
+      "sort_values": {
+        "height": 38.1,
+        "speed": 99.8,
+        "length": 1318.3
+      },
       "filters": {
         "type": "coaster",
         "status": "defunct",
@@ -137,6 +294,32 @@
             "name": "International Amusement Devices"
           }
         ],
+        "stats": {
+          "height": {
+            "value": 38.1,
+            "unit": "m",
+            "entered": {
+              "value": 125,
+              "unit": "ft"
+            }
+          },
+          "length": {
+            "value": 1318.3,
+            "unit": "m",
+            "entered": {
+              "value": 4325,
+              "unit": "ft"
+            }
+          },
+          "speed": {
+            "value": 99.8,
+            "unit": "km/h",
+            "entered": {
+              "value": 62,
+              "unit": "mph"
+            }
+          }
+        },
         "updated_at": "2026-10-11T12:00:00Z"
       },
       "record": {
@@ -162,6 +345,51 @@
             "name": "International Amusement Devices"
           }
         ],
+        "stats": {
+          "height": {
+            "value": 38.1,
+            "unit": "m",
+            "entered": {
+              "value": 125,
+              "unit": "ft"
+            }
+          },
+          "drop": {
+            "value": 35.1,
+            "unit": "m",
+            "entered": {
+              "value": 115,
+              "unit": "ft"
+            }
+          },
+          "length": {
+            "value": 1318.3,
+            "unit": "m",
+            "entered": {
+              "value": 4325,
+              "unit": "ft"
+            }
+          },
+          "speed": {
+            "value": 99.8,
+            "unit": "km/h",
+            "entered": {
+              "value": 62,
+              "unit": "mph"
+            }
+          },
+          "inversions": {
+            "track": 0
+          },
+          "g_force": 3.2,
+          "duration": {
+            "value": 150,
+            "unit": "s"
+          },
+          "riders_per_hour": 2600,
+          "riders_per_train": 24,
+          "tracks": 2
+        },
         "revision": 403,
         "updated_at": "2026-10-11T12:00:00Z"
       }
@@ -171,7 +399,14 @@
       "id": 9101,
       "revision": 404,
       "updated_at": "2026-10-11T12:00:00Z",
+      "settled": false,
+      "settles_at": "2026-10-18T12:00:00Z",
       "sort_name": "example twin",
+      "sort_values": {
+        "height": null,
+        "speed": null,
+        "length": null
+      },
       "filters": {
         "type": "coaster",
         "status": "standing_but_not_operating",
@@ -228,7 +463,14 @@
       "id": 19643,
       "revision": 405,
       "updated_at": "2026-10-11T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
       "sort_name": "over the hill 2: spooksville",
+      "sort_values": {
+        "height": 73.8,
+        "speed": 56.3,
+        "length": null
+      },
       "filters": {
         "type": "ride",
         "status": "operating",
@@ -248,6 +490,24 @@
             "name": "Self-built"
           }
         ],
+        "stats": {
+          "height": {
+            "value": 73.8,
+            "unit": "m",
+            "entered": {
+              "value": 242,
+              "unit": "ft"
+            }
+          },
+          "speed": {
+            "value": 56.3,
+            "unit": "km/h",
+            "entered": {
+              "value": 35,
+              "unit": "mph"
+            }
+          }
+        },
         "updated_at": "2026-10-11T12:00:00Z"
       },
       "record": {
@@ -272,6 +532,33 @@
             "name": "Self-built"
           }
         ],
+        "stats": {
+          "height": {
+            "value": 73.8,
+            "unit": "m",
+            "entered": {
+              "value": 242,
+              "unit": "ft"
+            }
+          },
+          "speed": {
+            "value": 56.3,
+            "unit": "km/h",
+            "entered": {
+              "value": 35,
+              "unit": "mph"
+            }
+          },
+          "diameter": {
+            "value": 29.9,
+            "unit": "m",
+            "entered": {
+              "value": 98,
+              "unit": "ft"
+            }
+          },
+          "riders_per_hour": 1200
+        },
         "revision": 405,
         "updated_at": "2026-10-11T12:00:00Z"
       }
@@ -281,7 +568,14 @@
       "id": 66486,
       "revision": 406,
       "updated_at": "2026-10-11T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
       "sort_name": "skyride",
+      "sort_values": {
+        "height": null,
+        "speed": null,
+        "length": null
+      },
       "filters": {
         "type": "ride",
         "status": "operating",
@@ -323,7 +617,14 @@
       "id": 9102,
       "revision": 407,
       "updated_at": "2026-10-11T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
       "sort_name": "elan",
+      "sort_values": {
+        "height": 36.6,
+        "speed": null,
+        "length": 109.7
+      },
       "filters": {
         "type": "water_slide",
         "status": "operating",
@@ -339,6 +640,24 @@
           "name": "Kosovo"
         },
         "manufacturers": [],
+        "stats": {
+          "height": {
+            "value": 36.6,
+            "unit": "m",
+            "entered": {
+              "value": 120,
+              "unit": "ft"
+            }
+          },
+          "length": {
+            "value": 109.7,
+            "unit": "m",
+            "entered": {
+              "value": 360,
+              "unit": "ft"
+            }
+          }
+        },
         "updated_at": "2026-10-11T12:00:00Z"
       },
       "record": {
@@ -359,6 +678,24 @@
           }
         },
         "manufacturers": [],
+        "stats": {
+          "height": {
+            "value": 36.6,
+            "unit": "m",
+            "entered": {
+              "value": 120,
+              "unit": "ft"
+            }
+          },
+          "length": {
+            "value": 109.7,
+            "unit": "m",
+            "entered": {
+              "value": 360,
+              "unit": "ft"
+            }
+          }
+        },
         "revision": 407,
         "updated_at": "2026-10-11T12:00:00Z"
       }
@@ -369,6 +706,18 @@
       "kind": "attraction",
       "id": 170,
       "merged_into": 171
+    }
+  ],
+  "promote": [
+    {
+      "kind": "attraction",
+      "id": 9998
+    }
+  ],
+  "discard": [
+    {
+      "kind": "attraction",
+      "id": 9999
     }
   ]
 }

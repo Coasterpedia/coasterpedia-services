@@ -180,7 +180,7 @@ public class ProjectorTests
 
         var json = JsonSerializer.Serialize(item);
         Assert.Equal(
-            """{"kind":"attraction","id":66486,"revision":42,"updated_at":"2026-10-11T12:00:00Z","sort_name":"skyride","filters":{"type":"ride","status":"operating","country":null},"summary":{"id":66486,"type":"ride","name":"SkyRide","status":"operating","manufacturers":[{"id":9001,"name":"SkyRide Technology"}],"updated_at":"2026-10-11T12:00:00Z"},"record":{"id":66486,"type":"ride","name":"SkyRide","title":"SkyRide (Carnival Horizon)","url":"https://coasterpedia.net/wiki/SkyRide_(Carnival_Horizon)","status":"operating","location":{},"manufacturers":[{"id":9001,"name":"SkyRide Technology"}],"revision":42,"updated_at":"2026-10-11T12:00:00Z"}}""",
+            """{"kind":"attraction","id":66486,"revision":42,"updated_at":"2026-10-11T12:00:00Z","settled":true,"settles_at":null,"sort_name":"skyride","sort_values":{"height":null,"speed":null,"length":null},"filters":{"type":"ride","status":"operating","country":null},"summary":{"id":66486,"type":"ride","name":"SkyRide","status":"operating","manufacturers":[{"id":9001,"name":"SkyRide Technology"}],"updated_at":"2026-10-11T12:00:00Z"},"record":{"id":66486,"type":"ride","name":"SkyRide","title":"SkyRide (Carnival Horizon)","url":"https://coasterpedia.net/wiki/SkyRide_(Carnival_Horizon)","status":"operating","location":{},"manufacturers":[{"id":9001,"name":"SkyRide Technology"}],"revision":42,"updated_at":"2026-10-11T12:00:00Z"}}""",
             json);
     }
 }

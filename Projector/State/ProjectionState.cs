@@ -4,33 +4,29 @@ using StackExchange.Redis;
 
 namespace CoasterpediaServices.Projector.State;
 
-/// <summary>What the Projector last pushed for one record.</summary>
-public sealed record PushedState(string Hash, long Revision, DateTimeOffset UpdatedAt)
-{
-    public string Encode() => $"{Hash}|{Revision}|{UpdatedAt.ToUnixTimeSeconds()}";
-
-    public static PushedState? Decode(string? value)
-    {
-        var parts = value?.Split('|');
-        return parts is { Length: 3 }
-            ? new PushedState(parts[0], long.Parse(parts[1]), DateTimeOffset.FromUnixTimeSeconds(long.Parse(parts[2])))
-            : null;
-    }
-}
-
 /// <summary>
 /// The Projector's memory, in Redis beside Hangfire (keys under projector:).
-/// Losing it is safe: the next sweep sees every record as changed and pushes
-/// the lot, which the edge applies idempotently.
+/// Losing it is safe but noisy: the next sweep finds every record unknown and
+/// pushes it again as pending. The settled view keeps the identical content it
+/// has, and the runs settle a week later.
 /// </summary>
 public sealed class ProjectionState
 {
     private const string PushedKey = "projector:attraction:pushed";
+    private const string SettlingKey = "projector:attraction:settling";
     private const string MissingKey = "projector:attraction:missing";
+    private const string TrustedKey = "projector:trust:trusted";
+    private const string UntrustedKey = "projector:trust:untrusted";
     private const string IssuesKey = "projector:issues";
     private const string PendingKey = "projector:pending";
     private const string FlushScheduledKey = "projector:flush-scheduled";
     public const string OutboxKey = "projector:outbox";
+
+    // Events can arrive out of order; keep the highest revision.
+    private const string MaxScript = """
+        local current = tonumber(redis.call('HGET', KEYS[1], ARGV[1]) or '0')
+        if tonumber(ARGV[2]) > current then redis.call('HSET', KEYS[1], ARGV[1], ARGV[2]) end
+        """;
 
     private readonly IConnectionMultiplexer _redis;
 
@@ -41,14 +37,14 @@ public sealed class ProjectionState
 
     private IDatabase Db => _redis.GetDatabase();
 
-    public async Task<Dictionary<int, PushedState>> GetPushedAsync(IReadOnlyCollection<int>? ids)
+    public async Task<Dictionary<int, RecordState>> GetStatesAsync(IReadOnlyCollection<int>? ids)
     {
-        var result = new Dictionary<int, PushedState>();
+        var result = new Dictionary<int, RecordState>();
         if (ids == null)
         {
             foreach (var e in await Db.HashGetAllAsync(PushedKey))
             {
-                if (PushedState.Decode(e.Value) is { } s)
+                if (RecordState.Decode(e.Value) is { } s)
                 {
                     result[(int)e.Name] = s;
                 }
@@ -66,7 +62,7 @@ public sealed class ProjectionState
         var values = await Db.HashGetAsync(PushedKey, list.Select(i => (RedisValue)i).ToArray());
         for (var i = 0; i < list.Length; i++)
         {
-            if (PushedState.Decode(values[i]) is { } s)
+            if (RecordState.Decode(values[i]) is { } s)
             {
                 result[list[i]] = s;
             }
@@ -75,22 +71,80 @@ public sealed class ProjectionState
         return result;
     }
 
-    /// <summary>Queue a batch for the edge, then record it as pushed. The outbox delivers it eventually.</summary>
-    public async Task CommitAsync(string batchJson, IReadOnlyDictionary<int, PushedState> pushed, IReadOnlyCollection<int> deleted)
+    /// <summary>Queue a batch for the edge, then record what it did. The outbox delivers it eventually.</summary>
+    public async Task CommitAsync(string batchJson, IReadOnlyDictionary<int, RecordState> states, IReadOnlyCollection<int> deleted)
     {
         await Db.ListRightPushAsync(OutboxKey, batchJson);
-        if (pushed.Count > 0)
-        {
-            await Db.HashSetAsync(PushedKey, pushed.Select(p => new HashEntry(p.Key, p.Value.Encode())).ToArray());
-        }
+        await SaveAsync(states);
 
         if (deleted.Count > 0)
         {
             var keys = deleted.Select(d => (RedisValue)d).ToArray();
             await Db.HashDeleteAsync(PushedKey, keys);
+            await Db.SortedSetRemoveAsync(SettlingKey, keys);
             await Db.HashDeleteAsync(MissingKey, keys);
+            await Db.HashDeleteAsync(TrustedKey, keys);
+            await Db.HashDeleteAsync(UntrustedKey, keys);
             await Db.HashDeleteAsync(IssuesKey, keys);
         }
+    }
+
+    /// <summary>Record states with nothing to push: an unchanged record taking a newer revision.</summary>
+    public async Task SaveAsync(IReadOnlyDictionary<int, RecordState> states)
+    {
+        if (states.Count == 0)
+        {
+            return;
+        }
+
+        await Db.HashSetAsync(PushedKey, states.Select(p => new HashEntry(p.Key, p.Value.Encode())).ToArray());
+
+        // The settling index: each pending run, scored by when its clock started.
+        var pending = states.Where(s => s.Value.ClockFrom != null)
+            .Select(s => new SortedSetEntry(s.Key, s.Value.ClockFrom!.Value.ToUnixTimeSeconds()))
+            .ToArray();
+        if (pending.Length > 0)
+        {
+            await Db.SortedSetAddAsync(SettlingKey, pending);
+        }
+
+        var settled = states.Where(s => s.Value.ClockFrom == null).Select(s => (RedisValue)s.Key).ToArray();
+        if (settled.Length > 0)
+        {
+            await Db.SortedSetRemoveAsync(SettlingKey, settled);
+        }
+    }
+
+    /// <summary>Records whose pending run's clock started at or before <paramref name="cutoff"/>.</summary>
+    public async Task<int[]> GetDueAsync(DateTimeOffset cutoff) =>
+        (await Db.SortedSetRangeByScoreAsync(SettlingKey, double.NegativeInfinity, cutoff.ToUnixTimeSeconds()))
+        .Select(v => (int)v)
+        .ToArray();
+
+    /// <summary>Note an event's revision as trusted or not (DR-010 §6.3): per event, never per job.</summary>
+    public void RecordTrust(int pageId, long revision, bool trusted) =>
+        Db.ScriptEvaluate(MaxScript, [trusted ? TrustedKey : UntrustedKey], [pageId, revision]);
+
+    public async Task<Dictionary<int, PageTrust>> GetTrustAsync(IReadOnlyCollection<int> ids)
+    {
+        var result = new Dictionary<int, PageTrust>();
+        var list = ids.Distinct().ToArray();
+        if (list.Length == 0)
+        {
+            return result;
+        }
+
+        var keys = list.Select(i => (RedisValue)i).ToArray();
+        var trusted = await Db.HashGetAsync(TrustedKey, keys);
+        var untrusted = await Db.HashGetAsync(UntrustedKey, keys);
+        for (var i = 0; i < list.Length; i++)
+        {
+            result[list[i]] = new PageTrust(
+                trusted[i].HasValue ? (long)trusted[i] : 0,
+                untrusted[i].HasValue ? (long)untrusted[i] : 0);
+        }
+
+        return result;
     }
 
     /// <summary>One more pass that found the page but no attraction row. Returns the count so far.</summary>

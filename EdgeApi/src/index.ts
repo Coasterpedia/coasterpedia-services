@@ -29,7 +29,7 @@ export default {
 
 			// Open: no key needed (DR-010 §6).
 			if (path === '/v1/meta') {
-				return await meta(env);
+				return await meta(url, env);
 			}
 
 			if (!path.startsWith('/v1/')) {

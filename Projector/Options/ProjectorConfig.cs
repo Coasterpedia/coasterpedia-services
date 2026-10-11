@@ -29,13 +29,22 @@ public record ProjectorConfig
     /// <summary>Local development only: matches the Worker's DEV_INGEST_TOKEN in .dev.vars.</summary>
     public string DevIngestToken { get; init; } = "";
 
-    /// <summary>Items per ingest request. The edge takes at most 400 (two D1 queries each).</summary>
+    /// <summary>Items per ingest request. The edge takes at most 300 (three D1 queries each).</summary>
     public int BatchSize { get; init; } = 200;
 
     /// <summary>Wait after an edit before projecting, so a burst of edits exports once.</summary>
     public TimeSpan Debounce { get; init; } = TimeSpan.FromSeconds(60);
 
     public string SweepCron { get; init; } = "17 3 * * *";
+
+    /// <summary>How long an untrusted change stands unchanged before it settles (DR-010 §6.3). Published as settle_after.</summary>
+    public TimeSpan SettleAfter { get; init; } = TimeSpan.FromDays(7);
+
+    /// <summary>
+    /// Groups whose changes settle at once: the ones whose edits already skip
+    /// the patrol queue. Add patroller once it has autopatrol.
+    /// </summary>
+    public string[] TrustedGroups { get; init; } = ["sysop", "bot", "autopatrolled"];
 
     /// <summary>
     /// Attraction type → the infoboxes that store it. TemplateData of these

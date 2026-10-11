@@ -57,10 +57,12 @@ public static class ProjectorServiceCollectionExtensions
         {
             jobs.RemoveIfExists("projector-sweep");
             jobs.RemoveIfExists("projector-drain");
+            jobs.RemoveIfExists("projector-settle");
             return;
         }
 
         jobs.AddOrUpdate<ProjectorJobs>("projector-sweep", j => j.Sweep(), config.SweepCron);
         jobs.AddOrUpdate<ProjectorJobs>("projector-drain", j => j.Drain(), "*/5 * * * *");
+        jobs.AddOrUpdate<ProjectorJobs>("projector-settle", j => j.Settle(), "47 * * * *");
     }
 }

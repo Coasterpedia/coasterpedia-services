@@ -6,7 +6,7 @@ export const LICENCE = {
 	attribution: 'Coasterpedia contributors',
 } as const;
 
-export const SCHEMA_VERSION = '1.0.0-beta.1';
+export const SCHEMA_VERSION = '1.0.0-beta.3';
 
 const PROBLEM_BASE = 'https://api.coasterpedia.net/problems/';
 

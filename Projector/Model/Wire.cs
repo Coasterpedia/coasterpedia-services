@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+using System.Xml;
 using CoasterpediaServices.Projector.Mapping;
 
 namespace CoasterpediaServices.Projector.Model;
@@ -9,7 +10,8 @@ namespace CoasterpediaServices.Projector.Model;
 /// <summary>
 /// Serialisation for the edge. The edge stores what it is sent and derives
 /// nothing: the record, the list summary, and the columns it filters and
-/// sorts on all come from here.
+/// sorts on all come from here. The one thing it assembles is a record's
+/// settlement block, from the revisions of the rows it holds for each view.
 /// </summary>
 public static class Wire
 {
@@ -26,7 +28,8 @@ public static class Wire
     public static string Hash(AttractionContent content) =>
         Convert.ToHexStringLower(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(content, Json)));
 
-    public static JsonObject Upsert(AttractionContent c, long revision, DateTimeOffset updatedAt)
+    /// <param name="settlesAt">Null when the content is settled as well as latest; otherwise when its pending run settles.</param>
+    public static JsonObject Upsert(AttractionContent c, long revision, DateTimeOffset updatedAt, DateTimeOffset? settlesAt = null)
     {
         var record = JsonSerializer.SerializeToNode(c, Json)!.AsObject();
         record["revision"] = revision;
@@ -41,6 +44,9 @@ public static class Wire
         if (c.Status != null) summary["status"] = c.Status;
         if (c.Location.Country != null) summary["country"] = JsonSerializer.SerializeToNode(c.Location.Country, Json);
         summary["manufacturers"] = JsonSerializer.SerializeToNode(c.Manufacturers, Json);
+        // The figures a list is ranked by, so a sorted page shows what it is sorted on.
+        var headline = new AttractionStats { Height = c.Stats?.Height, Speed = c.Stats?.Speed, Length = c.Stats?.Length };
+        if (!headline.IsEmpty) summary["stats"] = JsonSerializer.SerializeToNode(headline, Json);
         summary["updated_at"] = Iso(updatedAt);
 
         return new JsonObject
@@ -49,7 +55,16 @@ public static class Wire
             ["id"] = c.Id,
             ["revision"] = revision,
             ["updated_at"] = Iso(updatedAt),
+            ["settled"] = settlesAt == null,
+            ["settles_at"] = settlesAt is { } at ? Iso(at) : null,
             ["sort_name"] = Wikitext.SortKey(c.Name),
+            // Metric values; null sorts nowhere, as an unknown height cannot be ranked.
+            ["sort_values"] = new JsonObject
+            {
+                ["height"] = c.Stats?.Height?.Value,
+                ["speed"] = c.Stats?.Speed?.Value,
+                ["length"] = c.Stats?.Length?.Value,
+            },
             ["filters"] = new JsonObject
             {
                 ["type"] = c.Type,
@@ -68,10 +83,34 @@ public static class Wire
         ["merged_into"] = mergedInto,
     };
 
-    public static JsonObject Batch(DateTimeOffset asOf, IEnumerable<JsonObject> upserts, IEnumerable<JsonObject> deletes) => new()
+    /// <summary>The latest version has settled: it joins the settled view, replacing what was there.</summary>
+    public static JsonObject Promote(int id) => new()
+    {
+        ["kind"] = "attraction",
+        ["id"] = id,
+    };
+
+    /// <summary>The content went back to the settled version: the latest view returns to it and the pending run goes.</summary>
+    public static JsonObject Discard(int id) => new()
+    {
+        ["kind"] = "attraction",
+        ["id"] = id,
+    };
+
+    /// <summary>
+    /// One ingest request. The edge applies upserts, discards, promotes and
+    /// deletes in that order; a pass emits at most one item per record.
+    /// </summary>
+    public static JsonObject Batch(DateTimeOffset asOf, TimeSpan settleAfter, IEnumerable<JsonObject>? upserts = null,
+        IEnumerable<JsonObject>? deletes = null, IEnumerable<JsonObject>? promotes = null, IEnumerable<JsonObject>? discards = null) => new()
     {
         ["as_of"] = Iso(asOf),
-        ["upsert"] = new JsonArray(upserts.Cast<JsonNode>().ToArray()),
-        ["delete"] = new JsonArray(deletes.Cast<JsonNode>().ToArray()),
+        ["settle_after"] = XmlConvert.ToString(settleAfter),
+        ["upsert"] = Array(upserts),
+        ["delete"] = Array(deletes),
+        ["promote"] = Array(promotes),
+        ["discard"] = Array(discards),
     };
+
+    private static JsonArray Array(IEnumerable<JsonObject>? items) => new((items ?? []).Cast<JsonNode>().ToArray());
 }

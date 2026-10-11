@@ -36,6 +36,7 @@ public static class AttractionMapper
             Manufacturers = Wikitext.Refs(row.Manufacturer)
                 .Select(x => x.Target != null && resolved.TryGetValue(x.Target, out var id) ? x.Ref with { Id = id } : x.Ref)
                 .ToList(),
+            Stats = StatsMapper.Map(row.PageId, row.Stats, issues),
         };
     }
 

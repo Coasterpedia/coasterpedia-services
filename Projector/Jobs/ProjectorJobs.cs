@@ -46,6 +46,15 @@ public class ProjectorJobs
         await _edge.DrainAsync();
     }
 
+    /// <summary>Hourly: pending runs that have stood their week join the settled view (DR-010 §6.3).</summary>
+    [Queue(Queue)]
+    [AutomaticRetry(Attempts = 1)]
+    public async Task Settle()
+    {
+        await _projection.SettleDueAsync();
+        await _edge.DrainAsync();
+    }
+
     /// <summary>Retries the outbox while the edge is unreachable.</summary>
     [Queue(Queue)]
     [AutomaticRetry(Attempts = 0)]

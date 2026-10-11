@@ -11,7 +11,9 @@ namespace CoasterpediaServices.Projector.Events;
 /// Freshness (DR-010 §4): every main-namespace page change marks its page
 /// pending, and the first one schedules a flush a minute later. A burst of
 /// edits to one page, or to many, exports once. Whether the page is an
-/// attraction at all is the flush's question, not this one's.
+/// attraction at all is the flush's question, not this one's. Each event also
+/// records whether its performer is trusted, which decides whether the change
+/// settles at once.
 /// </summary>
 public class ProjectorSubscriber : IEventSubscriber
 {
@@ -26,6 +28,8 @@ public class ProjectorSubscriber : IEventSubscriber
 
     // Schema versions to confirm against the first live events: an unmatched
     // schema is dropped without a trace, and the nightly sweep would hide it.
+    // Each must carry rev_id and performer.user_groups too, or its changes
+    // never settle early.
     public EventFilter Filter { get; } = new()
     {
         Schemas =
@@ -43,6 +47,14 @@ public class ProjectorSubscriber : IEventSubscriber
         if (!_config.Enabled || evt.PageId is not { } pageId)
         {
             return;
+        }
+
+        // Trust is recorded per event, before the debounce merges them (DR-010 §6.3).
+        // An event with no revision records nothing, so its change waits.
+        if (evt.RevisionId is { } revision)
+        {
+            var trusted = evt.UserGroups?.Any(g => _config.TrustedGroups.Contains(g)) == true;
+            _state.RecordTrust(pageId, revision, trusted);
         }
 
         if (_state.AddPending(pageId, _config.Debounce))

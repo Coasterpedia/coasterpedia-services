@@ -13,11 +13,17 @@ const NOT_YET = new Set([
 
 const LIST_PARAMS = new Set(['type', 'status', 'country', 'sort', 'view', 'limit', 'cursor']);
 const ONE_PARAMS = new Set(['view']);
-const SORTS = new Set(['name', '-name']);
+const META_PARAMS = new Set(['view']);
+/**
+ * Sort → column. A stat sort lists only attractions that record the stat: an
+ * unknown height cannot be ranked, and each has a partial index that leaves
+ * the nulls out (migration 0003).
+ */
+const SORT_COLUMNS: Record<string, string> = { name: 'sort_name', height: 'height', speed: 'speed', length: 'length' };
 
 interface Row {
 	id: number;
-	sort_name: string;
+	position: string | number;
 	summary: string;
 }
 
@@ -26,21 +32,20 @@ async function dataAsOf(env: Env): Promise<string | null> {
 	return row?.value ?? null;
 }
 
+type View = 'latest' | 'settled';
+
 /**
- * view (DR-010 §6.3). The contract's default is settled, which the beta does
- * not have yet, so the beta makes clients say latest. A client written now
- * then keeps getting latest after settled becomes the default.
+ * view (DR-010 §6.3): settled unless the client asks for latest. The view
+ * picks the row flag every query filters on, written into the SQL as a literal
+ * so the partial indexes match.
  */
-function requireView(url: URL): string {
-	const view = url.searchParams.get('view');
-	if (view === 'latest') return view;
-	if (view === 'settled') {
-		throw badRequest('view-unavailable', 'The settled view is not available yet',
-			'Pass view=latest during the beta.');
-	}
-	throw badRequest('view-required', 'Pass view=latest',
-		'The default will become view=settled. During the beta, say view=latest so your client keeps the view it was written for.');
+function viewParam(url: URL): View {
+	const view = url.searchParams.get('view') ?? 'settled';
+	if (view === 'latest' || view === 'settled') return view;
+	throw badRequest('parameter-invalid', 'view is latest or settled');
 }
+
+const FLAG: Record<View, string> = { latest: 'in_latest', settled: 'in_settled' };
 
 function checkParams(url: URL, allowed: Set<string>): void {
 	for (const name of url.searchParams.keys()) {
@@ -75,61 +80,86 @@ function limitParam(url: URL): number {
 	return n;
 }
 
-// The cursor is the last row's sort position. Opaque to clients.
-function encodeCursor(sortName: string, id: number): string {
-	const bytes = new TextEncoder().encode(JSON.stringify([sortName, id]));
+// The cursor is the sort and the last row's position in it. Opaque to clients.
+export function encodeCursor(sort: string, value: string | number, id: number): string {
+	const bytes = new TextEncoder().encode(JSON.stringify([sort, value, id]));
 	return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-function decodeCursor(cursor: string): [string, number] {
+function decodeCursor(cursor: string, sort: string): [string | number, number] {
 	try {
 		const b64 = cursor.replace(/-/g, '+').replace(/_/g, '/');
 		const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-		const [s, id] = JSON.parse(new TextDecoder().decode(bytes));
-		if (typeof s === 'string' && Number.isInteger(id)) return [s, id];
+		const parsed = JSON.parse(new TextDecoder().decode(bytes));
+		// Two-part cursors came from before stat sorts, when name was the only sort.
+		const [field, value, id] = parsed.length === 2 ? ['name', ...parsed] : parsed;
+		const valueOk = field === 'name' ? typeof value === 'string' : typeof value === 'number';
+		if (field === sort && valueOk && Number.isInteger(id)) return [value, id];
 	} catch {
 		// fall through
 	}
-	throw badRequest('cursor-invalid', 'Invalid cursor', 'Pass next_cursor from a previous response unchanged.');
+	throw badRequest('cursor-invalid', 'Invalid cursor', 'Pass next_cursor from a previous response unchanged, with the same sort.');
 }
 
-export async function listAttractions(url: URL, env: Env): Promise<{ response: Response; rows: number }> {
-	checkParams(url, LIST_PARAMS);
-	const view = requireView(url);
-	const limit = limitParam(url);
-	const sort = url.searchParams.get('sort') ?? 'name';
-	if (!SORTS.has(sort)) {
-		throw badRequest('parameter-unavailable', `sort=${sort} is not available yet`, 'The beta sorts by name or -name.');
-	}
-	const desc = sort === '-name';
+interface ListQuery {
+	sql: string;
+	binds: (string | number)[];
+	limit: number;
+	view: View;
+	sort: string;
+	column: string;
+}
 
-	const where: string[] = [];
+/** The list query for a request, apart from running it, so tests can measure what it reads. */
+export function listQuery(url: URL): ListQuery {
+	checkParams(url, LIST_PARAMS);
+	const view = viewParam(url);
+	const limit = limitParam(url);
+	const sortParam = url.searchParams.get('sort') ?? 'name';
+	const desc = sortParam.startsWith('-');
+	const sort = desc ? sortParam.slice(1) : sortParam;
+	const column = SORT_COLUMNS[sort];
+	if (!column) {
+		throw badRequest('parameter-unavailable', `sort=${sortParam} is not available yet`,
+			'The beta sorts by name, height, speed or length, each with - for descending.');
+	}
+
+	const where: string[] = [`${FLAG[view]} = 1`];
+	if (column !== 'sort_name') where.push(`${column} IS NOT NULL`);
 	const binds: (string | number)[] = [];
-	const inList = (column: string, values: string[]) => {
+	const inList = (col: string, values: string[]) => {
 		if (values.length === 0) return;
-		where.push(`${column} IN (${values.map(() => '?').join(',')})`);
+		where.push(`${col} IN (${values.map(() => '?').join(',')})`);
 		binds.push(...values);
 	};
 	inList('type', list(url, 'type'));
 	inList('status', list(url, 'status'));
 	inList('country', list(url, 'country', (v) => v.toUpperCase()));
 
+	// A plain range on the sort column first, so D1 seeks the index to the
+	// cursor. The OR form alone scanned from the top of the table on every
+	// page: 2.2M rows read paging through 21,067 attractions once (2026-10-11).
 	const cursor = url.searchParams.get('cursor');
 	if (cursor) {
-		const [s, id] = decodeCursor(cursor);
-		where.push(desc ? '(sort_name < ? OR (sort_name = ? AND id < ?))' : '(sort_name > ? OR (sort_name = ? AND id > ?))');
-		binds.push(s, s, id);
+		const [v, id] = decodeCursor(cursor, sort);
+		where.push(desc ? `${column} <= ? AND (${column} < ? OR id < ?)` : `${column} >= ? AND (${column} > ? OR id > ?)`);
+		binds.push(v, v, id);
 	}
 
 	const dir = desc ? 'DESC' : 'ASC';
-	const sql = `SELECT id, sort_name, summary FROM attractions
-		${where.length ? 'WHERE ' + where.join(' AND ') : ''}
-		ORDER BY sort_name ${dir}, id ${dir} LIMIT ?`;
-	const { results } = await env.DATA.prepare(sql).bind(...binds, limit + 1).all<Row>();
+	const sql = `SELECT id, ${column} AS position, summary FROM attractions
+		WHERE ${where.join(' AND ')}
+		ORDER BY ${column} ${dir}, id ${dir} LIMIT ?`;
+	return { sql, binds: [...binds, limit + 1], limit, view, sort, column };
+}
+
+export async function listAttractions(url: URL, env: Env): Promise<{ response: Response; rows: number }> {
+	const { sql, binds, limit, view, sort } = listQuery(url);
+	const { results } = await env.DATA.prepare(sql).bind(...binds).all<Row>();
 
 	const page = results.slice(0, limit);
 	const last = page[page.length - 1];
-	const next = results.length > limit && last ? encodeCursor(last.sort_name, last.id) : null;
+	const next = results.length > limit && last ? encodeCursor(sort, last.position, last.id) : null;
 
 	return {
 		rows: page.length,
@@ -140,19 +170,50 @@ export async function listAttractions(url: URL, env: Env): Promise<{ response: R
 	};
 }
 
+interface RecordRow {
+	in_latest: number;
+	in_settled: number;
+	revision: number;
+	settles_at: string | null;
+	record: string;
+}
+
 export async function getAttraction(url: URL, idText: string, env: Env): Promise<{ response: Response; rows: number }> {
 	checkParams(url, ONE_PARAMS);
-	const view = requireView(url);
+	const view = viewParam(url);
 	const id = Number(idText);
 	if (!Number.isSafeInteger(id) || id < 1) {
 		return { rows: 0, response: problem(404, 'not-found', 'No such attraction') };
 	}
 
-	const row = await env.DATA.prepare(`SELECT record FROM attractions WHERE id = ?`).bind(id).first<{ record: string }>();
+	const { results } = await env.DATA.prepare(
+		`SELECT in_latest, in_settled, revision, settles_at, record FROM attractions WHERE id = ?`,
+	).bind(id).all<RecordRow>();
+	const latest = results.find((r) => r.in_latest === 1);
+	const settled = results.find((r) => r.in_settled === 1);
+	const pending = latest && latest.in_settled === 0 ? latest : undefined;
+
+	const row = view === 'latest' ? latest : settled;
 	if (row) {
+		// The same in both views (DR-010 §6.3): a settled client can see the site
+		// already shows something newer, a latest one that nobody has vetted it.
+		const record = JSON.parse(row.record);
+		record.settlement = {
+			settled_revision: settled?.revision ?? null,
+			pending_revision: pending?.revision ?? null,
+			settles_at: pending?.settles_at ?? null,
+		};
 		return {
 			rows: 1,
-			response: json({ data: JSON.parse(row.record), meta: { data_as_of: await dataAsOf(env), view, licence: LICENCE } }),
+			response: json({ data: record, meta: { data_as_of: await dataAsOf(env), view, licence: LICENCE } }),
+		};
+	}
+
+	if (pending) {
+		return {
+			rows: 0,
+			response: problem(404, 'not-settled', 'Not in the settled view yet',
+				`This attraction has changes that have not settled yet; it appears here at ${pending.settles_at} if nothing changes. Pass view=latest to see it now.`),
 		};
 	}
 
@@ -167,12 +228,19 @@ export async function getAttraction(url: URL, idText: string, env: Env): Promise
 	return { rows: 0, response: problem(404, 'not-found', 'No such attraction') };
 }
 
-export async function meta(env: Env): Promise<Response> {
-	const count = await env.DATA.prepare(`SELECT COUNT(*) AS n FROM attractions`).first<{ n: number }>();
+export async function meta(url: URL, env: Env): Promise<Response> {
+	checkParams(url, META_PARAMS);
+	const view = viewParam(url);
+	// Kept by triggers (migration 0002); never COUNT(*) here, as this needs no key.
+	const count = await env.DATA.prepare(`SELECT value AS n FROM state WHERE key = ?`)
+		.bind(view === 'latest' ? 'count_latest' : 'count_settled').first<{ n: string }>();
+	const settleAfter = await env.DATA.prepare(`SELECT value FROM state WHERE key = 'settle_after'`).first<{ value: string }>();
 	return json({
 		data_as_of: await dataAsOf(env),
 		schema_version: SCHEMA_VERSION,
-		counts: { attractions: count?.n ?? 0 },
+		settle_after: settleAfter?.value ?? null,
+		view,
+		counts: { attractions: Number(count?.n ?? 0) },
 		licence: LICENCE,
 	});
 }

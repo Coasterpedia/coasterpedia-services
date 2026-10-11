@@ -45,26 +45,54 @@ public sealed class ProjectionService
     /// <param name="pageIds">Pages to project, or null for a full sweep.</param>
     public async Task<ProjectionResult> ProjectAsync(IReadOnlyCollection<int>? pageIds, CancellationToken ct = default)
     {
+        var sweep = pageIds == null;
         var vocab = await _vocabularies.GetAsync(ct);
         await using var conn = await _reader.OpenAsync(ct);
 
         var rows = await _reader.ReadAttractionsAsync(conn, pageIds, ct);
         var resolved = await _reader.ResolveTitlesAsync(conn, AttractionMapper.LinkTargets(rows).ToList(), ct);
-        var pushed = await _state.GetPushedAsync(pageIds);
+        var states = await _state.GetStatesAsync(pageIds);
 
         var issues = new List<DataIssue>();
         var now = DateTimeOffset.UtcNow;
-        var upserts = new List<(JsonObject Item, int Id, PushedState State)>();
-        foreach (var row in rows)
+        var mapped = rows.Select(r => (Row: r, Content: AttractionMapper.Map(r, vocab, resolved, _config.PublicBaseUrl, issues)))
+            .Select(m => (m.Row, m.Content, Hash: Wire.Hash(m.Content)))
+            .ToList();
+
+        // Trust only matters where something moved: new content, or a newer revision.
+        var trust = await _state.GetTrustAsync(mapped
+            .Where(m => !states.TryGetValue(m.Row.PageId, out var last) || last.Hash != m.Hash || last.Revision != m.Row.Revision)
+            .Select(m => m.Row.PageId)
+            .ToList());
+
+        var upserts = new List<(JsonObject Item, int Id, RecordState State)>();
+        var discards = new List<(JsonObject Item, int Id, RecordState State)>();
+        var absorbed = new Dictionary<int, RecordState>();
+        foreach (var (row, content, hash) in mapped)
         {
-            var content = AttractionMapper.Map(row, vocab, resolved, _config.PublicBaseUrl, issues);
-            var hash = Wire.Hash(content);
-            if (pushed.TryGetValue(row.PageId, out var last) && last.Hash == hash)
+            var pageTrust = trust.GetValueOrDefault(row.PageId, PageTrust.None);
+            states.TryGetValue(row.PageId, out var last);
+            if (last != null && last.Hash == hash)
             {
+                if (Settling.CanAbsorb(last, row.Revision, pageTrust, sweep))
+                {
+                    absorbed[row.PageId] = last with { Revision = row.Revision };
+                }
+
                 continue;
             }
 
-            upserts.Add((Wire.Upsert(content, row.Revision, now), row.PageId, new PushedState(hash, row.Revision, now)));
+            var trusted = Settling.IsTrusted(last, row.Revision, pageTrust);
+            var (next, op) = Settling.Decide(last, hash, row.Revision, trusted, now);
+            if (op == SettleOp.Discard)
+            {
+                discards.Add((Wire.Discard(row.PageId), row.PageId, next));
+            }
+            else
+            {
+                var settlesAt = op == SettleOp.Pending ? next.ClockFrom + _config.SettleAfter : null;
+                upserts.Add((Wire.Upsert(content, row.Revision, now, settlesAt), row.PageId, next));
+            }
         }
 
         var found = rows.Select(r => r.PageId).ToHashSet();
@@ -72,7 +100,7 @@ public sealed class ProjectionService
 
         // Records the edge has that this pass did not find. For an event flush,
         // only the pages asked about; a sweep covers everything ever pushed.
-        var absent = (pageIds ?? pushed.Keys).Where(id => !found.Contains(id) && pushed.ContainsKey(id)).ToList();
+        var absent = (pageIds ?? states.Keys).Where(id => !found.Contains(id) && states.ContainsKey(id)).ToList();
         var deletes = new List<(JsonObject Item, int Id)>();
         if (absent.Count > 0)
         {
@@ -96,26 +124,64 @@ public sealed class ProjectionService
 
         foreach (var chunk in upserts.Chunk(_config.BatchSize))
         {
-            var batch = Wire.Batch(now, chunk.Select(u => u.Item), []);
+            var batch = Wire.Batch(now, _config.SettleAfter, upserts: chunk.Select(u => u.Item));
             await _state.CommitAsync(batch.ToJsonString(), chunk.ToDictionary(u => u.Id, u => u.State), []);
+        }
+
+        foreach (var chunk in discards.Chunk(_config.BatchSize))
+        {
+            var batch = Wire.Batch(now, _config.SettleAfter, discards: chunk.Select(d => d.Item));
+            await _state.CommitAsync(batch.ToJsonString(), chunk.ToDictionary(d => d.Id, d => d.State), []);
         }
 
         foreach (var chunk in deletes.Chunk(_config.BatchSize))
         {
-            var batch = Wire.Batch(now, [], chunk.Select(d => d.Item));
-            await _state.CommitAsync(batch.ToJsonString(), new Dictionary<int, PushedState>(), chunk.Select(d => d.Id).ToList());
+            var batch = Wire.Batch(now, _config.SettleAfter, deletes: chunk.Select(d => d.Item));
+            await _state.CommitAsync(batch.ToJsonString(), new Dictionary<int, RecordState>(), chunk.Select(d => d.Id).ToList());
         }
 
-        if (upserts.Count == 0 && deletes.Count == 0)
+        if (upserts.Count == 0 && discards.Count == 0 && deletes.Count == 0)
         {
             // Nothing changed, but the edge's data_as_of should still say it was checked.
-            await _state.CommitAsync(Wire.Batch(now, [], []).ToJsonString(), new Dictionary<int, PushedState>(), []);
+            await _state.CommitAsync(Wire.Batch(now, _config.SettleAfter).ToJsonString(), new Dictionary<int, RecordState>(), []);
         }
 
+        await _state.SaveAsync(absorbed);
         await _state.SetIssuesAsync(found, issues);
 
-        _logger.LogInformation("Projected {Scope}: {Read} read, {Upserted} changed, {Deleted} deleted, {Issues} issues",
-            pageIds == null ? "everything" : $"{pageIds.Count} pages", rows.Count, upserts.Count, deletes.Count, issues.Count);
+        var pending = upserts.Count(u => u.State.Pending);
+        _logger.LogInformation(
+            "Projected {Scope}: {Read} read, {Upserted} changed ({Pending} pending), {Discarded} reverted to settled, {Deleted} deleted, {Issues} issues",
+            sweep ? "everything" : $"{pageIds!.Count} pages", rows.Count, upserts.Count, pending, discards.Count, deletes.Count,
+            issues.Count);
         return new ProjectionResult(rows.Count, upserts.Count, deletes.Count, issues.Count);
+    }
+
+    /// <summary>
+    /// Promote every pending run whose clock has run out (DR-010 §6.3). Hourly,
+    /// on the Projector's queue, so it never races a flush or a sweep.
+    /// </summary>
+    /// <returns>Records promoted.</returns>
+    public async Task<int> SettleDueAsync()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var states = await _state.GetStatesAsync(await _state.GetDueAsync(now - _config.SettleAfter));
+        var due = states
+            .Where(s => Settling.IsDue(s.Value, _config.SettleAfter, now))
+            .Select(s => (Id: s.Key, State: s.Value with { SettledHash = s.Value.Hash, ClockFrom = null }))
+            .ToList();
+
+        foreach (var chunk in due.Chunk(_config.BatchSize))
+        {
+            var batch = Wire.Batch(now, _config.SettleAfter, promotes: chunk.Select(d => Wire.Promote(d.Id)));
+            await _state.CommitAsync(batch.ToJsonString(), chunk.ToDictionary(d => d.Id, d => d.State), []);
+        }
+
+        if (due.Count > 0)
+        {
+            _logger.LogInformation("Settled {Count} records", due.Count);
+        }
+
+        return due.Count;
     }
 }

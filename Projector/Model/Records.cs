@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace CoasterpediaServices.Projector.Model;
 
 // The public v1 shapes (api/openapi.yaml), only as far as the current slice
@@ -14,6 +16,39 @@ public sealed record Coordinates(double Lat, double Lon);
 
 public sealed record AttractionLocation(Country? Country, Coordinates? Coordinates);
 
+/// <summary>The figure as the editor typed it, in the unit the page uses.</summary>
+public sealed record Entered(double Value, string Unit);
+
+/// <summary>Metric, rounded to the precision of what was entered, plus what was entered.</summary>
+public sealed record Measurement(double Value, string Unit, Entered? Entered = null);
+
+public sealed record Inversions(int? Track, int? Rider);
+
+public sealed record Footprint(Measurement? Length, Measurement? Width);
+
+/// <summary>Only the fields the attraction's type records, and only when known.</summary>
+public sealed record AttractionStats
+{
+    public Measurement? Height { get; init; }
+    public Measurement? Drop { get; init; }
+    public Measurement? ElevationDifference { get; init; }
+    public Measurement? Length { get; init; }
+    public Measurement? Speed { get; init; }
+    public Measurement? Diameter { get; init; }
+    public Inversions? Inversions { get; init; }
+    public double? MaxAngle { get; init; }
+    public double? BankAngle { get; init; }
+    public double? GForce { get; init; }
+    public Measurement? Duration { get; init; }
+    public int? RidersPerHour { get; init; }
+    public int? RidersPerTrain { get; init; }
+    public int? Tracks { get; init; }
+    public Footprint? Footprint { get; init; }
+
+    [JsonIgnore]
+    public bool IsEmpty => this == new AttractionStats();
+}
+
 /// <summary>
 /// Everything in an attraction record that comes from the wiki's content.
 /// The hash is taken over this alone, so a prose edit (new revision, same
@@ -29,6 +64,7 @@ public sealed record AttractionContent
     public string? Status { get; init; }
     public required AttractionLocation Location { get; init; }
     public required IReadOnlyList<Ref> Manufacturers { get; init; }
+    public AttractionStats? Stats { get; init; }
 }
 
 /// <summary>A data problem found while projecting. Reported, never built around.</summary>
