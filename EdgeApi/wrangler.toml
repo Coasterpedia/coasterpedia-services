@@ -16,14 +16,14 @@ ACCESS_AUD = ""
 [[d1_databases]]
 binding = "DATA"
 database_name = "coasterpedia-api-data"
-database_id = "00000000-0000-0000-0000-000000000000" # from `wrangler d1 create coasterpedia-api-data`
+database_id = "0a6e1659-76d9-40d3-897a-ded19e013230" # from `wrangler d1 create coasterpedia-api-data`
 migrations_dir = "migrations"
 
 # key:<sha256 of the key> → { account, tier, status, name }. Written by
 # scripts/create-key.mjs until the portal exists (DR-010 §10 phase 2).
 [[kv_namespaces]]
 binding = "KEYS"
-id = "00000000000000000000000000000000" # from `wrangler kv namespace create KEYS`
+id = "c51bbf45a14f4fbbb57dd3a5cc08011d" # from `wrangler kv namespace create KEYS`
 
 # One data point per request (DR-010 §7.3).
 [[analytics_engine_datasets]]
