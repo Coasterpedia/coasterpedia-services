@@ -26,10 +26,9 @@ public class ProjectorSubscriber : IEventSubscriber
         _config = config.Value;
     }
 
-    // Schema versions to confirm against the first live events: an unmatched
-    // schema is dropped without a trace, and the nightly sweep would hide it.
-    // Each must carry rev_id and performer.user_groups too, or its changes
-    // never settle early.
+    // Matches EventBus REL1_46's EventFactory (checked 2026-10-11); all four
+    // carry rev_id and performer.user_groups. Recheck on a MediaWiki upgrade:
+    // an unmatched schema is dropped without a trace, and the sweep hides it.
     public EventFilter Filter { get; } = new()
     {
         Schemas =

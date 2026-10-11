@@ -10,9 +10,14 @@ public sealed class Vocabularies
     // type → param → allowed values (case-insensitive)
     private readonly Dictionary<string, Dictionary<string, HashSet<string>>> _values;
 
-    public Vocabularies(Dictionary<string, Dictionary<string, HashSet<string>>> values)
+    // The same, in TemplateData's order, which is the order the infobox offers them.
+    private readonly Dictionary<string, Dictionary<string, List<string>>> _ordered;
+
+    public Vocabularies(Dictionary<string, Dictionary<string, List<string>>> ordered)
     {
-        _values = values;
+        _ordered = ordered;
+        _values = ordered.ToDictionary(t => t.Key, t => t.Value.ToDictionary(
+            p => p.Key, p => new HashSet<string>(p.Value, StringComparer.OrdinalIgnoreCase)));
     }
 
     /// <summary>The wiki's own spelling of the value, or null when the list does not hold it.</summary>
@@ -30,4 +35,8 @@ public sealed class Vocabularies
         _values.TryGetValue(type, out var byParam) && byParam.ContainsKey(param);
 
     public IReadOnlyDictionary<string, Dictionary<string, HashSet<string>>> All => _values;
+
+    /// <summary>The allowed values in the infobox's own order; empty when the type has no such list.</summary>
+    public IReadOnlyList<string> Ordered(string type, string param) =>
+        _ordered.TryGetValue(type, out var byParam) && byParam.TryGetValue(param, out var values) ? values : [];
 }

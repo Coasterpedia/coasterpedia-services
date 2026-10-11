@@ -115,10 +115,10 @@ public sealed class VocabularySource
             }
         }
 
-        var result = new Dictionary<string, Dictionary<string, HashSet<string>>>();
+        var result = new Dictionary<string, Dictionary<string, List<string>>>();
         foreach (var (type, titles) in templates)
         {
-            var byParam = new Dictionary<string, HashSet<string>>();
+            var byParam = new Dictionary<string, List<string>>();
             foreach (var title in titles)
             {
                 if (!byTitle.TryGetValue(title, out var ps))
@@ -134,16 +134,17 @@ public sealed class VocabularySource
                         continue;
                     }
 
-                    if (!byParam.TryGetValue(param, out var set))
+                    if (!byParam.TryGetValue(param, out var list))
                     {
-                        byParam[param] = set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                        byParam[param] = list = [];
                     }
 
                     foreach (var v in values)
                     {
-                        if (v?.GetValue<string>() is { Length: > 0 } s)
+                        if (v?.GetValue<string>() is { Length: > 0 } s
+                            && !list.Contains(s.Trim(), StringComparer.OrdinalIgnoreCase))
                         {
-                            set.Add(s.Trim());
+                            list.Add(s.Trim());
                         }
                     }
                 }

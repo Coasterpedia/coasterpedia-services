@@ -122,28 +122,47 @@ public sealed class ProjectionService
             }
         }
 
+        // The vocabulary this pass validated against rides on its first batch, so a
+        // value never reaches a record before /v1/vocabularies lists it. Every pass
+        // queues at least one batch, so a change always goes out.
+        var vocabulary = VocabularyDocument.Build(vocab, _config.AttractionTemplates);
+        var vocabularyHash = VocabularyDocument.Hash(vocabulary);
+        var unsent = await _state.GetPushedVocabularyAsync() == vocabularyHash ? null : vocabulary;
+        JsonObject NewBatch(IEnumerable<JsonObject>? upsert = null, IEnumerable<JsonObject>? delete = null,
+            IEnumerable<JsonObject>? discard = null)
+        {
+            var batch = Wire.Batch(now, _config.SettleAfter, upsert, delete, discards: discard, vocabularies: unsent);
+            unsent = null;
+            return batch;
+        }
+
         foreach (var chunk in upserts.Chunk(_config.BatchSize))
         {
-            var batch = Wire.Batch(now, _config.SettleAfter, upserts: chunk.Select(u => u.Item));
+            var batch = NewBatch(upsert: chunk.Select(u => u.Item));
             await _state.CommitAsync(batch.ToJsonString(), chunk.ToDictionary(u => u.Id, u => u.State), []);
         }
 
         foreach (var chunk in discards.Chunk(_config.BatchSize))
         {
-            var batch = Wire.Batch(now, _config.SettleAfter, discards: chunk.Select(d => d.Item));
+            var batch = NewBatch(discard: chunk.Select(d => d.Item));
             await _state.CommitAsync(batch.ToJsonString(), chunk.ToDictionary(d => d.Id, d => d.State), []);
         }
 
         foreach (var chunk in deletes.Chunk(_config.BatchSize))
         {
-            var batch = Wire.Batch(now, _config.SettleAfter, deletes: chunk.Select(d => d.Item));
+            var batch = NewBatch(delete: chunk.Select(d => d.Item));
             await _state.CommitAsync(batch.ToJsonString(), new Dictionary<int, RecordState>(), chunk.Select(d => d.Id).ToList());
         }
 
         if (upserts.Count == 0 && discards.Count == 0 && deletes.Count == 0)
         {
             // Nothing changed, but the edge's data_as_of should still say it was checked.
-            await _state.CommitAsync(Wire.Batch(now, _config.SettleAfter).ToJsonString(), new Dictionary<int, RecordState>(), []);
+            await _state.CommitAsync(NewBatch().ToJsonString(), new Dictionary<int, RecordState>(), []);
+        }
+
+        if (unsent == null)
+        {
+            await _state.SetPushedVocabularyAsync(vocabularyHash);
         }
 
         await _state.SaveAsync(absorbed);

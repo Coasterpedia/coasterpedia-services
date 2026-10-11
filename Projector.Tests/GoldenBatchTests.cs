@@ -84,9 +84,9 @@ public class GoldenBatchTests
     [Fact]
     public void The_batch_matches_the_shared_fixture()
     {
+        var templates = new ProjectorConfig().AttractionTemplates;
         var vocab = VocabularySource.Parse(
-            JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "templatedata.json")))!,
-            new ProjectorConfig().AttractionTemplates);
+            JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "templatedata.json")))!, templates);
         var at = DateTimeOffset.Parse("2026-10-11T12:00:00Z");
         var issues = new List<DataIssue>();
         // 9101 is an untrusted change waiting to settle; the rest are settled. The
@@ -96,7 +96,7 @@ public class GoldenBatchTests
             AttractionMapper.Map(r, vocab, Resolved, "https://coasterpedia.net", issues), r.Revision, at,
             r.PageId == 9101 ? at + TimeSpan.FromDays(7) : null));
         var batch = Wire.Batch(at, TimeSpan.FromDays(7), upserts, [Wire.Delete(170, 171)],
-            [Wire.Promote(9998)], [Wire.Discard(9999)]);
+            [Wire.Promote(9998)], [Wire.Discard(9999)], VocabularyDocument.Build(vocab, templates));
         var actual = batch.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n";
 
         Assert.Empty(issues);

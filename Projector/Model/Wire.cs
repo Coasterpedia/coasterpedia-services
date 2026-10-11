@@ -101,16 +101,27 @@ public static class Wire
     /// One ingest request. The edge applies upserts, discards, promotes and
     /// deletes in that order; a pass emits at most one item per record.
     /// </summary>
+    /// <param name="vocabularies">/v1/vocabularies' document (VocabularyDocument), when it has changed.</param>
     public static JsonObject Batch(DateTimeOffset asOf, TimeSpan settleAfter, IEnumerable<JsonObject>? upserts = null,
-        IEnumerable<JsonObject>? deletes = null, IEnumerable<JsonObject>? promotes = null, IEnumerable<JsonObject>? discards = null) => new()
+        IEnumerable<JsonObject>? deletes = null, IEnumerable<JsonObject>? promotes = null, IEnumerable<JsonObject>? discards = null,
+        JsonObject? vocabularies = null)
     {
-        ["as_of"] = Iso(asOf),
-        ["settle_after"] = XmlConvert.ToString(settleAfter),
-        ["upsert"] = Array(upserts),
-        ["delete"] = Array(deletes),
-        ["promote"] = Array(promotes),
-        ["discard"] = Array(discards),
-    };
+        var batch = new JsonObject
+        {
+            ["as_of"] = Iso(asOf),
+            ["settle_after"] = XmlConvert.ToString(settleAfter),
+            ["upsert"] = Array(upserts),
+            ["delete"] = Array(deletes),
+            ["promote"] = Array(promotes),
+            ["discard"] = Array(discards),
+        };
+        if (vocabularies != null)
+        {
+            batch["vocabularies"] = vocabularies.DeepClone();
+        }
+
+        return batch;
+    }
 
     private static JsonArray Array(IEnumerable<JsonObject>? items) => new((items ?? []).Cast<JsonNode>().ToArray());
 }

@@ -20,6 +20,7 @@ public sealed class ProjectionState
     private const string IssuesKey = "projector:issues";
     private const string PendingKey = "projector:pending";
     private const string FlushScheduledKey = "projector:flush-scheduled";
+    private const string VocabularyKey = "projector:vocabularies:pushed";
     public const string OutboxKey = "projector:outbox";
 
     // Events can arrive out of order; keep the highest revision.
@@ -114,6 +115,11 @@ public sealed class ProjectionState
             await Db.SortedSetRemoveAsync(SettlingKey, settled);
         }
     }
+
+    /// <summary>Hash of the vocabulary document last queued for the edge, or null if none was.</summary>
+    public async Task<string?> GetPushedVocabularyAsync() => (string?)await Db.StringGetAsync(VocabularyKey);
+
+    public Task SetPushedVocabularyAsync(string hash) => Db.StringSetAsync(VocabularyKey, hash);
 
     /// <summary>Records whose pending run's clock started at or before <paramref name="cutoff"/>.</summary>
     public async Task<int[]> GetDueAsync(DateTimeOffset cutoff) =>

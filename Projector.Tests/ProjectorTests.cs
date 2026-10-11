@@ -61,6 +61,58 @@ public class ProjectorTests
     }
 
     [Fact]
+    public void The_published_vocabulary_keeps_the_infobox_order_with_slugs_and_labels()
+    {
+        var doc = VocabularyDocument.Build(Vocab, new ProjectorConfig().AttractionTemplates);
+
+        Assert.Equal(["type", "status"], doc.Select(f => f.Key));
+        Assert.Equal(["coaster", "ride", "water_slide"], doc["type"]!.AsArray().Select(t => t!["value"]!.GetValue<string>()));
+        Assert.Equal("Roller coaster", doc["type"]![0]!["label"]!.GetValue<string>());
+
+        var status = doc["status"]!.AsArray();
+        Assert.Equal(
+            ["operating", "defunct", "under_construction", "under_refurbishment", "standing_but_not_operating", "in_storage", "planned",
+                "cancelled", "unknown"],
+            status.Select(s => s!["value"]!.GetValue<string>()));
+        Assert.Equal("Standing but not operating", status[4]!["label"]!.GetValue<string>());
+        Assert.Equal(["coaster", "ride", "water_slide"], status[0]!["applies_to"]!.AsArray().Select(t => t!.GetValue<string>()));
+    }
+
+    [Fact]
+    public void A_value_offered_by_one_infobox_applies_to_that_type_only()
+    {
+        var ordered = new Dictionary<string, Dictionary<string, List<string>>>
+        {
+            ["coaster"] = new() { ["status"] = ["operating"] },
+            ["ride"] = new() { ["status"] = ["Operating", "in production"] },
+        };
+        var types = new Dictionary<string, string[]> { ["coaster"] = [], ["ride"] = [] };
+        var status = VocabularyDocument.Build(new Vocabularies(ordered), types)["status"]!.AsArray();
+
+        Assert.Equal(["operating", "in_production"], status.Select(s => s!["value"]!.GetValue<string>()));
+        Assert.Equal(["coaster", "ride"], status[0]!["applies_to"]!.AsArray().Select(t => t!.GetValue<string>()));
+        Assert.Equal(["ride"], status[1]!["applies_to"]!.AsArray().Select(t => t!.GetValue<string>()));
+    }
+
+    [Fact]
+    public void The_vocabulary_hash_moves_only_when_the_lists_do()
+    {
+        var types = new ProjectorConfig().AttractionTemplates;
+        var again = VocabularySource.Parse(TemplateData, types);
+        Assert.Equal(VocabularyDocument.Hash(VocabularyDocument.Build(Vocab, types)),
+            VocabularyDocument.Hash(VocabularyDocument.Build(again, types)));
+
+        var grown = TemplateData.DeepClone();
+        foreach (var (_, page) in grown["pages"]!.AsObject())
+        {
+            page!["params"]!["status"]!["suggestedvalues"]!.AsArray().Add("relocated");
+        }
+
+        Assert.NotEqual(VocabularyDocument.Hash(VocabularyDocument.Build(Vocab, types)),
+            VocabularyDocument.Hash(VocabularyDocument.Build(VocabularySource.Parse(grown, types), types)));
+    }
+
+    [Fact]
     public void A_piped_link_is_named_by_its_display_text_and_resolved_by_its_target()
     {
         var c = Map(Row());
