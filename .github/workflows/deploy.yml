@@ -87,6 +87,10 @@ jobs:
             export GEOGRAPH_API_KEY="${{secrets.GEOGRAPH_API_KEY}}" &&
             export GEOGRAPH_DE_API_KEY="${{secrets.GEOGRAPH_DE_API_KEY}}" &&
             export WIKIMAPIA_API_KEY="${{secrets.WIKIMAPIA_API_KEY}}" &&
+            export PROJECTOR_ENABLED="${{vars.PROJECTOR_ENABLED}}" &&
+            export PROJECTOR_DB_PASSWORD="${{secrets.PROJECTOR_DB_PASSWORD}}" &&
+            export PROJECTOR_ACCESS_CLIENT_ID="${{secrets.PROJECTOR_ACCESS_CLIENT_ID}}" &&
+            export PROJECTOR_ACCESS_CLIENT_SECRET="${{secrets.PROJECTOR_ACCESS_CLIENT_SECRET}}" &&
             if cd coasterpedia-services; then git pull; else git clone --depth 1 -b main https://github.com/${{ github.repository }} coasterpedia-services && cd coasterpedia-services; fi &&
             docker compose pull &&
             docker compose up -d -V &&

@@ -9,8 +9,8 @@ routes = [{ pattern = "api.coasterpedia.net", custom_domain = true }]
 # Cloudflare Access, which guards /internal/*: the team domain
 # (<team>.cloudflareaccess.com) and the application's AUD tag. Ingest refuses
 # everything until both are set.
-ACCESS_TEAM_DOMAIN = ""
-ACCESS_AUD = ""
+ACCESS_TEAM_DOMAIN = "coasterpedia.cloudflareaccess.com"
+ACCESS_AUD = "fe2c49ef588621d0f07907deb1f0a9f06c804ab77110e81aceb667738ccf434f"
 
 # Disposable: rebuildable from the wiki at any time by a sweep.
 [[d1_databases]]

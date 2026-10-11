@@ -4,6 +4,8 @@ services:
     restart: always
     networks:
       - coasterpedia_web
+      # The Projector reads Cargo directly, as the read-only api_projector user.
+      - coasterpedia_db
     ports:
       - "9004:8080"
     environment:
@@ -17,6 +19,12 @@ services:
       WikimapiaConfig__ApiKey: ${WIKIMAPIA_API_KEY}
       RedisOptions__ConnectionString: redis:6379
       RedisOptions__Db: 1
+      ProjectorConfig__Enabled: ${PROJECTOR_ENABLED:-false}
+      ProjectorConfig__ConnectionString: Server=mariadb;Database=cargo_db;User ID=api_projector;Password=${PROJECTOR_DB_PASSWORD}
+      ProjectorConfig__AccessClientId: ${PROJECTOR_ACCESS_CLIENT_ID}
+      ProjectorConfig__AccessClientSecret: ${PROJECTOR_ACCESS_CLIENT_SECRET}
 networks:
   coasterpedia_web:
+    external: true
+  coasterpedia_db:
     external: true
