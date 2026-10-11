@@ -93,6 +93,14 @@ public class ProjectorTests
     }
 
     [Fact]
+    public void Names_lose_their_markup()
+    {
+        // 11 attractions on 2026-10-11, e.g. 51387 "Unknown (Taukbashçe)".
+        Assert.Equal("unknown", Map(Row(name: "''unknown''")).Name);
+        Assert.Equal("Gold Rusher (Six Flags Magic Mountain)", Map(Row(name: " ")).Name);
+    }
+
+    [Fact]
     public void Status_is_a_slug_of_the_wikis_wording()
     {
         Assert.Equal("standing_but_not_operating", Map(Row(status: "standing but not operating")).Status);

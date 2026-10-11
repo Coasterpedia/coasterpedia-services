@@ -21,12 +21,14 @@ public static class AttractionMapper
         IReadOnlyDictionary<string, int> resolved, string publicBaseUrl, List<DataIssue> issues)
     {
         var title = row.PageName;
+        // Name is a String column but can still hold markup: a nameless ride is ''unknown''.
+        var name = Wikitext.Strip(row.Name ?? "");
         return new AttractionContent
         {
             Id = row.PageId,
             Type = row.Type,
-            // Name is always set on every table (checked 2026-10-11); the title is the safe fallback.
-            Name = string.IsNullOrWhiteSpace(row.Name) ? title : row.Name.Trim(),
+            // Never blank on any table (checked 2026-10-11); the title is the safe fallback.
+            Name = name.Length == 0 ? title : name,
             Title = title,
             Url = Wikitext.ArticleUrl(publicBaseUrl, title),
             Status = MapStatus(row, vocab, issues),
