@@ -719,5 +719,104 @@
       "kind": "attraction",
       "id": 9999
     }
-  ]
+  ],
+  "vocabularies": {
+    "type": [
+      {
+        "value": "coaster",
+        "label": "Roller coaster"
+      },
+      {
+        "value": "ride",
+        "label": "Ride"
+      },
+      {
+        "value": "water_slide",
+        "label": "Water slide"
+      }
+    ],
+    "status": [
+      {
+        "value": "operating",
+        "label": "Operating",
+        "applies_to": [
+          "coaster",
+          "ride",
+          "water_slide"
+        ]
+      },
+      {
+        "value": "defunct",
+        "label": "Defunct",
+        "applies_to": [
+          "coaster",
+          "ride",
+          "water_slide"
+        ]
+      },
+      {
+        "value": "under_construction",
+        "label": "Under construction",
+        "applies_to": [
+          "coaster",
+          "ride",
+          "water_slide"
+        ]
+      },
+      {
+        "value": "under_refurbishment",
+        "label": "Under refurbishment",
+        "applies_to": [
+          "coaster",
+          "ride",
+          "water_slide"
+        ]
+      },
+      {
+        "value": "standing_but_not_operating",
+        "label": "Standing but not operating",
+        "applies_to": [
+          "coaster",
+          "ride",
+          "water_slide"
+        ]
+      },
+      {
+        "value": "in_storage",
+        "label": "In storage",
+        "applies_to": [
+          "coaster",
+          "ride",
+          "water_slide"
+        ]
+      },
+      {
+        "value": "planned",
+        "label": "Planned",
+        "applies_to": [
+          "coaster",
+          "ride",
+          "water_slide"
+        ]
+      },
+      {
+        "value": "cancelled",
+        "label": "Cancelled",
+        "applies_to": [
+          "coaster",
+          "ride",
+          "water_slide"
+        ]
+      },
+      {
+        "value": "unknown",
+        "label": "Unknown",
+        "applies_to": [
+          "coaster",
+          "ride",
+          "water_slide"
+        ]
+      }
+    ]
+  }
 }

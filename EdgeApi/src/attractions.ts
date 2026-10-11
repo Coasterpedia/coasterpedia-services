@@ -1,5 +1,5 @@
 import type { Env } from './env';
-import { badRequest, json, LICENCE, problem, SCHEMA_VERSION } from './http';
+import { badRequest, CHANGES_WINDOW, decodeOpaque, encodeOpaque, json, LICENCE, problem, SCHEMA_VERSION } from './http';
 
 /**
  * The beta answers only what the data behind it can answer. A contract
@@ -27,25 +27,25 @@ interface Row {
 	summary: string;
 }
 
-async function dataAsOf(env: Env): Promise<string | null> {
+export async function dataAsOf(env: Env): Promise<string | null> {
 	const row = await env.DATA.prepare(`SELECT value FROM state WHERE key = 'data_as_of'`).first<{ value: string }>();
 	return row?.value ?? null;
 }
 
-type View = 'latest' | 'settled';
+export type View = 'latest' | 'settled';
 
 /**
  * view (DR-010 §6.3): settled unless the client asks for latest. The view
  * picks the row flag every query filters on, written into the SQL as a literal
  * so the partial indexes match.
  */
-function viewParam(url: URL): View {
+export function viewParam(url: URL): View {
 	const view = url.searchParams.get('view') ?? 'settled';
 	if (view === 'latest' || view === 'settled') return view;
 	throw badRequest('parameter-invalid', 'view is latest or settled');
 }
 
-const FLAG: Record<View, string> = { latest: 'in_latest', settled: 'in_settled' };
+export const FLAG: Record<View, string> = { latest: 'in_latest', settled: 'in_settled' };
 
 function checkParams(url: URL, allowed: Set<string>): void {
 	for (const name of url.searchParams.keys()) {
@@ -60,7 +60,7 @@ function checkParams(url: URL, allowed: Set<string>): void {
 }
 
 /** Comma-separated values; vocabulary is open (DR-010 §6.2), so any value is a valid filter. */
-function list(url: URL, name: string, transform: (v: string) => string = (v) => v): string[] {
+export function list(url: URL, name: string, transform: (v: string) => string = (v) => v): string[] {
 	const raw = url.searchParams.get(name);
 	if (raw == null) return [];
 	const values = raw.split(',').map((v) => transform(v.trim())).filter((v) => v.length > 0);
@@ -70,7 +70,7 @@ function list(url: URL, name: string, transform: (v: string) => string = (v) => 
 	return values;
 }
 
-function limitParam(url: URL): number {
+export function limitParam(url: URL): number {
 	const raw = url.searchParams.get('limit');
 	if (raw == null) return 25;
 	const n = Number(raw);
@@ -82,15 +82,12 @@ function limitParam(url: URL): number {
 
 // The cursor is the sort and the last row's position in it. Opaque to clients.
 export function encodeCursor(sort: string, value: string | number, id: number): string {
-	const bytes = new TextEncoder().encode(JSON.stringify([sort, value, id]));
-	return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+	return encodeOpaque([sort, value, id]);
 }
 
 function decodeCursor(cursor: string, sort: string): [string | number, number] {
 	try {
-		const b64 = cursor.replace(/-/g, '+').replace(/_/g, '/');
-		const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-		const parsed = JSON.parse(new TextDecoder().decode(bytes));
+		const parsed = decodeOpaque(cursor) as any[];
 		// Two-part cursors came from before stat sorts, when name was the only sort.
 		const [field, value, id] = parsed.length === 2 ? ['name', ...parsed] : parsed;
 		const valueOk = field === 'name' ? typeof value === 'string' : typeof value === 'number';
@@ -239,6 +236,8 @@ export async function meta(url: URL, env: Env): Promise<Response> {
 		data_as_of: await dataAsOf(env),
 		schema_version: SCHEMA_VERSION,
 		settle_after: settleAfter?.value ?? null,
+		// How long a /v1/changes cursor stays good: how long a client can be offline.
+		changes_window: CHANGES_WINDOW,
 		view,
 		counts: { attractions: Number(count?.n ?? 0) },
 		licence: LICENCE,

@@ -1,8 +1,10 @@
 import { getAttraction, listAttractions, meta } from './attractions';
 import { authenticate, authenticateInternal, type Caller } from './auth';
+import { listChanges, pruneChanges } from './changes';
 import type { Env } from './env';
 import { problem, ProblemError } from './http';
 import { ingest } from './ingest';
+import { vocabularies } from './vocabularies';
 
 export type { Env } from './env';
 
@@ -31,6 +33,9 @@ export default {
 			if (path === '/v1/meta') {
 				return await meta(url, env);
 			}
+			if (path === '/v1/vocabularies') {
+				return await vocabularies(url, env);
+			}
 
 			if (!path.startsWith('/v1/')) {
 				return problem(404, 'not-found', 'Not found', 'The API lives under /v1/.');
@@ -47,7 +52,7 @@ export default {
 				}
 			}
 
-			const handled = await route(path, url, env);
+			const handled = await route(path, url, env, caller);
 			record(env, caller, handled.route, handled.response.status, handled.rows);
 			return handled.response;
 		} catch (e) {
@@ -56,9 +61,19 @@ export default {
 			return problem(500, 'internal-error', 'Internal error');
 		}
 	},
+
+	/** Daily (wrangler.toml): keeps the change log to its window. */
+	async scheduled(controller: ScheduledController, env: Env): Promise<void> {
+		const deleted = await pruneChanges(env, new Date(controller.scheduledTime));
+		console.log(`Pruned ${deleted} change log lines`);
+	},
 } satisfies ExportedHandler<Env>;
 
-async function route(path: string, url: URL, env: Env): Promise<Handled> {
+async function route(path: string, url: URL, env: Env, caller: Caller): Promise<Handled> {
+	if (path === '/v1/changes') {
+		return { route: '/v1/changes', ...(await listChanges(url, env, caller.tier)) };
+	}
+
 	if (path === '/v1/attractions') {
 		return { route: '/v1/attractions', ...(await listAttractions(url, env)) };
 	}

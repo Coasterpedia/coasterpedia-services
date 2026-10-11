@@ -1,5 +1,5 @@
 import type { Env } from './env';
-import { json, problem } from './http';
+import { isoSeconds, json, problem } from './http';
 
 interface Upsert {
 	kind: string;
@@ -28,6 +28,13 @@ interface Item {
 	id: number;
 }
 
+/** One allowed value of a vocabulary field, as /v1/vocabularies serves it. */
+interface VocabularyValue {
+	value: string;
+	label: string;
+	applies_to?: string[];
+}
+
 interface Batch {
 	as_of: string;
 	settle_after?: string;
@@ -35,6 +42,8 @@ interface Batch {
 	delete: Delete[];
 	promote?: Item[];
 	discard?: Item[];
+	/** API field → allowed values. Only on the first batch of a pass whose vocabularies changed. */
+	vocabularies?: Record<string, VocabularyValue[]>;
 }
 
 /** D1 allows 1,000 queries per invocation; each item costs three. */
@@ -62,7 +71,7 @@ export async function ingest(request: Request, env: Env): Promise<Response> {
 		return problem(400, 'ingest', 'Invalid batch', error);
 	}
 
-	const at = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+	const at = isoSeconds(new Date());
 	const db = env.DATA;
 	const statements: D1PreparedStatement[] = [];
 	const promote = batch.promote ?? [];
@@ -148,6 +157,17 @@ export async function ingest(request: Request, env: Env): Promise<Response> {
 		);
 	}
 
+	if (batch.vocabularies) {
+		// Moves forward only, like data_as_of.
+		statements.push(
+			db.prepare(
+				`INSERT INTO state (key, value) VALUES ('vocabularies', ?1)
+				 ON CONFLICT (key) DO UPDATE SET value = excluded.value
+				 WHERE json_extract(state.value, '$.as_of') <= json_extract(excluded.value, '$.as_of')`,
+			).bind(JSON.stringify({ as_of: batch.as_of, data: batch.vocabularies })),
+		);
+	}
+
 	await db.batch(statements);
 	return json({ upserted: batch.upsert.length, deleted: batch.delete.length, promoted: promote.length, discarded: discard.length });
 }
@@ -194,6 +214,23 @@ function validate(b: Batch): string | null {
 	for (const d of b.delete) {
 		if (d.kind !== 'attraction') return `Unknown kind ${String(d.kind)}`;
 		if (!Number.isInteger(d.id)) return 'id must be an integer';
+	}
+	return b.vocabularies === undefined ? null : validateVocabularies(b.vocabularies);
+}
+
+function validateVocabularies(v: unknown): string | null {
+	if (typeof v !== 'object' || v === null || Array.isArray(v)) return 'vocabularies must be an object';
+	for (const [field, values] of Object.entries(v)) {
+		if (!/^[a-z][a-z_.]*$/.test(field)) return `vocabularies: bad field name ${field}`;
+		if (!Array.isArray(values)) return `vocabularies.${field} must be an array`;
+		for (const x of values as VocabularyValue[]) {
+			if (typeof x?.value !== 'string' || x.value.length === 0 || typeof x.label !== 'string') {
+				return `vocabularies.${field}: each value needs value and label`;
+			}
+			if (x.applies_to !== undefined && !(Array.isArray(x.applies_to) && x.applies_to.every((t) => typeof t === 'string'))) {
+				return `vocabularies.${field}.${x.value}: applies_to must be strings`;
+			}
+		}
 	}
 	return null;
 }

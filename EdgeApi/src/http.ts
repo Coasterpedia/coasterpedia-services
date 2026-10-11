@@ -6,7 +6,20 @@ export const LICENCE = {
 	attribution: 'Coasterpedia contributors',
 } as const;
 
-export const SCHEMA_VERSION = '1.0.0-beta.3';
+export const SCHEMA_VERSION = '1.0.0-beta.4';
+
+/**
+ * How far back /v1/changes reaches, published in /v1/meta. A daily prune keeps
+ * the log to this, and a cursor older than it is 410 Gone, never a feed with a
+ * hole in it.
+ */
+export const CHANGES_WINDOW_DAYS = 90;
+export const CHANGES_WINDOW = `P${CHANGES_WINDOW_DAYS}D`;
+
+/** UTC to the second, "2026-10-11T12:00:00Z": what every timestamp in the API looks like. */
+export function isoSeconds(at: Date): string {
+	return at.toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
 
 const PROBLEM_BASE = 'https://api.coasterpedia.net/problems/';
 
@@ -33,4 +46,17 @@ export class ProblemError extends Error {
 
 export function badRequest(slug: string, title: string, detail?: string): ProblemError {
 	return new ProblemError(problem(400, slug, title, detail));
+}
+
+/** A cursor's contents as unpadded base64url JSON. Opaque to clients. */
+export function encodeOpaque(value: unknown): string {
+	const bytes = new TextEncoder().encode(JSON.stringify(value));
+	return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/** The inverse of encodeOpaque; throws on anything it did not make. */
+export function decodeOpaque(text: string): unknown {
+	const b64 = text.replace(/-/g, '+').replace(/_/g, '/');
+	const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+	return JSON.parse(new TextDecoder().decode(bytes));
 }

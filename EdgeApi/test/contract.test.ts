@@ -85,3 +85,19 @@ it('carries the full stats on the record', async () => {
 	const body = await (await get('/v1/attractions/169?view=latest')).json<any>();
 	expect(body.data.stats).toMatchObject({ tracks: 2, inversions: { track: 0 }, duration: { value: 150, unit: 's' } });
 });
+
+it('serves the vocabularies the batch carried, in the infobox order', async () => {
+	const body = await (await exports.default.fetch(new Request(`${BASE}/v1/vocabularies`))).json<any>();
+	expect(body.data).toEqual(batch.vocabularies);
+	expect(body.data.status.map((s: any) => s.value)).toContain('standing_but_not_operating');
+	expect(body.meta.data_as_of).toBe(batch.as_of);
+});
+
+it('logs the batch for /v1/changes, with the merge as a tombstone', async () => {
+	const body = await (await get('/v1/changes?view=latest&since=2026-01-01T00:00:00Z')).json<any>();
+	expect(body.data).toHaveLength(8);
+	expect(body.data.at(-1)).toMatchObject({ kind: 'attraction', id: 170, op: 'delete', merged_into: 171 });
+	// 9101 waits to settle, so the settled feed leaves it out.
+	const settled = await (await get('/v1/changes?since=2026-01-01T00:00:00Z')).json<any>();
+	expect(settled.data.map((c: any) => c.id)).not.toContain(9101);
+});

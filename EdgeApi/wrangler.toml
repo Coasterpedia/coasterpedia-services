@@ -5,6 +5,10 @@ main = "src/index.ts"
 compatibility_date = "2026-08-20"
 routes = [{ pattern = "api.coasterpedia.net", custom_domain = true }]
 
+# Daily, after the Projector's 03:17 sweep: prunes /v1/changes to its window.
+[triggers]
+crons = ["31 4 * * *"]
+
 [vars]
 # Cloudflare Access, which guards /internal/*: the team domain
 # (<team>.cloudflareaccess.com) and the application's AUD tag. Ingest refuses

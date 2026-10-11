@@ -1,6 +1,7 @@
 import { env } from 'cloudflare:workers';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { encodeCursor, listQuery } from '../src/attractions';
+import { FIRST_SEQ_SQL, pageQuery } from '../src/changes';
 import { resetData } from './reset';
 
 // D1 bills rows read and rows written, and the free tier allows 5M and 100k a
@@ -80,5 +81,52 @@ describe('record counts follow the rows', () => {
 		// An ordinary update that moves no flag writes nothing to the counters.
 		const before = await env.DATA.prepare(`UPDATE attractions SET status = 'defunct' WHERE id = 12`).run();
 		expect(before.meta.rows_written).toBe(1);
+	});
+});
+
+describe('the change feed reads its page, not the log', () => {
+	const LINES = 20000;
+
+	beforeAll(async () => {
+		await env.DATA.prepare('DELETE FROM changes').run();
+		const statements = [];
+		for (let start = 1; start <= LINES; start += 1000) {
+			const values = [];
+			for (let i = start; i < start + 1000; i++) {
+				// A minute apart; one line in four latest only, as untrusted edits are.
+				const at = new Date(Date.UTC(2026, 7, 1) + i * 60_000).toISOString().replace(/\.\d{3}Z$/, 'Z');
+				values.push(`(${i}, 'attraction', ${i}, 'upsert', 1, '${at}', 1, ${i % 4 === 0 ? 0 : 1})`);
+			}
+			statements.push(env.DATA.prepare(
+				`INSERT INTO changes (seq, kind, id, op, revision, at, in_latest, in_settled) VALUES ${values.join(',')}`,
+			));
+		}
+		await env.DATA.batch(statements);
+	});
+
+	it('finds where a time falls by halving, not by scanning', async () => {
+		const at = new Date(Date.UTC(2026, 7, 1) + 12345 * 60_000).toISOString().replace(/\.\d{3}Z$/, 'Z');
+		const result = await env.DATA.prepare(FIRST_SEQ_SQL).bind(at).all<{ seq: number }>();
+		expect(result.results[0].seq).toBe(12345);
+		// log2(20,000) is about 15 halvings; a scan would be 12,345 rows.
+		expect(result.meta.rows_read).toBeLessThan(100);
+	});
+
+	it.each([
+		['latest', 'latest' as const],
+		['settled', 'settled' as const],
+	])('a page deep in the log, %s view', async (_, view) => {
+		const { sql, binds } = pageQuery(10000, 11000, view, ['attraction'], 100);
+		const result = await env.DATA.prepare(sql).bind(...binds).all();
+		expect(result.results).toHaveLength(101);
+		expect(result.meta.rows_read).toBeLessThan(200);
+	});
+
+	it('a settled page over latest-only lines stops at the scan bound', async () => {
+		await env.DATA.prepare('UPDATE changes SET in_settled = 0 WHERE seq BETWEEN 15001 AND 20000').run();
+		const { sql, binds } = pageQuery(15000, 16000, 'settled', [], 100);
+		const result = await env.DATA.prepare(sql).bind(...binds).all();
+		expect(result.results).toHaveLength(0);
+		expect(result.meta.rows_read).toBeLessThanOrEqual(1001);
 	});
 });

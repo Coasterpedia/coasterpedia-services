@@ -1,0 +1,13 @@
+-- /v1/changes (DR-010 §6). No new index: the feed reads by seq, the rowid.
+--
+-- 0002 says nothing deletes from changes. That no longer holds: a daily Cron
+-- Trigger prunes lines older than the window, always sparing the newest, so
+-- MAX(seq) + 1 still only ever goes up. It records what it took in state
+-- (changes_pruned_through, changes_pruned_before), and a cursor older than
+-- either is 410 Gone.
+--
+-- The epoch names this log. A database rebuilt from scratch runs this again and
+-- gets a new one, so a cursor from the old log is refused rather than read
+-- against seq numbers that started again at 1. After a D1 Time Travel restore,
+-- set a new one by hand (DR-010 §12.4).
+INSERT OR IGNORE INTO state (key, value) VALUES ('changes_epoch', lower(hex(randomblob(8))));
