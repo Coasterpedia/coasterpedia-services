@@ -56,7 +56,7 @@ public sealed record StatsRow
 }
 
 /// <summary>What the wiki's page table says about an ID that has no attraction row.</summary>
-public sealed record PageState(int PageId, bool IsRedirect, int? RedirectTargetId);
+public sealed record PageState(int PageId, int Namespace, bool IsRedirect, int? RedirectTargetId);
 
 /// <summary>
 /// The Projector's only database code. Raw SQL against the Cargo database, so
@@ -246,7 +246,7 @@ public sealed partial class CargoReader
         {
             await using var cmd = conn.CreateCommand();
             cmd.CommandText = $"""
-                SELECT p.page_id, p.page_is_redirect, d._pageIDOrRedirect
+                SELECT p.page_id, p.page_namespace, p.page_is_redirect, d._pageIDOrRedirect
                 FROM {Page} p
                 LEFT JOIN {Cargo("_pageData")} d ON d._pageID = p.page_id
                 WHERE 1 = 1 {InClause(cmd, "p.page_id", chunk)}
@@ -255,9 +255,10 @@ public sealed partial class CargoReader
             while (await reader.ReadAsync(ct))
             {
                 var id = reader.GetInt32(0);
-                var isRedirect = Convert.ToInt32(reader.GetValue(1)) != 0;
-                int? target = reader.IsDBNull(2) ? null : Convert.ToInt32(reader.GetValue(2));
-                result[id] = new PageState(id, isRedirect, isRedirect && target != id ? target : null);
+                var ns = Convert.ToInt32(reader.GetValue(1));
+                var isRedirect = Convert.ToInt32(reader.GetValue(2)) != 0;
+                int? target = reader.IsDBNull(3) ? null : Convert.ToInt32(reader.GetValue(3));
+                result[id] = new PageState(id, ns, isRedirect, isRedirect && target != id ? target : null);
             }
         }
 

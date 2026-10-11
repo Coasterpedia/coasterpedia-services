@@ -115,6 +115,12 @@ public sealed class ProjectionService
                 {
                     deletes.Add((Wire.Delete(id, page.RedirectTargetId), id)); // merged into another
                 }
+                else if (page.Namespace != 0)
+                {
+                    // Moved out (draftified in patrol). A save never changes the
+                    // namespace, so this needs no second pass.
+                    deletes.Add((Wire.Delete(id, null), id));
+                }
                 else if (await _state.IncrementMissingAsync(id) >= MissingPassesBeforeDelete)
                 {
                     deletes.Add((Wire.Delete(id, null), id)); // no longer an attraction

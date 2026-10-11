@@ -1,7 +1,8 @@
 namespace CoasterpediaServices.Common;
 
 // Mirrors SNS filter policy semantics: Schemas/Namespaces are allow-lists,
-// ExcludeUsers is the "anything-but" exclusion list.
+// ExcludeUsers is the "anything-but" exclusion list. A move matches a namespace
+// it left as well as one it arrived in: draftifying leaves the main namespace.
 public record EventFilter
 {
     public required IReadOnlyCollection<string> Schemas { get; init; }
@@ -15,7 +16,8 @@ public record EventFilter
             return false;
         }
 
-        if (evt.Namespace == null || !Namespaces.Contains(evt.Namespace))
+        if ((evt.Namespace == null || !Namespaces.Contains(evt.Namespace))
+            && (evt.PriorNamespace == null || !Namespaces.Contains(evt.PriorNamespace)))
         {
             return false;
         }

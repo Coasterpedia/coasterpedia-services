@@ -12,6 +12,9 @@ public record EventBusEvent(string? Schema, string? Namespace, string? User, str
     /// <summary>The performer's groups, implicit ones included ("*", "user"). Null when the event does not say.</summary>
     public IReadOnlyList<string>? UserGroups { get; init; }
 
+    /// <summary>A move's source namespace (prior_state); null for every other event.</summary>
+    public string? PriorNamespace { get; init; }
+
     public static EventBusEvent? FromJson(JsonNode? eventBody)
     {
         var pageTitle = eventBody?["page_title"]?.ToString();
@@ -31,6 +34,7 @@ public record EventBusEvent(string? Schema, string? Namespace, string? User, str
             UserGroups = eventBody?["performer"]?["user_groups"] is JsonArray groups
                 ? groups.Select(g => g?.ToString()).OfType<string>().ToList()
                 : null,
+            PriorNamespace = eventBody?["prior_state"]?["page_namespace"]?.ToString(),
         };
     }
 }
