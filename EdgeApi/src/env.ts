@@ -5,6 +5,8 @@ export interface Env {
 	RATE_LIMITER?: RateLimit;
 	ACCESS_TEAM_DOMAIN: string;
 	ACCESS_AUD: string;
+	/** How long a location keeps a 200 (DR-010 §7.3); "0" turns the cache off. */
+	CACHE_SECONDS?: string;
 	/** Local development only (.dev.vars): lets a local Projector ingest without Access. */
 	DEV_INGEST_TOKEN?: string;
 }

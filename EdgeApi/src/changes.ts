@@ -20,6 +20,11 @@ const SCAN = 1000;
  */
 const DELAY_HOURS: Record<string, number> = { free: 24, beta: 0, commercial: 0 };
 
+/** The tier's feed delay in hours. The cache key carries it, since it changes the answer. */
+export function delayHours(tier: string): number {
+	return DELAY_HOURS[tier] ?? DELAY_HOURS.free;
+}
+
 const HOUR = 3600_000;
 const TIMESTAMP = /^\d{4}-\d\d-\d\dT\d\d:\d\d(:\d\d(\.\d+)?)?(Z|[+-]\d\d:\d\d)$/;
 
@@ -161,8 +166,8 @@ export async function listChanges(url: URL, env: Env, tier: string, now = new Da
 		after = seq;
 	}
 
-	const delayHours = DELAY_HOURS[tier] ?? DELAY_HOURS.free;
-	const visibleBefore = delayHours > 0 ? isoSeconds(new Date(now.getTime() - delayHours * HOUR)) : null;
+	const delay = delayHours(tier);
+	const visibleBefore = delay > 0 ? isoSeconds(new Date(now.getTime() - delay * HOUR)) : null;
 	// The newest line this caller may see. A prefix by seq, never a filter on at,
 	// so a cursor can never step over a line that becomes visible later.
 	const head = visibleBefore ? (await firstSeqFrom(env, visibleBefore)) - 1 : log.max;
@@ -190,7 +195,7 @@ export async function listChanges(url: URL, env: Env, tier: string, now = new Da
 				next_cursor: encodeCursor(log.epoch, next),
 				has_more: full || upper < head,
 				view,
-				delay: `PT${delayHours}H`,
+				delay: `PT${delay}H`,
 				licence: LICENCE,
 			},
 		}),

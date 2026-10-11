@@ -1,21 +1,26 @@
 import { getAttraction, listAttractions, meta } from './attractions';
 import { authenticate, authenticateInternal, type Caller } from './auth';
-import { listChanges, pruneChanges } from './changes';
+import { cacheKey, serveCached, type Served } from './cache';
+import { delayHours, listChanges, pruneChanges } from './changes';
 import type { Env } from './env';
 import { problem, ProblemError } from './http';
 import { ingest } from './ingest';
+import { LIMITED_HEADERS, withPolicy } from './ratelimit';
 import { vocabularies } from './vocabularies';
 
 export type { Env } from './env';
 
-interface Handled {
-	response: Response;
-	rows: number;
-	route: string;
+/** A matched endpoint: its template, whether it takes view=, and how to answer it. */
+interface Route {
+	name: string;
+	view: boolean;
+	/** What changes the answer beyond the URL, for the cache key. */
+	extra?: Record<string, string>;
+	run: () => Promise<Served>;
 }
 
 export default {
-	async fetch(request: Request, env: Env): Promise<Response> {
+	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
 		const url = new URL(request.url);
 		const path = url.pathname.replace(/\/+$/, '') || '/';
 
@@ -29,12 +34,13 @@ export default {
 				return problem(405, 'method', 'Method not allowed', 'The API is read-only.');
 			}
 
-			// Open: no key needed (DR-010 §6).
+			// Open: no key needed (DR-010 §6), and no limit, so the cache is what
+			// keeps a client hammering them off D1.
 			if (path === '/v1/meta') {
-				return await meta(url, env);
+				return (await serveCached(cacheKey(url, path, true), env, ctx, false, async () => ({ response: await meta(url, env), rows: 0 }))).response;
 			}
 			if (path === '/v1/vocabularies') {
-				return await vocabularies(url, env);
+				return (await serveCached(cacheKey(url, path, false), env, ctx, false, async () => ({ response: await vocabularies(url, env), rows: 0 }))).response;
 			}
 
 			if (!path.startsWith('/v1/')) {
@@ -44,17 +50,30 @@ export default {
 			const caller = await authenticate(request, env);
 			if (caller instanceof Response) return caller;
 
+			// Before the cache: a hit is still a request, and counts against the limit.
 			if (env.RATE_LIMITER) {
 				const { success } = await env.RATE_LIMITER.limit({ key: caller.account });
 				if (!success) {
-					record(env, caller, 'rate-limited', 429, 0);
-					return problem(429, 'rate-limited', 'Too many requests', undefined, { 'retry-after': '60' });
+					record(env, caller, 'rate-limited', 429, 0, false);
+					return problem(429, 'rate-limited', 'Too many requests', undefined, LIMITED_HEADERS);
 				}
 			}
 
-			const handled = await route(path, url, env, caller);
-			record(env, caller, handled.route, handled.response.status, handled.rows);
-			return handled.response;
+			const matched = route(path, url, env, caller);
+			if (!matched) {
+				record(env, caller, 'unknown', 404, 0, false);
+				return withPolicy(problem(404, 'not-found', 'Not found'));
+			}
+
+			let served: Served & { hit: boolean };
+			try {
+				served = await serveCached(cacheKey(url, path, matched.view, matched.extra), env, ctx, true, matched.run);
+			} catch (e) {
+				if (!(e instanceof ProblemError)) throw e;
+				served = { response: e.response, rows: 0, hit: false };
+			}
+			record(env, caller, matched.name, served.response.status, served.rows, served.hit);
+			return withPolicy(served.response);
 		} catch (e) {
 			if (e instanceof ProblemError) return e.response;
 			console.error(e);
@@ -69,28 +88,33 @@ export default {
 	},
 } satisfies ExportedHandler<Env>;
 
-async function route(path: string, url: URL, env: Env, caller: Caller): Promise<Handled> {
+function route(path: string, url: URL, env: Env, caller: Caller): Route | null {
 	if (path === '/v1/changes') {
-		return { route: '/v1/changes', ...(await listChanges(url, env, caller.tier)) };
+		return {
+			name: '/v1/changes', view: true,
+			// The tier's delay changes the answer; keyed by the delay, tiers that share one share entries.
+			extra: { delay: `PT${delayHours(caller.tier)}H` },
+			run: () => listChanges(url, env, caller.tier),
+		};
 	}
 
 	if (path === '/v1/attractions') {
-		return { route: '/v1/attractions', ...(await listAttractions(url, env)) };
+		return { name: '/v1/attractions', view: true, run: () => listAttractions(url, env) };
 	}
 
 	const one = /^\/v1\/attractions\/([^/]+)$/.exec(path);
 	if (one) {
-		return { route: '/v1/attractions/{id}', ...(await getAttraction(url, one[1], env)) };
+		return { name: '/v1/attractions/{id}', view: true, run: () => getAttraction(url, one[1], env) };
 	}
 
-	return { route: 'unknown', rows: 0, response: problem(404, 'not-found', 'Not found') };
+	return null;
 }
 
 /** One Analytics Engine point per keyed request: usage pages and, later, billing (DR-010 §7.3). */
-function record(env: Env, caller: Caller, route: string, status: number, rows: number): void {
+function record(env: Env, caller: Caller, route: string, status: number, rows: number, hit: boolean): void {
 	env.USAGE?.writeDataPoint({
 		indexes: [caller.account],
-		blobs: [caller.account, caller.keyPrefix, route, String(status), caller.tier],
+		blobs: [caller.account, caller.keyPrefix, route, String(status), caller.tier, hit ? 'hit' : 'miss'],
 		doubles: [rows],
 	});
 }

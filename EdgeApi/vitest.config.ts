@@ -9,6 +9,9 @@ export default defineConfig({
 				bindings: {
 					TEST_MIGRATIONS: await readD1Migrations('./migrations'),
 					DEV_INGEST_TOKEN: 'test-ingest-token',
+					// Off: storage is shared across tests, so a cached answer would leak
+					// into the next one. cache.test.ts turns it on with its own env.
+					CACHE_SECONDS: '0',
 				},
 			},
 		})),

@@ -16,6 +16,12 @@ crons = ["31 4 * * *"]
 ACCESS_TEAM_DOMAIN = "coasterpedia.cloudflareaccess.com"
 ACCESS_AUD = "fe2c49ef588621d0f07907deb1f0a9f06c804ab77110e81aceb667738ccf434f"
 
+# How long each Cloudflare location keeps a 200 (DR-010 §7.3). The edge can't
+# purge every location when ingest lands, so this is how much older than D1 an
+# answer may be: latest reads up to this much further behind the wiki. "0"
+# turns the cache off.
+CACHE_SECONDS = "30"
+
 # Disposable: rebuildable from the wiki at any time by a sweep.
 [[d1_databases]]
 binding = "DATA"
@@ -35,7 +41,8 @@ binding = "USAGE"
 dataset = "coasterpedia_api_usage"
 
 # Per-location burst control, keyed by account (DR-010 §7.3). One limit for
-# everyone until tiers exist (DR-010 §9).
+# everyone until tiers exist (DR-010 §9). BURST in src/ratelimit.ts states it
+# in the RateLimit-Policy header: change both together.
 [[ratelimits]]
 name = "RATE_LIMITER"
 namespace_id = "1001"
