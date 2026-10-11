@@ -7,4 +7,6 @@
   <Project Path="Common/Common.csproj" />
   <Project Path="ImageFetch\ImageFetch.csproj" />
   <Project Path="InternalApi\InternalApi.csproj" />
+  <Project Path="Projector/Projector.csproj" />
+  <Project Path="Projector.Tests/Projector.Tests.csproj" />
 </Solution>

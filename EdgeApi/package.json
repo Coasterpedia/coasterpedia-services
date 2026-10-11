@@ -1,0 +1,24 @@
+{
+  "name": "coasterpedia-edge-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "migrate:local": "wrangler d1 migrations apply DATA --local",
+    "migrate:remote": "wrangler d1 migrations apply DATA --remote",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "create-key": "node scripts/create-key.mjs"
+  },
+  "dependencies": {
+    "jose": "^6.2.12"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.22.0",
+    "@cloudflare/workers-types": "^5.20260926.1",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11",
+    "wrangler": "^4.141.0"
+  }
+}

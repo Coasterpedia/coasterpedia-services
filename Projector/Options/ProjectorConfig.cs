@@ -1,0 +1,50 @@
+namespace CoasterpediaServices.Projector.Options;
+
+public record ProjectorConfig
+{
+    /// <summary>Off by default: nothing is read or pushed until the edge exists.</summary>
+    public bool Enabled { get; init; }
+
+    /// <summary>
+    /// A read-only MariaDB user with SELECT on the Cargo database and on
+    /// page_id / page_latest / page_is_redirect of the wiki's page table.
+    /// One connection reads both, so a sweep is one consistent snapshot.
+    /// </summary>
+    public string ConnectionString { get; init; } = "";
+
+    public string CargoDatabase { get; init; } = "cargo_db";
+    public string WikiDatabase { get; init; } = "coasterpedia";
+    public string WikiTablePrefix { get; init; } = "mw_";
+
+    /// <summary>Public base for record URLs; the wiki's internal address is CoasterpediaConfig.BaseUrl.</summary>
+    public string PublicBaseUrl { get; init; } = "https://coasterpedia.net";
+
+    /// <summary>POST target for ingest batches, e.g. https://api.coasterpedia.net/internal/ingest.</summary>
+    public string IngestUrl { get; init; } = "";
+
+    /// <summary>Cloudflare Access service token for /internal/*.</summary>
+    public string AccessClientId { get; init; } = "";
+    public string AccessClientSecret { get; init; } = "";
+
+    /// <summary>Local development only: matches the Worker's DEV_INGEST_TOKEN in .dev.vars.</summary>
+    public string DevIngestToken { get; init; } = "";
+
+    /// <summary>Items per ingest request. The edge takes at most 400 (two D1 queries each).</summary>
+    public int BatchSize { get; init; } = 200;
+
+    /// <summary>Wait after an edit before projecting, so a burst of edits exports once.</summary>
+    public TimeSpan Debounce { get; init; } = TimeSpan.FromSeconds(60);
+
+    public string SweepCron { get; init; } = "17 3 * * *";
+
+    /// <summary>
+    /// Attraction type → the infoboxes that store it. TemplateData of these
+    /// supplies the allowed values. Multitrack stores to Roller_Coasters.
+    /// </summary>
+    public Dictionary<string, string[]> AttractionTemplates { get; init; } = new()
+    {
+        ["coaster"] = ["Template:Infobox roller coaster", "Template:Infobox coaster multitrack"],
+        ["ride"] = ["Template:Infobox ride"],
+        ["water_slide"] = ["Template:Infobox water slide"],
+    };
+}

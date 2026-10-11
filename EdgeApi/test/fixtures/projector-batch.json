@@ -1,0 +1,374 @@
+{
+  "as_of": "2026-10-11T12:00:00Z",
+  "upsert": [
+    {
+      "kind": "attraction",
+      "id": 171,
+      "revision": 401,
+      "updated_at": "2026-10-11T12:00:00Z",
+      "sort_name": "gold rusher",
+      "filters": {
+        "type": "coaster",
+        "status": "operating",
+        "country": "US"
+      },
+      "summary": {
+        "id": 171,
+        "type": "coaster",
+        "name": "Gold Rusher",
+        "status": "operating",
+        "country": {
+          "code": "US",
+          "name": "USA"
+        },
+        "manufacturers": [
+          {
+            "id": 1829,
+            "name": "Arrow Development"
+          }
+        ],
+        "updated_at": "2026-10-11T12:00:00Z"
+      },
+      "record": {
+        "id": 171,
+        "type": "coaster",
+        "name": "Gold Rusher",
+        "title": "Gold Rusher (Six Flags Magic Mountain)",
+        "url": "https://coasterpedia.net/wiki/Gold_Rusher_(Six_Flags_Magic_Mountain)",
+        "status": "operating",
+        "location": {
+          "country": {
+            "code": "US",
+            "name": "USA"
+          },
+          "coordinates": {
+            "lat": 34.4234906,
+            "lon": -118.598881
+          }
+        },
+        "manufacturers": [
+          {
+            "id": 1829,
+            "name": "Arrow Development"
+          }
+        ],
+        "revision": 401,
+        "updated_at": "2026-10-11T12:00:00Z"
+      }
+    },
+    {
+      "kind": "attraction",
+      "id": 165,
+      "revision": 402,
+      "updated_at": "2026-10-11T12:00:00Z",
+      "sort_name": "batman the ride",
+      "filters": {
+        "type": "coaster",
+        "status": "operating",
+        "country": "US"
+      },
+      "summary": {
+        "id": 165,
+        "type": "coaster",
+        "name": "Batman The Ride",
+        "status": "operating",
+        "country": {
+          "code": "US",
+          "name": "USA"
+        },
+        "manufacturers": [
+          {
+            "id": 543,
+            "name": "Bolliger \u0026 Mabillard"
+          }
+        ],
+        "updated_at": "2026-10-11T12:00:00Z"
+      },
+      "record": {
+        "id": 165,
+        "type": "coaster",
+        "name": "Batman The Ride",
+        "title": "Batman The Ride (Six Flags Magic Mountain)",
+        "url": "https://coasterpedia.net/wiki/Batman_The_Ride_(Six_Flags_Magic_Mountain)",
+        "status": "operating",
+        "location": {
+          "country": {
+            "code": "US",
+            "name": "USA"
+          },
+          "coordinates": {
+            "lat": 34.425775,
+            "lon": -118.600895
+          }
+        },
+        "manufacturers": [
+          {
+            "id": 543,
+            "name": "Bolliger \u0026 Mabillard"
+          }
+        ],
+        "revision": 402,
+        "updated_at": "2026-10-11T12:00:00Z"
+      }
+    },
+    {
+      "kind": "attraction",
+      "id": 169,
+      "revision": 403,
+      "updated_at": "2026-10-11T12:00:00Z",
+      "sort_name": "colossus",
+      "filters": {
+        "type": "coaster",
+        "status": "defunct",
+        "country": "US"
+      },
+      "summary": {
+        "id": 169,
+        "type": "coaster",
+        "name": "Colossus",
+        "status": "defunct",
+        "country": {
+          "code": "US",
+          "name": "USA"
+        },
+        "manufacturers": [
+          {
+            "id": 2210,
+            "name": "International Amusement Devices"
+          }
+        ],
+        "updated_at": "2026-10-11T12:00:00Z"
+      },
+      "record": {
+        "id": 169,
+        "type": "coaster",
+        "name": "Colossus",
+        "title": "Colossus (Six Flags Magic Mountain)",
+        "url": "https://coasterpedia.net/wiki/Colossus_(Six_Flags_Magic_Mountain)",
+        "status": "defunct",
+        "location": {
+          "country": {
+            "code": "US",
+            "name": "USA"
+          },
+          "coordinates": {
+            "lat": 34.427553,
+            "lon": -118.59786
+          }
+        },
+        "manufacturers": [
+          {
+            "id": 2210,
+            "name": "International Amusement Devices"
+          }
+        ],
+        "revision": 403,
+        "updated_at": "2026-10-11T12:00:00Z"
+      }
+    },
+    {
+      "kind": "attraction",
+      "id": 9101,
+      "revision": 404,
+      "updated_at": "2026-10-11T12:00:00Z",
+      "sort_name": "example twin",
+      "filters": {
+        "type": "coaster",
+        "status": "standing_but_not_operating",
+        "country": "DE"
+      },
+      "summary": {
+        "id": 9101,
+        "type": "coaster",
+        "name": "Example Twin",
+        "status": "standing_but_not_operating",
+        "country": {
+          "code": "DE",
+          "name": "Germany"
+        },
+        "manufacturers": [
+          {
+            "id": 77,
+            "name": "Zierer"
+          },
+          {
+            "name": "BHS"
+          }
+        ],
+        "updated_at": "2026-10-11T12:00:00Z"
+      },
+      "record": {
+        "id": 9101,
+        "type": "coaster",
+        "name": "Example Twin",
+        "title": "Example Twin (Example Park)",
+        "url": "https://coasterpedia.net/wiki/Example_Twin_(Example_Park)",
+        "status": "standing_but_not_operating",
+        "location": {
+          "country": {
+            "code": "DE",
+            "name": "Germany"
+          }
+        },
+        "manufacturers": [
+          {
+            "id": 77,
+            "name": "Zierer"
+          },
+          {
+            "name": "BHS"
+          }
+        ],
+        "revision": 404,
+        "updated_at": "2026-10-11T12:00:00Z"
+      }
+    },
+    {
+      "kind": "attraction",
+      "id": 19643,
+      "revision": 405,
+      "updated_at": "2026-10-11T12:00:00Z",
+      "sort_name": "over the hill 2: spooksville",
+      "filters": {
+        "type": "ride",
+        "status": "operating",
+        "country": "GB"
+      },
+      "summary": {
+        "id": 19643,
+        "type": "ride",
+        "name": "Over the Hill 2: Spooksville",
+        "status": "operating",
+        "country": {
+          "code": "GB",
+          "name": "UK"
+        },
+        "manufacturers": [
+          {
+            "name": "Self-built"
+          }
+        ],
+        "updated_at": "2026-10-11T12:00:00Z"
+      },
+      "record": {
+        "id": 19643,
+        "type": "ride",
+        "name": "Over the Hill 2: Spooksville",
+        "title": "Over the Hill 2: Spooksville",
+        "url": "https://coasterpedia.net/wiki/Over_the_Hill_2:_Spooksville",
+        "status": "operating",
+        "location": {
+          "country": {
+            "code": "GB",
+            "name": "UK"
+          },
+          "coordinates": {
+            "lat": 51.532395,
+            "lon": 0.717849
+          }
+        },
+        "manufacturers": [
+          {
+            "name": "Self-built"
+          }
+        ],
+        "revision": 405,
+        "updated_at": "2026-10-11T12:00:00Z"
+      }
+    },
+    {
+      "kind": "attraction",
+      "id": 66486,
+      "revision": 406,
+      "updated_at": "2026-10-11T12:00:00Z",
+      "sort_name": "skyride",
+      "filters": {
+        "type": "ride",
+        "status": "operating",
+        "country": null
+      },
+      "summary": {
+        "id": 66486,
+        "type": "ride",
+        "name": "SkyRide",
+        "status": "operating",
+        "manufacturers": [
+          {
+            "id": 66480,
+            "name": "SkyRide Technology"
+          }
+        ],
+        "updated_at": "2026-10-11T12:00:00Z"
+      },
+      "record": {
+        "id": 66486,
+        "type": "ride",
+        "name": "SkyRide",
+        "title": "SkyRide (Carnival Horizon)",
+        "url": "https://coasterpedia.net/wiki/SkyRide_(Carnival_Horizon)",
+        "status": "operating",
+        "location": {},
+        "manufacturers": [
+          {
+            "id": 66480,
+            "name": "SkyRide Technology"
+          }
+        ],
+        "revision": 406,
+        "updated_at": "2026-10-11T12:00:00Z"
+      }
+    },
+    {
+      "kind": "attraction",
+      "id": 9102,
+      "revision": 407,
+      "updated_at": "2026-10-11T12:00:00Z",
+      "sort_name": "elan",
+      "filters": {
+        "type": "water_slide",
+        "status": "operating",
+        "country": "XK"
+      },
+      "summary": {
+        "id": 9102,
+        "type": "water_slide",
+        "name": "\u00C9lan",
+        "status": "operating",
+        "country": {
+          "code": "XK",
+          "name": "Kosovo"
+        },
+        "manufacturers": [],
+        "updated_at": "2026-10-11T12:00:00Z"
+      },
+      "record": {
+        "id": 9102,
+        "type": "water_slide",
+        "name": "\u00C9lan",
+        "title": "\u00C9lan (Example Waterpark)",
+        "url": "https://coasterpedia.net/wiki/%C3%89lan_(Example_Waterpark)",
+        "status": "operating",
+        "location": {
+          "country": {
+            "code": "XK",
+            "name": "Kosovo"
+          },
+          "coordinates": {
+            "lat": 42.6,
+            "lon": 21.1
+          }
+        },
+        "manufacturers": [],
+        "revision": 407,
+        "updated_at": "2026-10-11T12:00:00Z"
+      }
+    }
+  ],
+  "delete": [
+    {
+      "kind": "attraction",
+      "id": 170,
+      "merged_into": 171
+    }
+  ]
+}

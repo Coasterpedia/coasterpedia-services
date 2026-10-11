@@ -16,6 +16,7 @@
       <ProjectReference Include="..\Common\Common.csproj" />
       <ProjectReference Include="..\ArchiveBot\ArchiveBot.csproj" />
       <ProjectReference Include="..\ImageFetch\ImageFetch.csproj" />
+      <ProjectReference Include="..\Projector\Projector.csproj" />
     </ItemGroup>
 
     <ItemGroup>

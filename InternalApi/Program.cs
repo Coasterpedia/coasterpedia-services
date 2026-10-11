@@ -4,8 +4,13 @@ using CoasterpediaServices.Common;
 using CoasterpediaServices.ImageFetch;
 using CoasterpediaServices.InternalApi.Auth;
 using CoasterpediaServices.InternalApi.Options;
+using CoasterpediaServices.Projector;
+using CoasterpediaServices.Projector.Jobs;
+using CoasterpediaServices.Projector.Options;
 using Hangfire;
 using Hangfire.Redis.StackExchange;
+using Microsoft.Extensions.Options;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +21,7 @@ builder.Services.AddOptions<RedisOptions>()
 builder.Services.AddArchiveBot(builder.Configuration);
 builder.Services.AddCommon(builder.Configuration);
 builder.Services.AddImageFetch(builder.Configuration);
+builder.Services.AddProjector(builder.Configuration);
 
 builder.Services.AddProblemDetails();
 builder.Services.AddControllers()
@@ -25,6 +31,10 @@ builder.Services.AddControllers()
 
 var redisOptions = builder.Configuration.GetRequiredSection(nameof(RedisOptions)).Get<RedisOptions>()
                     ?? throw new InvalidOperationException("RedisOptions configuration is missing");
+
+// The Projector keeps its state beside Hangfire's, under projector: keys.
+builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
+    ConnectionMultiplexer.Connect($"{redisOptions.ConnectionString},defaultDatabase={redisOptions.Db},abortConnect=false"));
 
 builder.Services.AddHangfire(config => config
     .UseSimpleAssemblyNameTypeSerializer()
@@ -38,6 +48,13 @@ builder.Services.AddHangfireServer(o =>
     o.Queues = [ArchiveBotConfig.ArchiveQueue];
     o.WorkerCount = 1;
 });
+// One worker, so a flush, a sweep and a drain never overlap (ProjectorJobs).
+builder.Services.AddHangfireServer(o =>
+{
+    o.ServerName = "projector";
+    o.Queues = [ProjectorJobs.Queue];
+    o.WorkerCount = 1;
+});
 
 var app = builder.Build();
 
@@ -45,6 +62,9 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
 {
     Authorization = [new CloudflareAccessAuthorizationFilter()]
 });
+
+app.Services.GetRequiredService<IRecurringJobManager>()
+    .UseProjectorJobs(app.Services.GetRequiredService<IOptions<ProjectorConfig>>().Value);
 
 app.MapControllers();
 

@@ -1,0 +1,2 @@
+# The Worker is not part of the container, and its node_modules is large.
+EdgeApi/

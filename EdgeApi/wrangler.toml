@@ -1,0 +1,38 @@
+# The public data API (DR-010 §3). Reads from D1; the Projector in
+# InternalApi pushes changes to /internal/ingest.
+name = "coasterpedia-api"
+main = "src/index.ts"
+compatibility_date = "2026-08-20"
+routes = [{ pattern = "api.coasterpedia.net", custom_domain = true }]
+
+[vars]
+# Cloudflare Access, which guards /internal/*: the team domain
+# (<team>.cloudflareaccess.com) and the application's AUD tag. Ingest refuses
+# everything until both are set.
+ACCESS_TEAM_DOMAIN = ""
+ACCESS_AUD = ""
+
+# Disposable: rebuildable from the wiki at any time by a sweep.
+[[d1_databases]]
+binding = "DATA"
+database_name = "coasterpedia-api-data"
+database_id = "00000000-0000-0000-0000-000000000000" # from `wrangler d1 create coasterpedia-api-data`
+migrations_dir = "migrations"
+
+# key:<sha256 of the key> → { account, tier, status, name }. Written by
+# scripts/create-key.mjs until the portal exists (DR-010 §10 phase 2).
+[[kv_namespaces]]
+binding = "KEYS"
+id = "00000000000000000000000000000000" # from `wrangler kv namespace create KEYS`
+
+# One data point per request (DR-010 §7.3).
+[[analytics_engine_datasets]]
+binding = "USAGE"
+dataset = "coasterpedia_api_usage"
+
+# Per-location burst control, keyed by account (DR-010 §7.3). One limit for
+# everyone until tiers exist (DR-010 §9).
+[[ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "1001"
+simple = { limit = 60, period = 60 }

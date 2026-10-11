@@ -4,6 +4,8 @@ namespace CoasterpediaServices.Common;
 
 public record EventBusEvent(string? Schema, string? Namespace, string? User, string? PageTitle)
 {
+    public int? PageId { get; init; }
+
     public static EventBusEvent? FromJson(JsonNode? eventBody)
     {
         var pageTitle = eventBody?["page_title"]?.ToString();
@@ -16,6 +18,9 @@ public record EventBusEvent(string? Schema, string? Namespace, string? User, str
             eventBody?["$schema"]?.ToString(),
             eventBody?["page_namespace"]?.ToString(),
             eventBody?["performer"]?["user_text"]?.ToString(),
-            pageTitle);
+            pageTitle)
+        {
+            PageId = int.TryParse(eventBody?["page_id"]?.ToString(), out var id) ? id : null,
+        };
     }
 }

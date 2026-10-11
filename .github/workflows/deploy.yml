@@ -5,8 +5,11 @@ on:
   push:
     branches: [ "main" ]
     tags: [ 'v*.*.*' ]
+    # The Worker deploys from edge.yml; it is not in the container.
+    paths-ignore: [ "EdgeApi/**", ".github/workflows/edge.yml" ]
   pull_request:
     branches: [ "main" ]
+    paths-ignore: [ "EdgeApi/**", ".github/workflows/edge.yml" ]
 
 env:
   REGISTRY: ghcr.io
@@ -72,6 +75,8 @@ jobs:
           key: ${{ secrets.DOCKER_SSH_2_PRIVATE_KEY }}
           known_hosts: ${{ secrets.DOCKER_SSH_2_KNOWN_HOSTS }}
 
+      # Prune with -a: a digest-pinned image is never "dangling", so a plain
+      # prune leaves every past deploy on disk.
       - name: Deploy to server
         run: >
           ssh ${{ secrets.DOCKER_HOST_2 }} '
@@ -85,6 +90,6 @@ jobs:
             if cd coasterpedia-services; then git pull; else git clone --depth 1 -b main https://github.com/${{ github.repository }} coasterpedia-services && cd coasterpedia-services; fi &&
             docker compose pull &&
             docker compose up -d -V &&
-            docker system prune -f &&
+            docker system prune -af &&
             docker volume prune -f
           '

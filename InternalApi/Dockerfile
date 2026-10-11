@@ -10,6 +10,7 @@ COPY ["InternalApi/InternalApi.csproj", "InternalApi/"]
 COPY ["ArchiveBot/ArchiveBot.csproj", "ArchiveBot/"]
 COPY ["ImageFetch/ImageFetch.csproj", "ImageFetch/"]
 COPY ["Common/Common.csproj", "Common/"]
+COPY ["Projector/Projector.csproj", "Projector/"]
 RUN dotnet restore "InternalApi/InternalApi.csproj"
 COPY . .
 WORKDIR "/src/InternalApi"

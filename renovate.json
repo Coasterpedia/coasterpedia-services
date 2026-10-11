@@ -5,6 +5,7 @@
   ],
   "enabledManagers": [
     "nuget",
+    "npm",
     "dockerfile",
     "github-actions"
   ],
@@ -45,6 +46,16 @@
         "minor",
         "patch",
         "digest"
+      ]
+    },
+    {
+      "description": "Wrangler, the Workers runtime and its Vitest pool must move together",
+      "groupName": "Cloudflare Workers tooling",
+      "matchPackageNames": [
+        "wrangler",
+        "@cloudflare/**",
+        "vitest",
+        "@vitest/**"
       ]
     }
   ]
