@@ -95,7 +95,10 @@ export function facetQueries(url: URL): FacetQueries {
 	for (const d of DIMENSIONS) {
 		const values = filters[d];
 		if (!values) continue;
-		where.push(`${d} IN (${[...values].map(() => '?').join(',')})`);
+		// Not the status index (0010): it would read every row of the status
+		// and group them, where the stat's own index stops at its coverage.
+		const col = d === 'status' && manufacturer == null ? '+status' : d;
+		where.push(`${col} IN (${[...values].map(() => '?').join(',')})`);
 		binds.push(...values);
 	}
 

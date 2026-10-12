@@ -83,9 +83,10 @@ describe('record counts follow the rows', () => {
 		const plain = await env.DATA.prepare(`UPDATE attractions SET revision = 2, summary = '{}' WHERE id = 12`).run();
 		expect(plain.meta.rows_written).toBe(1);
 
-		// A facet move costs its cells: out of one and into another, in each view the row is in.
+		// A facet move costs its cells, out of one and into another, and the row's
+		// status index entry (0010), in each view the row is in.
 		const moved = await env.DATA.prepare(`UPDATE attractions SET status = 'defunct' WHERE id = 12`).run();
-		expect(moved.meta.rows_written).toBe(5);
+		expect(moved.meta.rows_written).toBe(7);
 	});
 });
 

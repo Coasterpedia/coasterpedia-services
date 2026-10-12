@@ -171,7 +171,12 @@ export function listQuery(url: URL): ListQuery {
 		binds.push(...values);
 	};
 	inList('type', list(url, 'type'));
-	inList('status', list(url, 'status'));
+	// The status index (0010) serves one status in name order. Anywhere else
+	// SQLite, which has no statistics, would still take it, read every row of
+	// the status (15,000 operating) and sort them: unary + keeps it out, so a
+	// stat sort walks its stat's index and several statuses the name index.
+	const statuses = list(url, 'status');
+	inList(manufacturer == null && (column !== 'sort_name' || statuses.length > 1) ? '+status' : 'status', statuses);
 	inList('country', list(url, 'country', (v) => v.toUpperCase()));
 
 	// A plain range on the sort column first, so D1 seeks the index to the
