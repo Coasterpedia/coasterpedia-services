@@ -79,23 +79,17 @@ public static class AttractionMapper
                 refs.Count == 0 ? "a variant with no product" : $"{variants.Count} variants for {refs.Count} products; can't tell which goes with which"));
         }
 
+        // A red link is an article not written yet, not a problem: a Ref with no id.
         var products = new List<AttractionProduct>(refs.Count);
         foreach (var (target, r) in refs)
         {
             var product = r;
-            if (target != null)
+            if (target != null && resolved.TryGetValue(target, out var id))
             {
-                if (!resolved.TryGetValue(target, out var id))
+                product = r with { Id = id };
+                if (!productIds.Contains(id))
                 {
-                    issues.Add(new DataIssue(row.PageId, "products", target, "links no page"));
-                }
-                else
-                {
-                    product = r with { Id = id };
-                    if (!productIds.Contains(id))
-                    {
-                        issues.Add(new DataIssue(row.PageId, "products", target, "links a page that is not a product"));
-                    }
+                    issues.Add(new DataIssue(row.PageId, "products", target, "links a page that is not a product"));
                 }
             }
 

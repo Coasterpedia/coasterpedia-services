@@ -177,13 +177,14 @@ public class ProjectorTests
     }
 
     [Fact]
-    public void A_product_link_to_another_kind_of_page_keeps_its_id_and_is_reported()
+    public void A_product_link_to_another_kind_of_page_keeps_its_id_and_is_reported_and_a_red_link_is_not()
     {
         var issues = new List<DataIssue>();
         var c = Map(Row(product: "[[Wild mouse]]#[[No Such Product]]#Play Structure Type A02"), issues);
         Assert.Equal([new Ref(4100, "Wild mouse"), new Ref(null, "No Such Product"), new Ref(null, "Play Structure Type A02")],
             c.Products.Select(p => p.Product));
-        Assert.Equal(["links a page that is not a product", "links no page"], issues.Select(i => i.Problem));
+        // The red link is no issue: an article not written yet.
+        Assert.Equal(new DataIssue(171, "products", "Wild mouse", "links a page that is not a product"), Assert.Single(issues));
     }
 
     [Fact]

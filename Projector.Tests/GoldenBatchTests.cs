@@ -393,7 +393,7 @@ public class GoldenBatchTests
         var batch = Wire.Batch(at, TimeSpan.FromDays(7), upserts, [Wire.Delete(170, 171)],
             [Wire.Promote(9998)], [Wire.Discard(9999)], VocabularyDocument.Build(vocab, templates, [Wire.Park, Wire.Manufacturer, Wire.Product]));
 
-        Assert.Equal([new DataIssue(66486, "products", "SkyRide Human Powered (SkyRide Technology product)", "links no page")], issues);
+        Assert.Empty(issues);
         AssertGolden("projector-batch.json", batch);
     }
 
