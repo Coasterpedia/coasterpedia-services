@@ -99,6 +99,22 @@ public static class Settling
         return (new RecordState(hash, revision, now, last?.SettledHash, clock), SettleOp.Pending);
     }
 
+    /// <summary>
+    /// A kind settles as it stands until a sweep of it completes: nothing of it
+    /// has been vouched for or against yet, as attractions' backfill wasn't.
+    /// Never while no kind is established: then Redis was lost, and every record
+    /// waits its week as §6.3 says.
+    /// </summary>
+    public static bool IsBootstrap(string kind, IReadOnlySet<string> established) =>
+        established.Count > 0 && !established.Contains(kind);
+
+    /// <summary>New content during a kind's bootstrap: latest and settled, whoever made it.</summary>
+    public static (RecordState Next, SettleOp Op) Bootstrap(string hash, long revision, DateTimeOffset now) =>
+        (new RecordState(hash, revision, now, hash, null), SettleOp.Settled);
+
+    /// <summary>A pending run joins the settled view: its clock has run out, or its kind is bootstrapping.</summary>
+    public static RecordState Promote(RecordState state) => state with { SettledHash = state.Hash, ClockFrom = null };
+
     public static bool IsDue(RecordState state, TimeSpan settleAfter, DateTimeOffset now) =>
         state is { Pending: true, ClockFrom: { } from } && from + settleAfter <= now;
 }

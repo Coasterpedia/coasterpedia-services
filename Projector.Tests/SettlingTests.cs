@@ -131,6 +131,40 @@ public class SettlingTests
     }
 
     [Fact]
+    public void A_kind_bootstraps_until_a_sweep_of_it_completes()
+    {
+        Assert.True(Settling.IsBootstrap("park", new HashSet<string> { "attraction" }));
+        Assert.False(Settling.IsBootstrap("attraction", new HashSet<string> { "attraction" }));
+    }
+
+    [Fact]
+    public void Nothing_bootstraps_when_no_kind_is_established()
+    {
+        // Lost Redis: every record waits its week, as before the rule.
+        Assert.False(Settling.IsBootstrap("attraction", new HashSet<string>()));
+        Assert.False(Settling.IsBootstrap("park", new HashSet<string>()));
+    }
+
+    [Fact]
+    public void Bootstrap_settles_new_content_whoever_made_it()
+    {
+        var (next, op) = Settling.Bootstrap("b", 11, T0);
+        Assert.Equal(SettleOp.Settled, op);
+        Assert.Equal(new RecordState("b", 11, T0, "b", null), next);
+        Assert.False(next.Pending);
+    }
+
+    [Fact]
+    public void Promoting_a_run_settles_its_content_and_stops_its_clock()
+    {
+        var promoted = Settling.Promote(PendingOver("a", "b", 11, T0));
+        Assert.Equal(new RecordState("b", 11, T0, "b", null), promoted);
+
+        var neverSettled = Settling.Promote(new RecordState("x", 5, T0, null, T0));
+        Assert.Equal("x", neverSettled.SettledHash);
+    }
+
+    [Fact]
     public void State_round_trips_and_pre_settlement_state_reads_as_settled()
     {
         var pending = PendingOver("a", "b", 11, T0);

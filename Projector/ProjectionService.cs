@@ -57,9 +57,9 @@ public sealed class ProjectionService
         public int Batches { get; private set; }
 
         public JsonObject NewBatch(IEnumerable<JsonObject>? upsert = null, IEnumerable<JsonObject>? delete = null,
-            IEnumerable<JsonObject>? discard = null)
+            IEnumerable<JsonObject>? discard = null, IEnumerable<JsonObject>? promote = null)
         {
-            var batch = Wire.Batch(now, settleAfter, upsert, delete, discards: discard, vocabularies: unsentVocabulary);
+            var batch = Wire.Batch(now, settleAfter, upsert, delete, promote, discard, unsentVocabulary);
             unsentVocabulary = null;
             Batches++;
             return batch;
@@ -77,10 +77,12 @@ public sealed class ProjectionService
         var pass = new Pass(DateTimeOffset.UtcNow, _config.SettleAfter,
             await _state.GetPushedVocabularyAsync() == vocabularyHash ? null : vocabulary);
 
+        var established = await _state.GetEstablishedAsync();
         var total = new ProjectionResult(0, 0, 0, 0);
         foreach (var kind in _kinds)
         {
-            var r = await ProjectKindAsync(kind, conn, pageIds, vocab, pass, ct);
+            var r = await ProjectKindAsync(kind, conn, pageIds, vocab, pass,
+                Settling.IsBootstrap(kind.Kind, established), ct);
             total = new ProjectionResult(total.Read + r.Read, total.Upserted + r.Upserted, total.Deleted + r.Deleted,
                 total.Issues + r.Issues);
         }
@@ -100,7 +102,7 @@ public sealed class ProjectionService
     }
 
     private async Task<ProjectionResult> ProjectKindAsync(IKindProjection projection, MySqlConnection conn,
-        IReadOnlyCollection<int>? pageIds, Vocabularies vocab, Pass pass, CancellationToken ct)
+        IReadOnlyCollection<int>? pageIds, Vocabularies vocab, Pass pass, bool bootstrap, CancellationToken ct)
     {
         var kind = projection.Kind;
         var sweep = pageIds == null;
@@ -116,6 +118,7 @@ public sealed class ProjectionService
 
         var upserts = new List<(JsonObject Item, int Id, RecordState State)>();
         var discards = new List<(JsonObject Item, int Id, RecordState State)>();
+        var promotes = new List<(JsonObject Item, int Id, RecordState State)>();
         var absorbed = new Dictionary<int, RecordState>();
         foreach (var p in projected)
         {
@@ -123,16 +126,22 @@ public sealed class ProjectionService
             states.TryGetValue(p.PageId, out var last);
             if (last != null && last.Hash == p.Hash)
             {
-                if (Settling.CanAbsorb(last, p.Revision, pageTrust, sweep))
+                var kept = Settling.CanAbsorb(last, p.Revision, pageTrust, sweep) ? last with { Revision = p.Revision } : last;
+                if (bootstrap && kept.Pending)
                 {
-                    absorbed[p.PageId] = last with { Revision = p.Revision };
+                    promotes.Add((Wire.Promote(p.PageId, kind), p.PageId, Settling.Promote(kept)));
+                }
+                else if (kept != last)
+                {
+                    absorbed[p.PageId] = kept;
                 }
 
                 continue;
             }
 
-            var trusted = Settling.IsTrusted(last, p.Revision, pageTrust);
-            var (next, op) = Settling.Decide(last, p.Hash, p.Revision, trusted, pass.Now);
+            var (next, op) = bootstrap
+                ? Settling.Bootstrap(p.Hash, p.Revision, pass.Now)
+                : Settling.Decide(last, p.Hash, p.Revision, Settling.IsTrusted(last, p.Revision, pageTrust), pass.Now);
             if (op == SettleOp.Discard)
             {
                 discards.Add((Wire.Discard(p.PageId, kind), p.PageId, next));
@@ -189,6 +198,12 @@ public sealed class ProjectionService
             await _state.CommitAsync(kind, batch.ToJsonString(), chunk.ToDictionary(d => d.Id, d => d.State), []);
         }
 
+        foreach (var chunk in promotes.Chunk(_config.BatchSize))
+        {
+            var batch = pass.NewBatch(promote: chunk.Select(d => d.Item));
+            await _state.CommitAsync(kind, batch.ToJsonString(), chunk.ToDictionary(d => d.Id, d => d.State), []);
+        }
+
         foreach (var chunk in deletes.Chunk(_config.BatchSize))
         {
             var batch = pass.NewBatch(delete: chunk.Select(d => d.Item));
@@ -198,12 +213,16 @@ public sealed class ProjectionService
 
         await _state.SaveAsync(kind, absorbed);
         await _state.SetIssuesAsync(kind, found, issues);
+        if (sweep)
+        {
+            await _state.MarkEstablishedAsync(kind);
+        }
 
         var pending = upserts.Count(u => u.State.Pending);
         _logger.LogInformation(
-            "Projected {Kind}s, {Scope}: {Read} read, {Upserted} changed ({Pending} pending), {Discarded} reverted to settled, {Deleted} deleted, {Issues} issues",
-            kind, sweep ? "everything" : $"{pageIds!.Count} pages", projected.Count, upserts.Count, pending, discards.Count,
-            deletes.Count, issues.Count);
+            "Projected {Kind}s, {Scope}{Bootstrap}: {Read} read, {Upserted} changed ({Pending} pending), {Promoted} promoted, {Discarded} reverted to settled, {Deleted} deleted, {Issues} issues",
+            kind, sweep ? "everything" : $"{pageIds!.Count} pages", bootstrap ? ", bootstrapping" : "", projected.Count,
+            upserts.Count, pending, promotes.Count, discards.Count, deletes.Count, issues.Count);
         return new ProjectionResult(projected.Count, upserts.Count, deletes.Count, issues.Count);
     }
 
@@ -221,7 +240,7 @@ public sealed class ProjectionService
             var states = await _state.GetStatesAsync(kind, await _state.GetDueAsync(kind, now - _config.SettleAfter));
             var due = states
                 .Where(s => Settling.IsDue(s.Value, _config.SettleAfter, now))
-                .Select(s => (Id: s.Key, State: s.Value with { SettledHash = s.Value.Hash, ClockFrom = null }))
+                .Select(s => (Id: s.Key, State: Settling.Promote(s.Value)))
                 .ToList();
 
             foreach (var chunk in due.Chunk(_config.BatchSize))

@@ -10,7 +10,7 @@ namespace CoasterpediaServices.Projector.State;
 /// edits are per page, shared by every kind. Losing it is safe but noisy: the
 /// next sweep finds every record unknown and pushes it again as pending. The
 /// settled view keeps the identical content it has, and the runs settle a week
-/// later.
+/// later. The established set goes too, so no kind bootstraps on that sweep.
 /// </summary>
 public sealed class ProjectionState
 {
@@ -19,6 +19,7 @@ public sealed class ProjectionState
     private const string PendingKey = "projector:pending";
     private const string FlushScheduledKey = "projector:flush-scheduled";
     private const string VocabularyKey = "projector:vocabularies:pushed";
+    private const string EstablishedKey = "projector:established";
     public const string OutboxKey = "projector:outbox";
 
     // Events can arrive out of order; keep the highest revision.
@@ -122,6 +123,12 @@ public sealed class ProjectionState
             await Db.SortedSetRemoveAsync(SettlingKey(kind), settled);
         }
     }
+
+    /// <summary>Kinds a sweep has completed for (Settling.IsBootstrap).</summary>
+    public async Task<HashSet<string>> GetEstablishedAsync() =>
+        (await Db.SetMembersAsync(EstablishedKey)).Select(m => m.ToString()).ToHashSet();
+
+    public Task MarkEstablishedAsync(string kind) => Db.SetAddAsync(EstablishedKey, kind);
 
     /// <summary>Hash of the vocabulary document last queued for the edge, or null if none was.</summary>
     public async Task<string?> GetPushedVocabularyAsync() => (string?)await Db.StringGetAsync(VocabularyKey);
