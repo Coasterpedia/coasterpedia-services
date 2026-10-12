@@ -1,6 +1,7 @@
 import { env } from 'cloudflare:workers';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { encodeCursor, listQuery } from '../src/attractions';
+import { facetQueries } from '../src/facets';
 import { FIRST_SEQ_SQL, pageQuery } from '../src/changes';
 import { resetData } from './reset';
 
@@ -78,9 +79,36 @@ describe('record counts follow the rows', () => {
 		expect(await count('count_latest')).toBe(N - 10);
 		expect(await count('count_settled')).toBe(N - 10);
 
-		// An ordinary update that moves no flag writes nothing to the counters.
-		const before = await env.DATA.prepare(`UPDATE attractions SET status = 'defunct' WHERE id = 12`).run();
-		expect(before.meta.rows_written).toBe(1);
+		// An ordinary update that moves no flag or facet writes nothing to the counters.
+		const plain = await env.DATA.prepare(`UPDATE attractions SET revision = 2, summary = '{}' WHERE id = 12`).run();
+		expect(plain.meta.rows_written).toBe(1);
+
+		// A facet move costs its cells: out of one and into another, in each view the row is in.
+		const moved = await env.DATA.prepare(`UPDATE attractions SET status = 'defunct' WHERE id = 12`).run();
+		expect(moved.meta.rows_written).toBe(5);
+	});
+});
+
+describe('facets read the counted cells and the stat they draw, never the table', () => {
+	const read = async (url: string) => {
+		const q = facetQueries(new URL(url, 'https://api.coasterpedia.net'));
+		const cells = await env.DATA.prepare(q.cells.sql).bind(...q.cells.binds).all();
+		const height = await env.DATA.prepare(q.ranges.height.sql).bind(...q.ranges.height.binds).all();
+		return { cells: cells.meta.rows_read, height: height.meta.rows_read };
+	};
+	const withHeight = async () =>
+		Number((await env.DATA.prepare('SELECT COUNT(*) AS n FROM attractions WHERE in_latest = 1 AND height IS NOT NULL').first<{ n: number }>())!.n);
+
+	it.each([
+		['unfiltered', '/v1/attractions/facets?view=latest'],
+		['filtered', '/v1/attractions/facets?view=latest&country=GB&type=coaster'],
+		['settled', '/v1/attractions/facets'],
+	])('%s', async (_, url) => {
+		const { cells, height } = await read(url);
+		// 3 types × 1–2 statuses × 7 countries, per view: a few dozen cells, not 5,000 rows.
+		expect(cells).toBeLessThan(100);
+		// The histogram reads the attractions recording a height (three in five), no more.
+		expect(height).toBeLessThanOrEqual(await withHeight() + 1);
 	});
 });
 

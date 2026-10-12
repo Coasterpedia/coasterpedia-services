@@ -3,8 +3,12 @@ import { authenticate, authenticateInternal, type Caller } from './auth';
 import { cacheKey, serveCached, type Served } from './cache';
 import { delayHours, listChanges, pruneChanges } from './changes';
 import type { Env } from './env';
+import { attractionFacets } from './facets';
 import { problem, ProblemError } from './http';
 import { ingest } from './ingest';
+import { getManufacturer, listManufacturers } from './manufacturers';
+import { getPark, listParks, parkAttractions } from './parks';
+import { getProduct, listProducts, manufacturerProducts, productInstallations } from './products';
 import { LIMITED_HEADERS, withPolicy } from './ratelimit';
 import { vocabularies } from './vocabularies';
 
@@ -102,9 +106,54 @@ function route(path: string, url: URL, env: Env, caller: Caller): Route | null {
 		return { name: '/v1/attractions', view: true, run: () => listAttractions(url, env) };
 	}
 
+	// Before {id}, which would otherwise take "facets" for an ID.
+	if (path === '/v1/attractions/facets') {
+		return { name: '/v1/attractions/facets', view: true, run: () => attractionFacets(url, env) };
+	}
+
 	const one = /^\/v1\/attractions\/([^/]+)$/.exec(path);
 	if (one) {
 		return { name: '/v1/attractions/{id}', view: true, run: () => getAttraction(url, one[1], env) };
+	}
+
+	if (path === '/v1/parks') {
+		return { name: '/v1/parks', view: true, run: () => listParks(url, env) };
+	}
+
+	if (/^\/v1\/parks\/[^/]+\/attractions$/.test(path)) {
+		return { name: '/v1/parks/{id}/attractions', view: true, run: () => parkAttractions() };
+	}
+
+	const park = /^\/v1\/parks\/([^/]+)$/.exec(path);
+	if (park) {
+		return { name: '/v1/parks/{id}', view: true, run: () => getPark(url, park[1], env) };
+	}
+
+	if (path === '/v1/manufacturers') {
+		return { name: '/v1/manufacturers', view: true, run: () => listManufacturers(url, env) };
+	}
+
+	const made = /^\/v1\/manufacturers\/([^/]+)\/products$/.exec(path);
+	if (made) {
+		return { name: '/v1/manufacturers/{id}/products', view: true, run: () => manufacturerProducts(url, made[1], env) };
+	}
+
+	const manufacturer = /^\/v1\/manufacturers\/([^/]+)$/.exec(path);
+	if (manufacturer) {
+		return { name: '/v1/manufacturers/{id}', view: true, run: () => getManufacturer(url, manufacturer[1], env) };
+	}
+
+	if (path === '/v1/products') {
+		return { name: '/v1/products', view: true, run: () => listProducts(url, env) };
+	}
+
+	if (/^\/v1\/products\/[^/]+\/installations$/.test(path)) {
+		return { name: '/v1/products/{id}/installations', view: true, run: () => productInstallations() };
+	}
+
+	const product = /^\/v1\/products\/([^/]+)$/.exec(path);
+	if (product) {
+		return { name: '/v1/products/{id}', view: true, run: () => getProduct(url, product[1], env) };
 	}
 
 	return null;

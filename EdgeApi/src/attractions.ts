@@ -7,11 +7,11 @@ import { badRequest, CHANGES_WINDOW, decodeOpaque, encodeOpaque, json, LICENCE, 
  * ignoring ?park= would return every attraction and look like an answer.
  */
 const NOT_YET = new Set([
-	'state', 'park', 'manufacturer', 'product', 'location_kind', 'opened_from', 'opened_to',
+	'state', 'park', 'product', 'location_kind', 'opened_from', 'opened_to',
 	'bbox', 'updated_since', 'q',
 ]);
 
-const LIST_PARAMS = new Set(['type', 'status', 'country', 'sort', 'view', 'limit', 'cursor']);
+const LIST_PARAMS = new Set(['type', 'status', 'country', 'manufacturer', 'sort', 'view', 'limit', 'cursor']);
 const ONE_PARAMS = new Set(['view']);
 const META_PARAMS = new Set(['view']);
 /**
@@ -47,9 +47,10 @@ export function viewParam(url: URL): View {
 
 export const FLAG: Record<View, string> = { latest: 'in_latest', settled: 'in_settled' };
 
-function checkParams(url: URL, allowed: Set<string>): void {
+/** notYet: the endpoint's contract parameters whose field is not published yet. */
+export function checkParams(url: URL, allowed: Set<string>, notYet: Set<string> = NOT_YET): void {
 	for (const name of url.searchParams.keys()) {
-		if (NOT_YET.has(name)) {
+		if (notYet.has(name)) {
 			throw badRequest('parameter-unavailable', `${name} is not available yet`,
 				`The field behind ${name} is not published in this beta, so filtering by it would return the wrong set.`);
 		}
@@ -70,6 +71,37 @@ export function list(url: URL, name: string, transform: (v: string) => string = 
 	return values;
 }
 
+/**
+ * manufacturer: one manufacturer's page ID, as in an attraction's
+ * manufacturers[].id. One, as the contract has it; a list would be additive.
+ */
+export function manufacturerParam(url: URL): number | null {
+	const raw = url.searchParams.get('manufacturer');
+	if (raw == null) return null;
+	const n = Number(raw);
+	if (!/^\d+$/.test(raw.trim()) || !Number.isSafeInteger(n) || n < 1) {
+		throw badRequest('parameter-invalid', 'manufacturer takes one manufacturer ID');
+	}
+	return n;
+}
+
+/**
+ * The request with a merged manufacturer's ID replaced by the one it merged
+ * into, as /v1/manufacturers/{old} redirects: a client holding the old ID
+ * would otherwise get an empty list that reads as "makes nothing". Attractions
+ * link the new page once the sweep re-resolves their links.
+ */
+export async function followManufacturerMerge(url: URL, env: Env): Promise<URL> {
+	const id = manufacturerParam(url);
+	if (id == null) return url;
+	const merged = await env.DATA.prepare(`SELECT new_id FROM merges WHERE kind = 'manufacturer' AND old_id = ?`)
+		.bind(id).first<{ new_id: number }>();
+	if (!merged) return url;
+	const followed = new URL(url);
+	followed.searchParams.set('manufacturer', String(merged.new_id));
+	return followed;
+}
+
 export function limitParam(url: URL): number {
 	const raw = url.searchParams.get('limit');
 	if (raw == null) return 25;
@@ -85,7 +117,7 @@ export function encodeCursor(sort: string, value: string | number, id: number): 
 	return encodeOpaque([sort, value, id]);
 }
 
-function decodeCursor(cursor: string, sort: string): [string | number, number] {
+export function decodeCursor(cursor: string, sort: string): [string | number, number] {
 	try {
 		const parsed = decodeOpaque(cursor) as any[];
 		// Two-part cursors came from before stat sorts, when name was the only sort.
@@ -121,12 +153,21 @@ export function listQuery(url: URL): ListQuery {
 			'The beta sorts by name, height, speed or length, each with - for descending.');
 	}
 
-	const where: string[] = [`${FLAG[view]} = 1`];
-	if (column !== 'sort_name') where.push(`${column} IS NOT NULL`);
+	// With a manufacturer, the page is read from its links (migration 0008),
+	// which carry every filter and sort column, and joined back for the summary.
+	const manufacturer = manufacturerParam(url);
+	const c = (col: string) => (manufacturer == null ? col : `m.${col}`);
+
+	const where: string[] = [`${c(FLAG[view])} = 1`];
 	const binds: (string | number)[] = [];
+	if (manufacturer != null) {
+		where.push('m.manufacturer = ?');
+		binds.push(manufacturer);
+	}
+	if (column !== 'sort_name') where.push(`${c(column)} IS NOT NULL`);
 	const inList = (col: string, values: string[]) => {
 		if (values.length === 0) return;
-		where.push(`${col} IN (${values.map(() => '?').join(',')})`);
+		where.push(`${c(col)} IN (${values.map(() => '?').join(',')})`);
 		binds.push(...values);
 	};
 	inList('type', list(url, 'type'));
@@ -139,19 +180,23 @@ export function listQuery(url: URL): ListQuery {
 	const cursor = url.searchParams.get('cursor');
 	if (cursor) {
 		const [v, id] = decodeCursor(cursor, sort);
-		where.push(desc ? `${column} <= ? AND (${column} < ? OR id < ?)` : `${column} >= ? AND (${column} > ? OR id > ?)`);
+		const [col, key] = [c(column), c('id')];
+		where.push(desc ? `${col} <= ? AND (${col} < ? OR ${key} < ?)` : `${col} >= ? AND (${col} > ? OR ${key} > ?)`);
 		binds.push(v, v, id);
 	}
 
 	const dir = desc ? 'DESC' : 'ASC';
-	const sql = `SELECT id, ${column} AS position, summary FROM attractions
+	const from = manufacturer == null
+		? 'attractions'
+		: 'attraction_manufacturers m JOIN attractions a ON a.id = m.id AND a.in_latest = m.in_latest';
+	const sql = `SELECT ${c('id')} AS id, ${c(column)} AS position, ${manufacturer == null ? 'summary' : 'a.summary'} FROM ${from}
 		WHERE ${where.join(' AND ')}
-		ORDER BY ${column} ${dir}, id ${dir} LIMIT ?`;
+		ORDER BY ${c(column)} ${dir}, ${c('id')} ${dir} LIMIT ?`;
 	return { sql, binds: [...binds, limit + 1], limit, view, sort, column };
 }
 
 export async function listAttractions(url: URL, env: Env): Promise<{ response: Response; rows: number }> {
-	const { sql, binds, limit, view, sort } = listQuery(url);
+	const { sql, binds, limit, view, sort } = listQuery(await followManufacturerMerge(url, env));
 	const { results } = await env.DATA.prepare(sql).bind(...binds).all<Row>();
 
 	const page = results.slice(0, limit);
@@ -177,14 +222,28 @@ interface RecordRow {
 
 export async function getAttraction(url: URL, idText: string, env: Env): Promise<{ response: Response; rows: number }> {
 	checkParams(url, ONE_PARAMS);
+	return getRecord(url, idText, env, { kind: 'attraction', table: 'attractions', path: '/v1/attractions', noun: 'attraction' });
+}
+
+/** Where one kind's full records live, and how its problems name it. */
+export interface RecordKind {
+	kind: string;
+	table: string;
+	/** The list's path; a merged ID redirects to `${path}/{new id}`. */
+	path: string;
+	noun: string;
+}
+
+/** One full record in the view asked for, with its settlement; the caller has checked its parameters. */
+export async function getRecord(url: URL, idText: string, env: Env, k: RecordKind): Promise<{ response: Response; rows: number }> {
 	const view = viewParam(url);
 	const id = Number(idText);
 	if (!Number.isSafeInteger(id) || id < 1) {
-		return { rows: 0, response: problem(404, 'not-found', 'No such attraction') };
+		return { rows: 0, response: problem(404, 'not-found', `No such ${k.noun}`) };
 	}
 
 	const { results } = await env.DATA.prepare(
-		`SELECT in_latest, in_settled, revision, settles_at, record FROM attractions WHERE id = ?`,
+		`SELECT in_latest, in_settled, revision, settles_at, record FROM ${k.table} WHERE id = ?`,
 	).bind(id).all<RecordRow>();
 	const latest = results.find((r) => r.in_latest === 1);
 	const settled = results.find((r) => r.in_settled === 1);
@@ -210,27 +269,29 @@ export async function getAttraction(url: URL, idText: string, env: Env): Promise
 		return {
 			rows: 0,
 			response: problem(404, 'not-settled', 'Not in the settled view yet',
-				`This attraction has changes that have not settled yet; it appears here at ${pending.settles_at} if nothing changes. Pass view=latest to see it now.`),
+				`This ${k.noun} has changes that have not settled yet; it appears here at ${pending.settles_at} if nothing changes. Pass view=latest to see it now.`),
 		};
 	}
 
-	const merged = await env.DATA.prepare(`SELECT new_id FROM merges WHERE kind = 'attraction' AND old_id = ?`)
-		.bind(id).first<{ new_id: number }>();
+	const merged = await env.DATA.prepare(`SELECT new_id FROM merges WHERE kind = ? AND old_id = ?`)
+		.bind(k.kind, id).first<{ new_id: number }>();
 	if (merged) {
-		const location = new URL(`/v1/attractions/${merged.new_id}`, url);
+		const location = new URL(`${k.path}/${merged.new_id}`, url);
 		location.search = url.search;
 		return { rows: 0, response: new Response(null, { status: 301, headers: { location: location.toString() } }) };
 	}
 
-	return { rows: 0, response: problem(404, 'not-found', 'No such attraction') };
+	return { rows: 0, response: problem(404, 'not-found', `No such ${k.noun}`) };
 }
 
 export async function meta(url: URL, env: Env): Promise<Response> {
 	checkParams(url, META_PARAMS);
 	const view = viewParam(url);
-	// Kept by triggers (migration 0002); never COUNT(*) here, as this needs no key.
-	const count = await env.DATA.prepare(`SELECT value AS n FROM state WHERE key = ?`)
-		.bind(view === 'latest' ? 'count_latest' : 'count_settled').first<{ n: string }>();
+	// Kept by triggers (migrations 0002, 0006, 0007, 0009); never COUNT(*) here, as this needs no key.
+	const { results: counts } = await env.DATA.prepare(`SELECT key, value FROM state WHERE key IN (?1, ?2, ?3, ?4)`)
+		.bind(`count_${view}`, `count_parks_${view}`, `count_manufacturers_${view}`, `count_products_${view}`)
+		.all<{ key: string; value: string }>();
+	const count = (key: string) => Number(counts.find((c) => c.key === key)?.value ?? 0);
 	const settleAfter = await env.DATA.prepare(`SELECT value FROM state WHERE key = 'settle_after'`).first<{ value: string }>();
 	return json({
 		data_as_of: await dataAsOf(env),
@@ -239,7 +300,12 @@ export async function meta(url: URL, env: Env): Promise<Response> {
 		// How long a /v1/changes cursor stays good: how long a client can be offline.
 		changes_window: CHANGES_WINDOW,
 		view,
-		counts: { attractions: Number(count?.n ?? 0) },
+		counts: {
+			attractions: count(`count_${view}`),
+			parks: count(`count_parks_${view}`),
+			manufacturers: count(`count_manufacturers_${view}`),
+			products: count(`count_products_${view}`),
+		},
 		licence: LICENCE,
 	});
 }

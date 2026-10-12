@@ -742,7 +742,8 @@
         "applies_to": [
           "coaster",
           "ride",
-          "water_slide"
+          "water_slide",
+          "park"
         ]
       },
       {
@@ -751,7 +752,9 @@
         "applies_to": [
           "coaster",
           "ride",
-          "water_slide"
+          "water_slide",
+          "park",
+          "manufacturer"
         ]
       },
       {
@@ -760,7 +763,8 @@
         "applies_to": [
           "coaster",
           "ride",
-          "water_slide"
+          "water_slide",
+          "park"
         ]
       },
       {
@@ -769,7 +773,8 @@
         "applies_to": [
           "coaster",
           "ride",
-          "water_slide"
+          "water_slide",
+          "park"
         ]
       },
       {
@@ -778,7 +783,8 @@
         "applies_to": [
           "coaster",
           "ride",
-          "water_slide"
+          "water_slide",
+          "park"
         ]
       },
       {
@@ -796,7 +802,8 @@
         "applies_to": [
           "coaster",
           "ride",
-          "water_slide"
+          "water_slide",
+          "park"
         ]
       },
       {
@@ -805,7 +812,9 @@
         "applies_to": [
           "coaster",
           "ride",
-          "water_slide"
+          "water_slide",
+          "park",
+          "product"
         ]
       },
       {
@@ -814,7 +823,210 @@
         "applies_to": [
           "coaster",
           "ride",
-          "water_slide"
+          "water_slide",
+          "park",
+          "manufacturer"
+        ]
+      },
+      {
+        "value": "active",
+        "label": "Active",
+        "applies_to": [
+          "manufacturer"
+        ]
+      },
+      {
+        "value": "in_production",
+        "label": "In production",
+        "applies_to": [
+          "product"
+        ]
+      },
+      {
+        "value": "discontinued",
+        "label": "Discontinued",
+        "applies_to": [
+          "product"
+        ]
+      }
+    ],
+    "track_material": [
+      {
+        "value": "steel",
+        "label": "Steel",
+        "applies_to": [
+          "product"
+        ]
+      },
+      {
+        "value": "wooden",
+        "label": "Wooden",
+        "applies_to": [
+          "product"
+        ]
+      }
+    ],
+    "support_material": [
+      {
+        "value": "steel",
+        "label": "Steel",
+        "applies_to": [
+          "product"
+        ]
+      },
+      {
+        "value": "wooden",
+        "label": "Wooden",
+        "applies_to": [
+          "product"
+        ]
+      }
+    ],
+    "restraints": [
+      {
+        "value": "lap_bars",
+        "label": "Lap-bars",
+        "applies_to": [
+          "product"
+        ]
+      },
+      {
+        "value": "shared_lap_bars",
+        "label": "Shared lap-bars",
+        "applies_to": [
+          "product"
+        ]
+      },
+      {
+        "value": "over_the_shoulder",
+        "label": "Over-the-shoulder",
+        "applies_to": [
+          "product"
+        ]
+      },
+      {
+        "value": "buzz_bars",
+        "label": "Buzz bars",
+        "applies_to": [
+          "product"
+        ]
+      },
+      {
+        "value": "vest_harness",
+        "label": "Vest harness",
+        "applies_to": [
+          "product"
+        ]
+      },
+      {
+        "value": "seatbelt_only",
+        "label": "Seatbelt only",
+        "applies_to": [
+          "product"
+        ]
+      },
+      {
+        "value": "back",
+        "label": "Back",
+        "applies_to": [
+          "product"
+        ]
+      },
+      {
+        "value": "hip",
+        "label": "Hip",
+        "applies_to": [
+          "product"
+        ]
+      },
+      {
+        "value": "none",
+        "label": "None",
+        "applies_to": [
+          "product"
+        ]
+      }
+    ],
+    "classes": [
+      {
+        "value": "body",
+        "label": "Body",
+        "applies_to": [
+          "product"
+        ]
+      },
+      {
+        "value": "mat",
+        "label": "Mat",
+        "applies_to": [
+          "product"
+        ]
+      },
+      {
+        "value": "tube",
+        "label": "Tube",
+        "applies_to": [
+          "product"
+        ]
+      },
+      {
+        "value": "sled",
+        "label": "Sled",
+        "applies_to": [
+          "product"
+        ]
+      }
+    ],
+    "containment": [
+      {
+        "value": "enclosed",
+        "label": "Enclosed",
+        "applies_to": [
+          "product"
+        ]
+      },
+      {
+        "value": "open",
+        "label": "Open",
+        "applies_to": [
+          "product"
+        ]
+      },
+      {
+        "value": "partially_enclosed",
+        "label": "Partially enclosed",
+        "applies_to": [
+          "product"
+        ]
+      }
+    ],
+    "slide_material": [
+      {
+        "value": "plastic",
+        "label": "Plastic",
+        "applies_to": [
+          "product"
+        ]
+      },
+      {
+        "value": "metal",
+        "label": "Metal",
+        "applies_to": [
+          "product"
+        ]
+      },
+      {
+        "value": "concrete",
+        "label": "Concrete",
+        "applies_to": [
+          "product"
+        ]
+      },
+      {
+        "value": "other",
+        "label": "Other",
+        "applies_to": [
+          "product"
         ]
       }
     ]

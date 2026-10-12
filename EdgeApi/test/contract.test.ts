@@ -101,3 +101,23 @@ it('logs the batch for /v1/changes, with the merge as a tombstone', async () => 
 	const settled = await (await get('/v1/changes?since=2026-01-01T00:00:00Z')).json<any>();
 	expect(settled.data.map((c: any) => c.id)).not.toContain(9101);
 });
+
+it('labels facets from the vocabularies and draws the browser histogram', async () => {
+	const body = await (await get('/v1/attractions/facets?view=latest')).json<any>();
+	expect(body.data.total).toBe(7);
+	expect(body.data.dimensions.type[0]).toEqual({ value: 'coaster', label: 'Roller coaster', count: 4 });
+	expect(body.data.dimensions.status).toContainEqual({ value: 'standing_but_not_operating', label: 'Standing but not operating', count: 1 });
+	expect(body.data.dimensions.country).toContainEqual({ value: 'XK', label: 'Kosovo', count: 1 });
+
+	// Five heights, 21.3 to 73.8 m: width 1 needs 53 bars, so 2 m, from 20 to 74.
+	const height = body.data.ranges.height;
+	expect(height).toMatchObject({ unit: 'm', min: 21.3, max: 73.8 });
+	expect(height.buckets).toHaveLength(27);
+	expect(height.buckets[0]).toEqual({ from: 20, to: 22, count: 1 });
+	expect(height.buckets.at(-1)).toEqual({ from: 72, to: 74, count: 1 });
+	expect(height.buckets.reduce((sum: number, b: any) => sum + b.count, 0)).toBe(5);
+
+	// 9101 waits to settle, so the settled view counts one coaster fewer.
+	const settled = await (await get('/v1/attractions/facets')).json<any>();
+	expect(settled.data.dimensions.type[0]).toMatchObject({ value: 'coaster', count: 3 });
+});

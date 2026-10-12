@@ -5,7 +5,7 @@ import { badRequest, CHANGES_WINDOW_DAYS, decodeOpaque, encodeOpaque, isoSeconds
 const PARAMS = new Set(['since', 'kinds', 'view', 'limit']);
 
 /** Kinds the log records. Any other is refused: filtering by it would answer "nothing changed". */
-const KINDS = new Set(['attraction']);
+const KINDS = new Set(['attraction', 'park', 'manufacturer', 'product']);
 
 /**
  * Log rows one request may scan. A settled feed skips latest-only rows, so a
@@ -97,7 +97,7 @@ export function pageQuery(after: number, upper: number, view: View, kinds: strin
 
 function expired(detail: string): Response {
 	return problem(410, 'cursor-expired', 'This cursor has expired',
-		`${detail} Resync from /v1/attractions, then follow /v1/changes with since set to the time the resync began.`);
+		`${detail} Resync from the lists (/v1/attractions, /v1/parks, /v1/manufacturers), then follow /v1/changes with since set to the time the resync began.`);
 }
 
 function encodeCursor(epoch: string, seq: number): string {
@@ -132,7 +132,7 @@ export async function listChanges(url: URL, env: Env, tier: string, now = new Da
 	const kinds = list(url, 'kinds');
 	for (const kind of kinds) {
 		if (!KINDS.has(kind)) {
-			throw badRequest('parameter-unavailable', `kinds=${kind} is not available yet`, 'The beta publishes attractions only.');
+			throw badRequest('parameter-unavailable', `kinds=${kind} is not available yet`, 'The beta publishes attractions, parks, manufacturers and products.');
 		}
 	}
 	const since = url.searchParams.get('since');

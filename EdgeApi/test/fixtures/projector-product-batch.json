@@ -1,0 +1,726 @@
+{
+  "as_of": "2026-10-12T12:00:00Z",
+  "settle_after": "P7D",
+  "upsert": [
+    {
+      "kind": "product",
+      "id": 3213,
+      "revision": 701,
+      "updated_at": "2026-10-12T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
+      "sort_name": "boomerang",
+      "filters": {
+        "type": "coaster",
+        "status": "discontinued"
+      },
+      "summary": {
+        "id": 3213,
+        "type": "coaster",
+        "name": "Boomerang",
+        "status": "discontinued",
+        "manufacturers": [
+          {
+            "id": 548,
+            "name": "Vekoma"
+          }
+        ],
+        "introduced": {
+          "edtf": "1984",
+          "earliest": "1984-01-01",
+          "latest": "1984-12-31"
+        },
+        "updated_at": "2026-10-12T12:00:00Z"
+      },
+      "record": {
+        "id": 3213,
+        "type": "coaster",
+        "name": "Boomerang",
+        "title": "Boomerang (Vekoma product)",
+        "url": "https://coasterpedia.net/wiki/Boomerang_(Vekoma_product)",
+        "status": "discontinued",
+        "manufacturers": [
+          {
+            "id": 548,
+            "name": "Vekoma"
+          }
+        ],
+        "introduced": {
+          "edtf": "1984",
+          "earliest": "1984-01-01",
+          "latest": "1984-12-31"
+        },
+        "offered": {
+          "track_material": [
+            "steel"
+          ],
+          "support_material": [
+            "steel"
+          ]
+        },
+        "variants": [
+          {
+            "name": null,
+            "stats": {
+              "height": {
+                "value": 35.5,
+                "unit": "m",
+                "entered": {
+                  "value": 35.5,
+                  "unit": "m"
+                }
+              },
+              "length": {
+                "value": 285,
+                "unit": "m",
+                "entered": {
+                  "value": 285,
+                  "unit": "m"
+                }
+              },
+              "speed": {
+                "value": 75.6,
+                "unit": "km/h",
+                "entered": {
+                  "value": 75.6,
+                  "unit": "km/h"
+                }
+              },
+              "inversions": {
+                "track": 3,
+                "rider": 6
+              },
+              "max_angle": 45,
+              "g_force": 5.2,
+              "duration": {
+                "value": 108,
+                "unit": "s"
+              },
+              "riders_per_hour": 760,
+              "riders_per_train": 28,
+              "footprint": {
+                "length": {
+                  "value": 88,
+                  "unit": "m",
+                  "entered": {
+                    "value": 88,
+                    "unit": "m"
+                  }
+                },
+                "width": {
+                  "value": 30,
+                  "unit": "m",
+                  "entered": {
+                    "value": 30,
+                    "unit": "m"
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "revision": 701,
+        "updated_at": "2026-10-12T12:00:00Z"
+      }
+    },
+    {
+      "kind": "product",
+      "id": 68541,
+      "revision": 702,
+      "updated_at": "2026-10-12T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
+      "sort_name": "sit down thrill coaster",
+      "filters": {
+        "type": "coaster",
+        "status": "in_production"
+      },
+      "summary": {
+        "id": 68541,
+        "type": "coaster",
+        "name": "Sit Down Thrill Coaster",
+        "status": "in_production",
+        "manufacturers": [
+          {
+            "id": 548,
+            "name": "Vekoma"
+          }
+        ],
+        "introduced": {
+          "edtf": "2016",
+          "earliest": "2016-01-01",
+          "latest": "2016-12-31"
+        },
+        "updated_at": "2026-10-12T12:00:00Z"
+      },
+      "record": {
+        "id": 68541,
+        "type": "coaster",
+        "name": "Sit Down Thrill Coaster",
+        "title": "Sit Down Thrill Coaster (Vekoma product)",
+        "url": "https://coasterpedia.net/wiki/Sit_Down_Thrill_Coaster_(Vekoma_product)",
+        "status": "in_production",
+        "manufacturers": [
+          {
+            "id": 548,
+            "name": "Vekoma"
+          }
+        ],
+        "introduced": {
+          "edtf": "2016",
+          "earliest": "2016-01-01",
+          "latest": "2016-12-31"
+        },
+        "variants": [
+          {
+            "name": "Lech Coaster",
+            "stats": {
+              "height": {
+                "value": 40,
+                "unit": "m",
+                "entered": {
+                  "value": 40,
+                  "unit": "m"
+                }
+              },
+              "length": {
+                "value": 910,
+                "unit": "m",
+                "entered": {
+                  "value": 910,
+                  "unit": "m"
+                }
+              },
+              "speed": {
+                "value": 95,
+                "unit": "km/h",
+                "entered": {
+                  "value": 95,
+                  "unit": "km/h"
+                }
+              }
+            }
+          },
+          {
+            "name": "Top Gun Launch Coaster",
+            "stats": {
+              "height": {
+                "value": 31,
+                "unit": "m",
+                "entered": {
+                  "value": 31,
+                  "unit": "m"
+                }
+              },
+              "length": {
+                "value": 912,
+                "unit": "m",
+                "entered": {
+                  "value": 912,
+                  "unit": "m"
+                }
+              },
+              "speed": {
+                "value": 97,
+                "unit": "km/h",
+                "entered": {
+                  "value": 97,
+                  "unit": "km/h"
+                }
+              }
+            }
+          }
+        ],
+        "revision": 702,
+        "updated_at": "2026-10-12T12:00:00Z"
+      }
+    },
+    {
+      "kind": "product",
+      "id": 54013,
+      "revision": 703,
+      "updated_at": "2026-10-12T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
+      "sort_name": "swiss bob",
+      "filters": {
+        "type": "coaster",
+        "status": "discontinued"
+      },
+      "summary": {
+        "id": 54013,
+        "type": "coaster",
+        "name": "Swiss Bob",
+        "status": "discontinued",
+        "manufacturers": [
+          {
+            "id": 2416,
+            "name": "Giovanola"
+          },
+          {
+            "id": 546,
+            "name": "Intamin"
+          }
+        ],
+        "updated_at": "2026-10-12T12:00:00Z"
+      },
+      "record": {
+        "id": 54013,
+        "type": "coaster",
+        "name": "Swiss Bob",
+        "title": "Swiss Bob",
+        "url": "https://coasterpedia.net/wiki/Swiss_Bob",
+        "status": "discontinued",
+        "manufacturers": [
+          {
+            "id": 2416,
+            "name": "Giovanola"
+          },
+          {
+            "id": 546,
+            "name": "Intamin"
+          }
+        ],
+        "offered": {
+          "track_material": [
+            "steel"
+          ],
+          "support_material": [
+            "steel"
+          ]
+        },
+        "revision": 703,
+        "updated_at": "2026-10-12T12:00:00Z"
+      }
+    },
+    {
+      "kind": "product",
+      "id": 86315,
+      "revision": 704,
+      "updated_at": "2026-10-12T12:00:00Z",
+      "settled": false,
+      "settles_at": "2026-10-19T12:00:00Z",
+      "sort_name": "mini mouse",
+      "filters": {
+        "type": "coaster",
+        "status": "discontinued"
+      },
+      "summary": {
+        "id": 86315,
+        "type": "coaster",
+        "name": "Mini Mouse",
+        "status": "discontinued",
+        "manufacturers": [
+          {
+            "id": 2399,
+            "name": "Zamperla"
+          }
+        ],
+        "discontinued": {
+          "edtf": "2015",
+          "earliest": "2015-01-01",
+          "latest": "2015-12-31"
+        },
+        "updated_at": "2026-10-12T12:00:00Z"
+      },
+      "record": {
+        "id": 86315,
+        "type": "coaster",
+        "name": "Mini Mouse",
+        "title": "Mini Mouse (Zamperla product)",
+        "url": "https://coasterpedia.net/wiki/Mini_Mouse_(Zamperla_product)",
+        "status": "discontinued",
+        "manufacturers": [
+          {
+            "id": 2399,
+            "name": "Zamperla"
+          }
+        ],
+        "discontinued": {
+          "edtf": "2015",
+          "earliest": "2015-01-01",
+          "latest": "2015-12-31"
+        },
+        "offered": {
+          "track_material": [
+            "steel"
+          ],
+          "restraints": [
+            "shared_lap_bars"
+          ]
+        },
+        "revision": 704,
+        "updated_at": "2026-10-12T12:00:00Z"
+      }
+    },
+    {
+      "kind": "product",
+      "id": 18364,
+      "revision": 705,
+      "updated_at": "2026-10-12T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
+      "sort_name": "disk\u0027o",
+      "filters": {
+        "type": "ride",
+        "status": "in_production"
+      },
+      "summary": {
+        "id": 18364,
+        "type": "ride",
+        "name": "Disk\u0027O",
+        "status": "in_production",
+        "manufacturers": [
+          {
+            "id": 2399,
+            "name": "Zamperla"
+          }
+        ],
+        "introduced": {
+          "edtf": "2003",
+          "earliest": "2003-01-01",
+          "latest": "2003-12-31"
+        },
+        "updated_at": "2026-10-12T12:00:00Z"
+      },
+      "record": {
+        "id": 18364,
+        "type": "ride",
+        "name": "Disk\u0027O",
+        "title": "Disk\u0027O (Zamperla product)",
+        "url": "https://coasterpedia.net/wiki/Disk%27O_(Zamperla_product)",
+        "status": "in_production",
+        "manufacturers": [
+          {
+            "id": 2399,
+            "name": "Zamperla"
+          }
+        ],
+        "introduced": {
+          "edtf": "2003",
+          "earliest": "2003-01-01",
+          "latest": "2003-12-31"
+        },
+        "variants": [
+          {
+            "name": "Disk\u0027O 16",
+            "group": "Simple",
+            "stats": {
+              "height": {
+                "value": 10.4,
+                "unit": "m",
+                "entered": {
+                  "value": 10.4,
+                  "unit": "m"
+                }
+              },
+              "riders_per_hour": 400,
+              "riders_per_train": 16,
+              "footprint": {
+                "length": {
+                  "value": 23.5,
+                  "unit": "m",
+                  "entered": {
+                    "value": 23.5,
+                    "unit": "m"
+                  }
+                },
+                "width": {
+                  "value": 8.6,
+                  "unit": "m",
+                  "entered": {
+                    "value": 8.6,
+                    "unit": "m"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name": "Disk\u0027O Coaster (40)",
+            "group": "Coaster",
+            "stats": {
+              "height": {
+                "value": 15.5,
+                "unit": "m",
+                "entered": {
+                  "value": 15.5,
+                  "unit": "m"
+                }
+              },
+              "riders_per_hour": 600,
+              "riders_per_train": 40,
+              "footprint": {
+                "length": {
+                  "value": 81.5,
+                  "unit": "m",
+                  "entered": {
+                    "value": 81.5,
+                    "unit": "m"
+                  }
+                },
+                "width": {
+                  "value": 11.3,
+                  "unit": "m",
+                  "entered": {
+                    "value": 11.3,
+                    "unit": "m"
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "revision": 705,
+        "updated_at": "2026-10-12T12:00:00Z"
+      }
+    },
+    {
+      "kind": "product",
+      "id": 52106,
+      "revision": 706,
+      "updated_at": "2026-10-12T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
+      "sort_name": "vertigo",
+      "filters": {
+        "type": "ride",
+        "status": "in_production"
+      },
+      "summary": {
+        "id": 52106,
+        "type": "ride",
+        "name": "Vertigo",
+        "status": "in_production",
+        "manufacturers": [
+          {
+            "id": 46253,
+            "name": "A.R.M."
+          }
+        ],
+        "introduced": {
+          "edtf": "2009",
+          "earliest": "2009-01-01",
+          "latest": "2009-12-31"
+        },
+        "updated_at": "2026-10-12T12:00:00Z"
+      },
+      "record": {
+        "id": 52106,
+        "type": "ride",
+        "name": "Vertigo",
+        "title": "Vertigo (A.R.M. USA product)",
+        "url": "https://coasterpedia.net/wiki/Vertigo_(A.R.M._USA_product)",
+        "status": "in_production",
+        "manufacturers": [
+          {
+            "id": 46253,
+            "name": "A.R.M."
+          }
+        ],
+        "introduced": {
+          "edtf": "2009",
+          "earliest": "2009-01-01",
+          "latest": "2009-12-31"
+        },
+        "variants": [
+          {
+            "name": "Vertigo 100",
+            "stats": {
+              "height": {
+                "value": 28.77,
+                "unit": "m",
+                "entered": {
+                  "value": 94.4,
+                  "unit": "ft"
+                }
+              },
+              "diameter": {
+                "value": 23.2,
+                "unit": "m",
+                "entered": {
+                  "value": 76,
+                  "unit": "ft"
+                }
+              },
+              "sweep": 12
+            }
+          },
+          {
+            "name": "Vertigo Park",
+            "stats": {
+              "height": {
+                "value": 39.6,
+                "unit": "m",
+                "entered": {
+                  "value": 130,
+                  "unit": "ft"
+                }
+              },
+              "sweep": 12
+            }
+          }
+        ],
+        "revision": 706,
+        "updated_at": "2026-10-12T12:00:00Z"
+      }
+    },
+    {
+      "kind": "product",
+      "id": 82994,
+      "revision": 707,
+      "updated_at": "2026-10-12T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
+      "sort_name": "aquaplay",
+      "filters": {
+        "type": "water_slide",
+        "status": "in_production"
+      },
+      "summary": {
+        "id": 82994,
+        "type": "water_slide",
+        "name": "AquaPlay",
+        "status": "in_production",
+        "manufacturers": [
+          {
+            "id": 55374,
+            "name": "WhiteWater West"
+          }
+        ],
+        "updated_at": "2026-10-12T12:00:00Z"
+      },
+      "record": {
+        "id": 82994,
+        "type": "water_slide",
+        "name": "AquaPlay",
+        "title": "AquaPlay (WhiteWater West product)",
+        "url": "https://coasterpedia.net/wiki/AquaPlay_(WhiteWater_West_product)",
+        "status": "in_production",
+        "manufacturers": [
+          {
+            "id": 55374,
+            "name": "WhiteWater West"
+          }
+        ],
+        "offered": {
+          "classes": [
+            "body"
+          ],
+          "slide_material": [
+            "plastic"
+          ]
+        },
+        "variants": [
+          {
+            "name": "AP 50",
+            "stats": {
+              "height": {
+                "value": 3.8,
+                "unit": "m",
+                "entered": {
+                  "value": 3.8,
+                  "unit": "m"
+                }
+              },
+              "footprint": {
+                "length": {
+                  "value": 8.8,
+                  "unit": "m",
+                  "entered": {
+                    "value": 8.8,
+                    "unit": "m"
+                  }
+                },
+                "width": {
+                  "value": 7.9,
+                  "unit": "m",
+                  "entered": {
+                    "value": 7.9,
+                    "unit": "m"
+                  }
+                }
+              },
+              "number_of_slides": 2
+            }
+          }
+        ],
+        "revision": 707,
+        "updated_at": "2026-10-12T12:00:00Z"
+      }
+    },
+    {
+      "kind": "product",
+      "id": 84000,
+      "revision": 708,
+      "updated_at": "2026-10-12T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
+      "sort_name": "family twister",
+      "filters": {
+        "type": "water_slide",
+        "status": "in_production"
+      },
+      "summary": {
+        "id": 84000,
+        "type": "water_slide",
+        "name": "Family Twister",
+        "status": "in_production",
+        "manufacturers": [
+          {
+            "name": "Example Slides Ltd"
+          }
+        ],
+        "updated_at": "2026-10-12T12:00:00Z"
+      },
+      "record": {
+        "id": 84000,
+        "type": "water_slide",
+        "name": "Family Twister",
+        "title": "Family Twister (Example product)",
+        "url": "https://coasterpedia.net/wiki/Family_Twister_(Example_product)",
+        "status": "in_production",
+        "manufacturers": [
+          {
+            "name": "Example Slides Ltd"
+          }
+        ],
+        "offered": {
+          "classes": [
+            "body",
+            "tube"
+          ],
+          "containment": [
+            "open"
+          ],
+          "riders_per_tube": [
+            1,
+            2,
+            3
+          ]
+        },
+        "revision": 708,
+        "updated_at": "2026-10-12T12:00:00Z"
+      }
+    }
+  ],
+  "delete": [
+    {
+      "kind": "product",
+      "id": 99201,
+      "merged_into": 3213
+    }
+  ],
+  "promote": [
+    {
+      "kind": "product",
+      "id": 99298
+    }
+  ],
+  "discard": [
+    {
+      "kind": "product",
+      "id": 99299
+    }
+  ]
+}

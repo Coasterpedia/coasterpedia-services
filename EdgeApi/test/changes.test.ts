@@ -129,10 +129,11 @@ describe('GET /v1/changes', () => {
 		expect(latest.data.map((c) => [c.id, c.revision])).toEqual([[1, 10], [1, 11], [1, 10], [2, 20]]);
 	});
 
-	it('takes kinds=attraction and refuses a kind that is not published', async () => {
+	it('filters by kind and refuses a kind that is not published', async () => {
 		await batch({ upsert: [upsert(1, 10)] });
 		expect((await feed(`since=${START}&kinds=attraction`)).data).toHaveLength(1);
-		const res = await get(`/v1/changes?since=${START}&kinds=park`);
+		expect((await feed(`since=${START}&kinds=park`)).data).toHaveLength(0);
+		const res = await get(`/v1/changes?since=${START}&kinds=park_company`);
 		expect(res.status).toBe(400);
 		expect((await res.json<any>()).type).toMatch(/parameter-unavailable$/);
 	});
@@ -194,7 +195,7 @@ describe('the window', () => {
 
 		const gone = await get(`/v1/changes?since=${old.meta.next_cursor}`);
 		expect(gone.status).toBe(410);
-		expect((await gone.json<any>()).detail).toContain('Resync from /v1/attractions');
+		expect((await gone.json<any>()).detail).toContain('/v1/attractions, /v1/parks');
 		expect((await get(`/v1/changes?since=${daysAgo(92)}`)).status).toBe(410);
 
 		expect((await feed(`since=${atEdge.meta.next_cursor}`)).data.map((c) => c.id)).toEqual([1003, 1004]);

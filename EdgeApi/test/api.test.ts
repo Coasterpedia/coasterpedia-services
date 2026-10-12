@@ -150,6 +150,62 @@ describe('GET /v1/attractions', () => {
 	});
 });
 
+describe('GET /v1/attractions/facets', () => {
+	const facets = async (q = '') => (await (await get(`/v1/attractions/facets?view=latest${q}`)).json<any>()).data;
+
+	it('counts every value, with the wiki country name, and leaves a blank out of the lists but not the total', async () => {
+		const body = await (await get('/v1/attractions/facets?view=latest')).json<any>();
+		expect(body.meta).toMatchObject({ view: 'latest', data_as_of: '2026-10-11T12:00:00Z' });
+		expect(body.data.total).toBe(5);
+		expect(body.data.dimensions).toEqual({
+			type: [{ value: 'coaster', count: 3 }, { value: 'ride', count: 2 }],
+			status: [{ value: 'operating', count: 4 }, { value: 'defunct', count: 1 }],
+			// SkyRide has no country: counted in the total, not listed.
+			country: [{ value: 'US', label: 'USA', count: 3 }, { value: 'GB', label: 'UK', count: 1 }],
+		});
+		// No stats in these upserts, so no histograms.
+		expect(body.data.ranges).toEqual({});
+	});
+
+	it('counts each dimension with its own filter left out', async () => {
+		const data = await facets('&country=us&status=operating');
+		expect(data.total).toBe(2);
+		expect(data.dimensions.type).toEqual([{ value: 'coaster', count: 2 }]);
+		// Choosing operating does not shrink the status list...
+		expect(data.dimensions.status).toEqual([{ value: 'operating', count: 2 }, { value: 'defunct', count: 1 }]);
+		// ...nor US the country list.
+		expect(data.dimensions.country).toEqual([{ value: 'US', label: 'USA', count: 2 }, { value: 'GB', label: 'UK', count: 1 }]);
+	});
+
+	it('follows ingest: changes, deletions and the settled view', async () => {
+		await ingest({
+			as_of: '2026-10-11T13:00:00Z',
+			upsert: [
+				upsert(169, 'Colossus', 'coaster', 'operating', USA, 2),
+				// Untrusted: latest only until it settles.
+				upsert(19643, 'Over the Hill 2', 'ride', 'defunct', UK, 2, '2026-10-18T12:00:00Z'),
+			],
+			delete: [{ kind: 'attraction', id: 165, merged_into: null }],
+		});
+		const latest = await facets();
+		expect(latest.total).toBe(4);
+		expect(latest.dimensions.status).toEqual([{ value: 'operating', count: 3 }, { value: 'defunct', count: 1 }]);
+		const settled = (await (await get('/v1/attractions/facets')).json<any>()).data;
+		expect(settled.total).toBe(4);
+		expect(settled.dimensions.status).toEqual([{ value: 'operating', count: 4 }]);
+	});
+
+	it('refuses what the list would refuse, and the list-only parameters', async () => {
+		const res = await get('/v1/attractions/facets?park=123');
+		expect(res.status).toBe(400);
+		expect((await res.json<any>()).type).toContain('parameter-unavailable');
+		expect((await get('/v1/attractions/facets?sort=name')).status).toBe(400);
+		expect((await get('/v1/attractions/facets?cursor=x')).status).toBe(400);
+		expect((await get('/v1/attractions/facets?view=draft')).status).toBe(400);
+		expect((await get('/v1/attractions/facets', null)).status).toBe(401);
+	});
+});
+
 describe('GET /v1/attractions/{id}', () => {
 	it('returns the full record', async () => {
 		const body = await (await get('/v1/attractions/19643?view=latest')).json<any>();

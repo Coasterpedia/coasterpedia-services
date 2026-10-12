@@ -1,0 +1,434 @@
+{
+  "as_of": "2026-10-12T12:00:00Z",
+  "settle_after": "P7D",
+  "upsert": [
+    {
+      "kind": "park",
+      "id": 182,
+      "revision": 501,
+      "updated_at": "2026-10-12T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
+      "sort_name": "cedar point",
+      "filters": {
+        "status": "operating",
+        "country": "US",
+        "state": "Ohio",
+        "resort": 58420
+      },
+      "summary": {
+        "id": 182,
+        "name": "Cedar Point",
+        "status": "operating",
+        "country": {
+          "code": "US",
+          "name": "USA"
+        },
+        "state": "Ohio",
+        "coordinates": {
+          "lat": 41.48,
+          "lon": -82.6825
+        },
+        "opened": {
+          "edtf": "1870",
+          "earliest": "1870-01-01",
+          "latest": "1870-12-31"
+        },
+        "resort": {
+          "id": 58420,
+          "name": "Cedar Point Resort"
+        },
+        "updated_at": "2026-10-12T12:00:00Z"
+      },
+      "record": {
+        "id": 182,
+        "name": "Cedar Point",
+        "title": "Cedar Point",
+        "url": "https://coasterpedia.net/wiki/Cedar_Point",
+        "status": "operating",
+        "dates": {
+          "opened": {
+            "edtf": "1870",
+            "earliest": "1870-01-01",
+            "latest": "1870-12-31"
+          }
+        },
+        "place": "Sandusky",
+        "state": "Ohio",
+        "country": {
+          "code": "US",
+          "name": "USA"
+        },
+        "coordinates": {
+          "lat": 41.48,
+          "lon": -82.6825
+        },
+        "resort": {
+          "id": 58420,
+          "name": "Cedar Point Resort"
+        },
+        "website": "http://cedarpoint.com/",
+        "revision": 501,
+        "updated_at": "2026-10-12T12:00:00Z"
+      }
+    },
+    {
+      "kind": "park",
+      "id": 2156,
+      "revision": 502,
+      "updated_at": "2026-10-12T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
+      "sort_name": "dollywood",
+      "filters": {
+        "status": "operating",
+        "country": "US",
+        "state": "Tennessee",
+        "resort": 57454
+      },
+      "summary": {
+        "id": 2156,
+        "name": "Dollywood",
+        "status": "operating",
+        "country": {
+          "code": "US",
+          "name": "USA"
+        },
+        "state": "Tennessee",
+        "coordinates": {
+          "lat": 35.796504,
+          "lon": -83.533699
+        },
+        "opened": {
+          "edtf": "1961",
+          "earliest": "1961-01-01",
+          "latest": "1961-12-31"
+        },
+        "resort": {
+          "id": 57454,
+          "name": "Dollywood Resort"
+        },
+        "updated_at": "2026-10-12T12:00:00Z"
+      },
+      "record": {
+        "id": 2156,
+        "name": "Dollywood",
+        "title": "Dollywood",
+        "url": "https://coasterpedia.net/wiki/Dollywood",
+        "status": "operating",
+        "dates": {
+          "opened": {
+            "edtf": "1961",
+            "earliest": "1961-01-01",
+            "latest": "1961-12-31"
+          }
+        },
+        "place": "Pigeon Forge",
+        "state": "Tennessee",
+        "country": {
+          "code": "US",
+          "name": "USA"
+        },
+        "coordinates": {
+          "lat": 35.796504,
+          "lon": -83.533699
+        },
+        "resort": {
+          "id": 57454,
+          "name": "Dollywood Resort"
+        },
+        "website": "http://dollywood.com",
+        "revision": 502,
+        "updated_at": "2026-10-12T12:00:00Z"
+      }
+    },
+    {
+      "kind": "park",
+      "id": 26438,
+      "revision": 503,
+      "updated_at": "2026-10-12T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
+      "sort_name": "anna\u0027s hoeve",
+      "filters": {
+        "status": "defunct",
+        "country": "NL",
+        "state": null,
+        "resort": null
+      },
+      "summary": {
+        "id": 26438,
+        "name": "Anna\u0027s Hoeve",
+        "status": "defunct",
+        "country": {
+          "code": "NL",
+          "name": "Netherlands"
+        },
+        "opened": {
+          "edtf": "[..1961]",
+          "earliest": null,
+          "latest": "1961-12-31"
+        },
+        "closed": {
+          "edtf": "[1979..]",
+          "earliest": "1979-01-01",
+          "latest": null
+        },
+        "updated_at": "2026-10-12T12:00:00Z"
+      },
+      "record": {
+        "id": 26438,
+        "name": "Anna\u0027s Hoeve",
+        "title": "Anna\u0027s Hoeve",
+        "url": "https://coasterpedia.net/wiki/Anna%27s_Hoeve",
+        "status": "defunct",
+        "dates": {
+          "opened": {
+            "edtf": "[..1961]",
+            "earliest": null,
+            "latest": "1961-12-31"
+          },
+          "closed": {
+            "edtf": "[1979..]",
+            "earliest": "1979-01-01",
+            "latest": null
+          }
+        },
+        "place": "Hilversum, Noord Holland",
+        "country": {
+          "code": "NL",
+          "name": "Netherlands"
+        },
+        "revision": 503,
+        "updated_at": "2026-10-12T12:00:00Z"
+      }
+    },
+    {
+      "kind": "park",
+      "id": 65834,
+      "revision": 504,
+      "updated_at": "2026-10-12T12:00:00Z",
+      "settled": false,
+      "settles_at": "2026-10-19T12:00:00Z",
+      "sort_name": "acushnet park",
+      "filters": {
+        "status": "defunct",
+        "country": "US",
+        "state": "Massachusetts",
+        "resort": null
+      },
+      "summary": {
+        "id": 65834,
+        "name": "Acushnet Park",
+        "status": "defunct",
+        "country": {
+          "code": "US",
+          "name": "USA"
+        },
+        "state": "Massachusetts",
+        "opened": {
+          "edtf": "1916",
+          "earliest": "1916-01-01",
+          "latest": "1916-12-31"
+        },
+        "closed": {
+          "edtf": "1952~",
+          "earliest": "1952-01-01",
+          "latest": "1952-12-31"
+        },
+        "updated_at": "2026-10-12T12:00:00Z"
+      },
+      "record": {
+        "id": 65834,
+        "name": "Acushnet Park",
+        "title": "Acushnet Park",
+        "url": "https://coasterpedia.net/wiki/Acushnet_Park",
+        "status": "defunct",
+        "dates": {
+          "opened": {
+            "edtf": "1916",
+            "earliest": "1916-01-01",
+            "latest": "1916-12-31"
+          },
+          "closed": {
+            "edtf": "1952~",
+            "earliest": "1952-01-01",
+            "latest": "1952-12-31"
+          }
+        },
+        "place": "New Bedford",
+        "state": "Massachusetts",
+        "country": {
+          "code": "US",
+          "name": "USA"
+        },
+        "revision": 504,
+        "updated_at": "2026-10-12T12:00:00Z"
+      }
+    },
+    {
+      "kind": "park",
+      "id": 66765,
+      "revision": 505,
+      "updated_at": "2026-10-12T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
+      "sort_name": "cacau park",
+      "filters": {
+        "status": "under_construction",
+        "country": "BR",
+        "state": null,
+        "resort": null
+      },
+      "summary": {
+        "id": 66765,
+        "name": "Cacau Park",
+        "status": "under_construction",
+        "country": {
+          "code": "BR",
+          "name": "Brazil"
+        },
+        "coordinates": {
+          "lat": -23.37989020563,
+          "lon": -47.38641610419
+        },
+        "updated_at": "2026-10-12T12:00:00Z"
+      },
+      "record": {
+        "id": 66765,
+        "name": "Cacau Park",
+        "title": "Cacau Park",
+        "url": "https://coasterpedia.net/wiki/Cacau_Park",
+        "status": "under_construction",
+        "dates": {
+          "opening": {
+            "edtf": "2027-12",
+            "earliest": "2027-12-01",
+            "latest": "2027-12-31"
+          }
+        },
+        "place": "Sorocaba, S\u00E3o Paulo",
+        "country": {
+          "code": "BR",
+          "name": "Brazil"
+        },
+        "coordinates": {
+          "lat": -23.37989020563,
+          "lon": -47.38641610419
+        },
+        "website": "https://www.cacaushow.com.br/cacau-park.html",
+        "revision": 505,
+        "updated_at": "2026-10-12T12:00:00Z"
+      }
+    },
+    {
+      "kind": "park",
+      "id": 67009,
+      "revision": 506,
+      "updated_at": "2026-10-12T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
+      "sort_name": "carnival horizon",
+      "filters": {
+        "status": "operating",
+        "country": null,
+        "state": null,
+        "resort": null
+      },
+      "summary": {
+        "id": 67009,
+        "name": "Carnival Horizon",
+        "status": "operating",
+        "opened": {
+          "edtf": "2018-04-02",
+          "earliest": "2018-04-02",
+          "latest": "2018-04-02"
+        },
+        "updated_at": "2026-10-12T12:00:00Z"
+      },
+      "record": {
+        "id": 67009,
+        "name": "Carnival Horizon",
+        "title": "Carnival Horizon",
+        "url": "https://coasterpedia.net/wiki/Carnival_Horizon",
+        "status": "operating",
+        "dates": {
+          "opened": {
+            "edtf": "2018-04-02",
+            "earliest": "2018-04-02",
+            "latest": "2018-04-02"
+          }
+        },
+        "website": "https://www.carnival.com/cruise-ships/carnival-horizon",
+        "revision": 506,
+        "updated_at": "2026-10-12T12:00:00Z"
+      }
+    },
+    {
+      "kind": "park",
+      "id": 76098,
+      "revision": 507,
+      "updated_at": "2026-10-12T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
+      "sort_name": "bibi \u0026 tina freizeitpark",
+      "filters": {
+        "status": "under_construction",
+        "country": "DE",
+        "state": null,
+        "resort": null
+      },
+      "summary": {
+        "id": 76098,
+        "name": "Bibi \u0026 Tina Freizeitpark",
+        "status": "under_construction",
+        "country": {
+          "code": "DE",
+          "name": "Germany"
+        },
+        "updated_at": "2026-10-12T12:00:00Z"
+      },
+      "record": {
+        "id": 76098,
+        "name": "Bibi \u0026 Tina Freizeitpark",
+        "title": "Bibi \u0026 Tina Freizeitpark",
+        "url": "https://coasterpedia.net/wiki/Bibi_%26_Tina_Freizeitpark",
+        "status": "under_construction",
+        "dates": {
+          "opening": {
+            "edtf": "2027-07-01",
+            "earliest": "2027-07-01",
+            "latest": "2027-07-01"
+          }
+        },
+        "place": "Wustermark, Brandenburg",
+        "country": {
+          "code": "DE",
+          "name": "Germany"
+        },
+        "website": "https://karls.de/erlebnisse/bibi-tina-freizeitpark/",
+        "revision": 507,
+        "updated_at": "2026-10-12T12:00:00Z"
+      }
+    }
+  ],
+  "delete": [
+    {
+      "kind": "park",
+      "id": 99001,
+      "merged_into": 182
+    }
+  ],
+  "promote": [
+    {
+      "kind": "park",
+      "id": 99998
+    }
+  ],
+  "discard": [
+    {
+      "kind": "park",
+      "id": 99999
+    }
+  ]
+}

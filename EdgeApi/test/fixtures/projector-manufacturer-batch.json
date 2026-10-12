@@ -1,0 +1,374 @@
+{
+  "as_of": "2026-10-12T12:00:00Z",
+  "settle_after": "P7D",
+  "upsert": [
+    {
+      "kind": "manufacturer",
+      "id": 543,
+      "revision": 601,
+      "updated_at": "2026-10-12T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
+      "sort_name": "bolliger \u0026 mabillard",
+      "filters": {
+        "status": "active",
+        "country": "CH"
+      },
+      "summary": {
+        "id": 543,
+        "name": "Bolliger \u0026 Mabillard",
+        "title": "Bolliger \u0026 Mabillard",
+        "url": "https://coasterpedia.net/wiki/Bolliger_%26_Mabillard",
+        "status": "active",
+        "founded": {
+          "edtf": "1988",
+          "earliest": "1988-01-01",
+          "latest": "1988-12-31"
+        },
+        "headquarters": "Monthey, Valais, Switzerland",
+        "country": {
+          "code": "CH",
+          "name": "Switzerland"
+        },
+        "website": "https://bolliger-mabillard.com/",
+        "revision": 601,
+        "updated_at": "2026-10-12T12:00:00Z"
+      },
+      "record": {
+        "id": 543,
+        "name": "Bolliger \u0026 Mabillard",
+        "title": "Bolliger \u0026 Mabillard",
+        "url": "https://coasterpedia.net/wiki/Bolliger_%26_Mabillard",
+        "status": "active",
+        "founded": {
+          "edtf": "1988",
+          "earliest": "1988-01-01",
+          "latest": "1988-12-31"
+        },
+        "headquarters": "Monthey, Valais, Switzerland",
+        "country": {
+          "code": "CH",
+          "name": "Switzerland"
+        },
+        "website": "https://bolliger-mabillard.com/",
+        "revision": 601,
+        "updated_at": "2026-10-12T12:00:00Z"
+      }
+    },
+    {
+      "kind": "manufacturer",
+      "id": 1829,
+      "revision": 602,
+      "updated_at": "2026-10-12T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
+      "sort_name": "arrow dynamics",
+      "filters": {
+        "status": "defunct",
+        "country": "US"
+      },
+      "summary": {
+        "id": 1829,
+        "name": "Arrow Dynamics",
+        "title": "Arrow Dynamics",
+        "url": "https://coasterpedia.net/wiki/Arrow_Dynamics",
+        "status": "defunct",
+        "headquarters": "Clearfield, Utah, USA",
+        "country": {
+          "code": "US",
+          "name": "USA"
+        },
+        "revision": 602,
+        "updated_at": "2026-10-12T12:00:00Z"
+      },
+      "record": {
+        "id": 1829,
+        "name": "Arrow Dynamics",
+        "title": "Arrow Dynamics",
+        "url": "https://coasterpedia.net/wiki/Arrow_Dynamics",
+        "status": "defunct",
+        "headquarters": "Clearfield, Utah, USA",
+        "country": {
+          "code": "US",
+          "name": "USA"
+        },
+        "revision": 602,
+        "updated_at": "2026-10-12T12:00:00Z"
+      }
+    },
+    {
+      "kind": "manufacturer",
+      "id": 2393,
+      "revision": 603,
+      "updated_at": "2026-10-12T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
+      "sort_name": "mack rides",
+      "filters": {
+        "status": "active",
+        "country": "DE"
+      },
+      "summary": {
+        "id": 2393,
+        "name": "Mack Rides",
+        "title": "Mack Rides",
+        "url": "https://coasterpedia.net/wiki/Mack_Rides",
+        "status": "active",
+        "founded": {
+          "edtf": "1780",
+          "earliest": "1780-01-01",
+          "latest": "1780-12-31"
+        },
+        "headquarters": "Waldkrich, Germany",
+        "country": {
+          "code": "DE",
+          "name": "Germany"
+        },
+        "website": "http://www.mack-rides.com/",
+        "revision": 603,
+        "updated_at": "2026-10-12T12:00:00Z"
+      },
+      "record": {
+        "id": 2393,
+        "name": "Mack Rides",
+        "title": "Mack Rides",
+        "url": "https://coasterpedia.net/wiki/Mack_Rides",
+        "status": "active",
+        "founded": {
+          "edtf": "1780",
+          "earliest": "1780-01-01",
+          "latest": "1780-12-31"
+        },
+        "headquarters": "Waldkrich, Germany",
+        "country": {
+          "code": "DE",
+          "name": "Germany"
+        },
+        "website": "http://www.mack-rides.com/",
+        "revision": 603,
+        "updated_at": "2026-10-12T12:00:00Z"
+      }
+    },
+    {
+      "kind": "manufacturer",
+      "id": 17469,
+      "revision": 604,
+      "updated_at": "2026-10-12T12:00:00Z",
+      "settled": false,
+      "settles_at": "2026-10-19T12:00:00Z",
+      "sort_name": "adesko",
+      "filters": {
+        "status": "active",
+        "country": "BE"
+      },
+      "summary": {
+        "id": 17469,
+        "name": "Adesko",
+        "title": "Adesko",
+        "url": "https://coasterpedia.net/wiki/Adesko",
+        "status": "active",
+        "founded": {
+          "edtf": "1991-10",
+          "earliest": "1991-10-01",
+          "latest": "1991-10-31"
+        },
+        "headquarters": "Dessel, Antwerp, Belgium",
+        "country": {
+          "code": "BE",
+          "name": "Belgium"
+        },
+        "website": "http://www.adesko.com/index.htm",
+        "revision": 604,
+        "updated_at": "2026-10-12T12:00:00Z"
+      },
+      "record": {
+        "id": 17469,
+        "name": "Adesko",
+        "title": "Adesko",
+        "url": "https://coasterpedia.net/wiki/Adesko",
+        "status": "active",
+        "founded": {
+          "edtf": "1991-10",
+          "earliest": "1991-10-01",
+          "latest": "1991-10-31"
+        },
+        "headquarters": "Dessel, Antwerp, Belgium",
+        "country": {
+          "code": "BE",
+          "name": "Belgium"
+        },
+        "website": "http://www.adesko.com/index.htm",
+        "revision": 604,
+        "updated_at": "2026-10-12T12:00:00Z"
+      }
+    },
+    {
+      "kind": "manufacturer",
+      "id": 55205,
+      "revision": 605,
+      "updated_at": "2026-10-12T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
+      "sort_name": "proslide technology",
+      "filters": {
+        "status": "active",
+        "country": "CA"
+      },
+      "summary": {
+        "id": 55205,
+        "name": "ProSlide Technology",
+        "title": "ProSlide",
+        "url": "https://coasterpedia.net/wiki/ProSlide",
+        "status": "active",
+        "founded": {
+          "edtf": "1986-12-19",
+          "earliest": "1986-12-19",
+          "latest": "1986-12-19"
+        },
+        "headquarters": "Ottawa, Ontario, Canada",
+        "country": {
+          "code": "CA",
+          "name": "Canada"
+        },
+        "website": "https://www.proslide.com/",
+        "revision": 605,
+        "updated_at": "2026-10-12T12:00:00Z"
+      },
+      "record": {
+        "id": 55205,
+        "name": "ProSlide Technology",
+        "title": "ProSlide",
+        "url": "https://coasterpedia.net/wiki/ProSlide",
+        "status": "active",
+        "founded": {
+          "edtf": "1986-12-19",
+          "earliest": "1986-12-19",
+          "latest": "1986-12-19"
+        },
+        "headquarters": "Ottawa, Ontario, Canada",
+        "country": {
+          "code": "CA",
+          "name": "Canada"
+        },
+        "website": "https://www.proslide.com/",
+        "revision": 605,
+        "updated_at": "2026-10-12T12:00:00Z"
+      }
+    },
+    {
+      "kind": "manufacturer",
+      "id": 3551,
+      "revision": 606,
+      "updated_at": "2026-10-12T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
+      "sort_name": "the gravity group, llc",
+      "filters": {
+        "status": "active",
+        "country": "US"
+      },
+      "summary": {
+        "id": 3551,
+        "name": "The Gravity Group, LLC",
+        "title": "The Gravity Group, LLC",
+        "url": "https://coasterpedia.net/wiki/The_Gravity_Group,_LLC",
+        "status": "active",
+        "founded": {
+          "edtf": "2002-07",
+          "earliest": "2002-07-01",
+          "latest": "2002-07-31"
+        },
+        "headquarters": "Cincinnati, Ohio, USA",
+        "country": {
+          "code": "US",
+          "name": "USA"
+        },
+        "website": "http://www.thegravitygroup.com/",
+        "revision": 606,
+        "updated_at": "2026-10-12T12:00:00Z"
+      },
+      "record": {
+        "id": 3551,
+        "name": "The Gravity Group, LLC",
+        "title": "The Gravity Group, LLC",
+        "url": "https://coasterpedia.net/wiki/The_Gravity_Group,_LLC",
+        "status": "active",
+        "founded": {
+          "edtf": "2002-07",
+          "earliest": "2002-07-01",
+          "latest": "2002-07-31"
+        },
+        "headquarters": "Cincinnati, Ohio, USA",
+        "country": {
+          "code": "US",
+          "name": "USA"
+        },
+        "website": "http://www.thegravitygroup.com/",
+        "revision": 606,
+        "updated_at": "2026-10-12T12:00:00Z"
+      }
+    },
+    {
+      "kind": "manufacturer",
+      "id": 548,
+      "revision": 607,
+      "updated_at": "2026-10-12T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
+      "sort_name": "vekoma",
+      "filters": {
+        "status": "active",
+        "country": null
+      },
+      "summary": {
+        "id": 548,
+        "name": "Vekoma",
+        "title": "Vekoma",
+        "url": "https://coasterpedia.net/wiki/Vekoma",
+        "status": "active",
+        "founded": {
+          "edtf": "1926",
+          "earliest": "1926-01-01",
+          "latest": "1926-12-31"
+        },
+        "website": "https://www.vekoma.com/",
+        "revision": 607,
+        "updated_at": "2026-10-12T12:00:00Z"
+      },
+      "record": {
+        "id": 548,
+        "name": "Vekoma",
+        "title": "Vekoma",
+        "url": "https://coasterpedia.net/wiki/Vekoma",
+        "status": "active",
+        "founded": {
+          "edtf": "1926",
+          "earliest": "1926-01-01",
+          "latest": "1926-12-31"
+        },
+        "website": "https://www.vekoma.com/",
+        "revision": 607,
+        "updated_at": "2026-10-12T12:00:00Z"
+      }
+    }
+  ],
+  "delete": [
+    {
+      "kind": "manufacturer",
+      "id": 99101,
+      "merged_into": 543
+    }
+  ],
+  "promote": [
+    {
+      "kind": "manufacturer",
+      "id": 99198
+    }
+  ],
+  "discard": [
+    {
+      "kind": "manufacturer",
+      "id": 99199
+    }
+  ]
+}
