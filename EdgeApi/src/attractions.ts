@@ -6,12 +6,12 @@ import { badRequest, CHANGES_WINDOW, decodeOpaque, encodeOpaque, json, LICENCE, 
  * parameter whose field is not published yet is refused, never ignored:
  * ignoring ?park= would return every attraction and look like an answer.
  */
-const NOT_YET = new Set([
-	'state', 'park', 'product', 'location_kind', 'opened_from', 'opened_to',
+export const NOT_YET = new Set([
+	'state', 'park', 'location_kind', 'opened_from', 'opened_to',
 	'bbox', 'updated_since', 'q',
 ]);
 
-const LIST_PARAMS = new Set(['type', 'status', 'country', 'manufacturer', 'sort', 'view', 'limit', 'cursor']);
+const LIST_PARAMS = new Set(['type', 'status', 'country', 'manufacturer', 'product', 'variant', 'sort', 'view', 'limit', 'cursor']);
 const ONE_PARAMS = new Set(['view']);
 const META_PARAMS = new Set(['view']);
 /**
@@ -76,30 +76,82 @@ export function list(url: URL, name: string, transform: (v: string) => string = 
  * manufacturers[].id. One, as the contract has it; a list would be additive.
  */
 export function manufacturerParam(url: URL): number | null {
-	const raw = url.searchParams.get('manufacturer');
+	return idParam(url, 'manufacturer');
+}
+
+/** product: one product's page ID, as in an attraction's products[].product.id. */
+export function productParam(url: URL): number | null {
+	return idParam(url, 'product');
+}
+
+function idParam(url: URL, name: 'manufacturer' | 'product'): number | null {
+	const raw = url.searchParams.get(name);
 	if (raw == null) return null;
 	const n = Number(raw);
 	if (!/^\d+$/.test(raw.trim()) || !Number.isSafeInteger(n) || n < 1) {
-		throw badRequest('parameter-invalid', 'manufacturer takes one manufacturer ID');
+		throw badRequest('parameter-invalid', `${name} takes one ${name} ID`);
 	}
 	return n;
 }
 
 /**
- * The request with a merged manufacturer's ID replaced by the one it merged
- * into, as /v1/manufacturers/{old} redirects: a client holding the old ID
- * would otherwise get an empty list that reads as "makes nothing". Attractions
- * link the new page once the sweep re-resolves their links.
+ * The request with a merged manufacturer's or product's ID replaced by the one
+ * it merged into, as /v1/manufacturers/{old} redirects: a client holding the
+ * old ID would otherwise get an empty list that reads as "makes nothing".
+ * Attractions link the new page once the sweep re-resolves their links.
  */
-export async function followManufacturerMerge(url: URL, env: Env): Promise<URL> {
-	const id = manufacturerParam(url);
-	if (id == null) return url;
-	const merged = await env.DATA.prepare(`SELECT new_id FROM merges WHERE kind = 'manufacturer' AND old_id = ?`)
-		.bind(id).first<{ new_id: number }>();
-	if (!merged) return url;
-	const followed = new URL(url);
-	followed.searchParams.set('manufacturer', String(merged.new_id));
+export async function followMerges(url: URL, env: Env): Promise<URL> {
+	let followed = url;
+	for (const kind of ['manufacturer', 'product'] as const) {
+		const id = idParam(url, kind);
+		if (id == null) continue;
+		const merged = await env.DATA.prepare(`SELECT new_id FROM merges WHERE kind = ? AND old_id = ?`)
+			.bind(kind, id).first<{ new_id: number }>();
+		if (!merged) continue;
+		if (followed === url) followed = new URL(url);
+		followed.searchParams.set(kind, String(merged.new_id));
+	}
 	return followed;
+}
+
+/**
+ * A filter answered from a link table, which carries every attraction filter
+ * and sort column (migrations 0008, 0011), aliased m. A product drives when
+ * given: its range is small (about 135 at most), so a manufacturer with it is
+ * one key read per row. variant narrows a product, case-blind.
+ */
+export interface Link {
+	table: 'attraction_manufacturers' | 'attraction_products';
+	where: string[];
+	binds: number[] | (number | string)[];
+}
+
+export function linkFilter(url: URL): Link | null {
+	const manufacturer = manufacturerParam(url);
+	const product = productParam(url);
+	const variant = url.searchParams.get('variant');
+	if (variant != null && (product == null || variant.trim().length === 0)) {
+		throw badRequest('parameter-invalid', 'variant takes a variant name, with product',
+			'A variant is a configuration of one product, so it filters only with product.');
+	}
+
+	if (product != null) {
+		const where = ['m.product = ?'];
+		const binds: (number | string)[] = [product];
+		if (variant != null) {
+			where.push('m.variant = ?');
+			binds.push(variant.trim());
+		}
+		if (manufacturer != null) {
+			where.push('EXISTS (SELECT 1 FROM attraction_manufacturers x WHERE x.id = m.id AND x.in_latest = m.in_latest AND x.manufacturer = ?)');
+			binds.push(manufacturer);
+		}
+		return { table: 'attraction_products', where, binds };
+	}
+	if (manufacturer != null) {
+		return { table: 'attraction_manufacturers', where: ['m.manufacturer = ?'], binds: [manufacturer] };
+	}
+	return null;
 }
 
 export function limitParam(url: URL): number {
@@ -130,7 +182,7 @@ export function decodeCursor(cursor: string, sort: string): [string | number, nu
 	throw badRequest('cursor-invalid', 'Invalid cursor', 'Pass next_cursor from a previous response unchanged, with the same sort.');
 }
 
-interface ListQuery {
+export interface ListQuery {
 	sql: string;
 	binds: (string | number)[];
 	limit: number;
@@ -153,16 +205,16 @@ export function listQuery(url: URL): ListQuery {
 			'The beta sorts by name, height, speed or length, each with - for descending.');
 	}
 
-	// With a manufacturer, the page is read from its links (migration 0008),
-	// which carry every filter and sort column, and joined back for the summary.
-	const manufacturer = manufacturerParam(url);
-	const c = (col: string) => (manufacturer == null ? col : `m.${col}`);
+	// With a manufacturer or a product, the page is read from its links, which
+	// carry every filter and sort column, and joined back for the summary.
+	const link = linkFilter(url);
+	const c = (col: string) => (link == null ? col : `m.${col}`);
 
 	const where: string[] = [`${c(FLAG[view])} = 1`];
 	const binds: (string | number)[] = [];
-	if (manufacturer != null) {
-		where.push('m.manufacturer = ?');
-		binds.push(manufacturer);
+	if (link != null) {
+		where.push(...link.where);
+		binds.push(...link.binds);
 	}
 	if (column !== 'sort_name') where.push(`${c(column)} IS NOT NULL`);
 	const inList = (col: string, values: string[]) => {
@@ -176,7 +228,7 @@ export function listQuery(url: URL): ListQuery {
 	// the status (15,000 operating) and sort them: unary + keeps it out, so a
 	// stat sort walks its stat's index and several statuses the name index.
 	const statuses = list(url, 'status');
-	inList(manufacturer == null && (column !== 'sort_name' || statuses.length > 1) ? '+status' : 'status', statuses);
+	inList(link == null && (column !== 'sort_name' || statuses.length > 1) ? '+status' : 'status', statuses);
 	inList('country', list(url, 'country', (v) => v.toUpperCase()));
 
 	// A plain range on the sort column first, so D1 seeks the index to the
@@ -191,17 +243,22 @@ export function listQuery(url: URL): ListQuery {
 	}
 
 	const dir = desc ? 'DESC' : 'ASC';
-	const from = manufacturer == null
+	const from = link == null
 		? 'attractions'
-		: 'attraction_manufacturers m JOIN attractions a ON a.id = m.id AND a.in_latest = m.in_latest';
-	const sql = `SELECT ${c('id')} AS id, ${c(column)} AS position, ${manufacturer == null ? 'summary' : 'a.summary'} FROM ${from}
+		: `${link.table} m JOIN attractions a ON a.id = m.id AND a.in_latest = m.in_latest`;
+	const sql = `SELECT ${c('id')} AS id, ${c(column)} AS position, ${link == null ? 'summary' : 'a.summary'} FROM ${from}
 		WHERE ${where.join(' AND ')}
 		ORDER BY ${c(column)} ${dir}, ${c('id')} ${dir} LIMIT ?`;
 	return { sql, binds: [...binds, limit + 1], limit, view, sort, column };
 }
 
 export async function listAttractions(url: URL, env: Env): Promise<{ response: Response; rows: number }> {
-	const { sql, binds, limit, view, sort } = listQuery(await followManufacturerMerge(url, env));
+	return runAttractionList(listQuery(await followMerges(url, env)), env);
+}
+
+/** One page of attraction summaries, with the cursor for the next. */
+export async function runAttractionList(query: ListQuery, env: Env): Promise<{ response: Response; rows: number }> {
+	const { sql, binds, limit, view, sort } = query;
 	const { results } = await env.DATA.prepare(sql).bind(...binds).all<Row>();
 
 	const page = results.slice(0, limit);
@@ -237,6 +294,8 @@ export interface RecordKind {
 	/** The list's path; a merged ID redirects to `${path}/{new id}`. */
 	path: string;
 	noun: string;
+	/** What the edge adds to the stored record before it is served: one read at most. */
+	decorate?: (record: Record<string, unknown>, id: number, view: View, env: Env) => Promise<void>;
 }
 
 /** One full record in the view asked for, with its settlement; the caller has checked its parameters. */
@@ -259,6 +318,7 @@ export async function getRecord(url: URL, idText: string, env: Env, k: RecordKin
 		// The same in both views (DR-010 §6.3): a settled client can see the site
 		// already shows something newer, a latest one that nobody has vetted it.
 		const record = JSON.parse(row.record);
+		if (k.decorate) await k.decorate(record, id, view, env);
 		record.settlement = {
 			settled_revision: settled?.revision ?? null,
 			pending_revision: pending?.revision ?? null,

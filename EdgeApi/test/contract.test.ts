@@ -121,3 +121,14 @@ it('labels facets from the vocabularies and draws the browser histogram', async 
 	const settled = await (await get('/v1/attractions/facets')).json<any>();
 	expect(settled.data.dimensions.type[0]).toMatchObject({ value: 'coaster', count: 3 });
 });
+
+it("links each attraction's products for the product filter, by ID only", async () => {
+	const ids = async (q: string) => (await (await get(`/v1/attractions?view=latest&${q}`)).json<any>()).data.map((a: any) => a.id);
+	expect(await ids('product=1498')).toEqual([165]);
+	// Élan is a complex of two products: listed under each.
+	expect(await ids('product=82994')).toEqual([9102]);
+	expect(await ids('product=58307')).toEqual([9102]);
+	expect(await ids('product=1498&variant=batman')).toEqual([165]);
+	const batman = (await (await get('/v1/attractions?view=latest&product=1498')).json<any>()).data[0];
+	expect(batman.products).toEqual([{ product: { id: 1498, name: 'Inverted Coaster' }, variant: 'Batman' }]);
+});

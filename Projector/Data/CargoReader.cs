@@ -20,6 +20,11 @@ public sealed record AttractionRow
     public string? Status { get; init; }
     public string? Country { get; init; }
     public string? Manufacturer { get; init; }
+
+    /// <summary>Product and Product_Variant are list fields on all three tables (rebuild A3), read as stored ('#'-separated).</summary>
+    public string? Product { get; init; }
+    public string? ProductVariant { get; init; }
+
     public double? Lat { get; init; }
     public double? Lon { get; init; }
     public StatsRow Stats { get; init; } = StatsRow.Empty;
@@ -198,7 +203,7 @@ public sealed partial class CargoReader
     /// <summary>
     /// StatsRow property → column, per table. A table without a column reads NULL,
     /// so the row has one shape and the type's own fields are the only ones set.
-    /// Rides.Diameter has no _Metric until the rebuild (A8); the mapper converts it.
+    /// The 2026-10 rebuild renamed the ride drop Tallest_Drop, as on coasters.
     /// </summary>
     internal static readonly Dictionary<string, Dictionary<string, string>> StatColumns = new()
     {
@@ -217,11 +222,12 @@ public sealed partial class CargoReader
         ["Rides"] = new()
         {
             ["Units"] = "Units", ["Height"] = "Height", ["HeightMetric"] = "Height_Metric",
-            ["Drop"] = "Drop_Height", ["DropMetric"] = "Drop_Height_Metric",
+            ["Drop"] = "Tallest_Drop", ["DropMetric"] = "Tallest_Drop_Metric",
             ["Elevation"] = "Diff_Elevation", ["ElevationMetric"] = "Diff_Elevation_Metric",
             ["Length"] = "Track_Length", ["LengthMetric"] = "Track_Length_Metric",
             ["Speed"] = "Speed", ["SpeedMetric"] = "Speed_Metric",
-            ["Diameter"] = "Diameter", ["GForce"] = "GForce", ["RidersHour"] = "Riders_Hour",
+            ["Diameter"] = "Diameter", ["DiameterMetric"] = "Diameter_Metric",
+            ["GForce"] = "GForce", ["RidersHour"] = "Riders_Hour",
             ["Dimension1"] = "Dimension1", ["Dimension2"] = "Dimension2",
         },
         ["Water_Slides"] = new()
@@ -348,7 +354,9 @@ public sealed partial class CargoReader
             {
                 rows.AddRange(await QueryAsync<AttractionRow>(conn, tx, $"""
                     SELECT @type AS Type, t._pageID AS PageId, t._pageName AS PageName, {Revision},
-                           t.Name, t.Status, t.Country, t.Manufacturer, t.Coord__lat AS Lat, t.Coord__lon AS Lon,
+                           t.Name, t.Status, t.Country, t.Manufacturer,
+                           CAST(t.Product__full AS CHAR) AS Product, CAST(t.Product_Variant__full AS CHAR) AS ProductVariant,
+                           t.Coord__lat AS Lat, t.Coord__lon AS Lon,
                            {Select(StatProperties, StatColumns[table])}
                     FROM {Cargo(table)} t
                     JOIN {Page} p ON p.page_id = t._pageID
@@ -464,6 +472,18 @@ public sealed partial class CargoReader
 
         await tx.CommitAsync(ct);
         return rows;
+    }
+
+    /// <summary>
+    /// Every product page's ID, across the three product tables: about 1,100,
+    /// read whole on every pass, so an attraction's product link can be checked
+    /// against them.
+    /// </summary>
+    public async Task<HashSet<int>> ReadProductIdsAsync(MySqlConnection conn, CancellationToken ct)
+    {
+        var sql = string.Join("\nUNION ALL\n", ProductTables.Select(p =>
+            $"SELECT t._pageID FROM {Cargo(p.Table)} t WHERE t._pageNamespace = 0"));
+        return [.. await conn.QueryAsync<int>(new CommandDefinition(sql, cancellationToken: ct))];
     }
 
     /// <summary>

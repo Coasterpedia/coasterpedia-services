@@ -23,19 +23,26 @@ public class ProjectorTests
         ["Bolliger & Mabillard"] = 543,
         ["SkyRide Technology"] = 9001,
         ["Zierer"] = 77,
+        ["Boomerang (Vekoma product)"] = 3213,
+        ["SkyBOX (ProSlide product)"] = 58664,
+        ["TWISTER (ProSlide product)"] = 58307,
+        ["Wild mouse"] = 4100,
     };
+
+    private static readonly HashSet<int> ProductIds = [3213, 58664, 58307];
 
     private static AttractionRow Row(string type = "coaster", int id = 171, string page = "Gold Rusher (Six Flags Magic Mountain)",
         string? name = "Gold Rusher", string? status = "operating", string? country = "USA",
-        string? manufacturer = "[[Arrow Dynamics|Arrow Development]]", double? lat = 34.4234906, double? lon = -118.598881) =>
+        string? manufacturer = "[[Arrow Dynamics|Arrow Development]]", double? lat = 34.4234906, double? lon = -118.598881,
+        string? product = null, string? variant = null) =>
         new()
         {
             Type = type, PageId = id, PageName = page, Revision = 123456, Name = name, Status = status, Country = country,
-            Manufacturer = manufacturer, Lat = lat, Lon = lon,
+            Manufacturer = manufacturer, Product = product, ProductVariant = variant, Lat = lat, Lon = lon,
         };
 
     private static AttractionContent Map(AttractionRow row, List<DataIssue>? issues = null) =>
-        AttractionMapper.Map(row, Vocab, Resolved, "https://coasterpedia.net", issues ?? []);
+        AttractionMapper.Map(row, Vocab, Resolved, ProductIds, "https://coasterpedia.net", issues ?? []);
 
     [Fact]
     public void Vocabularies_come_from_each_types_templates()
@@ -141,6 +148,52 @@ public class ProjectorTests
     }
 
     [Fact]
+    public void One_product_takes_the_variant_and_every_member_is_a_product()
+    {
+        var issues = new List<DataIssue>();
+        var one = Map(Row(product: "[[Boomerang (Vekoma product)|Boomerang]]", variant: "Standard"), issues);
+        Assert.Equal([new AttractionProduct(new Ref(3213, "Boomerang"), "Standard")], one.Products);
+
+        // A complex: one member per link, as the infobox stores it.
+        var two = Map(Row(type: "water_slide", product: "[[SkyBOX (ProSlide product)|SkyBOX]]#[[TWISTER (ProSlide product)|TWISTER]]"), issues);
+        Assert.Equal([new AttractionProduct(new Ref(58664, "SkyBOX"), null), new AttractionProduct(new Ref(58307, "TWISTER"), null)],
+            two.Products);
+        Assert.Empty(issues);
+    }
+
+    [Fact]
+    public void A_variant_beside_two_products_pairs_with_neither_and_is_reported()
+    {
+        // Fighter Jet (Glorious Orient Jining), 2026-10-12.
+        var issues = new List<DataIssue>();
+        var c = Map(Row(product: "[[Boomerang (Vekoma product)|Boomerang]]#[[TWISTER (ProSlide product)|TWISTER]]",
+            variant: "Top Gun Launch Coaster"), issues);
+        Assert.All(c.Products, p => Assert.Null(p.Variant));
+        Assert.Equal("products.variant", Assert.Single(issues).Field);
+
+        issues.Clear();
+        Assert.Empty(Map(Row(variant: "Standard"), issues).Products);
+        Assert.Equal("a variant with no product", Assert.Single(issues).Problem);
+    }
+
+    [Fact]
+    public void A_product_link_to_another_kind_of_page_keeps_its_id_and_is_reported()
+    {
+        var issues = new List<DataIssue>();
+        var c = Map(Row(product: "[[Wild mouse]]#[[No Such Product]]#Play Structure Type A02"), issues);
+        Assert.Equal([new Ref(4100, "Wild mouse"), new Ref(null, "No Such Product"), new Ref(null, "Play Structure Type A02")],
+            c.Products.Select(p => p.Product));
+        Assert.Equal(["links a page that is not a product", "links no page"], issues.Select(i => i.Problem));
+    }
+
+    [Fact]
+    public void A_product_named_twice_is_one_product()
+    {
+        var c = Map(Row(product: "[[Boomerang (Vekoma product)|Boomerang]]#[[Boomerang (Vekoma product)|again]]"));
+        Assert.Equal(new Ref(3213, "Boomerang"), Assert.Single(c.Products).Product);
+    }
+
+    [Fact]
     public void Link_targets_normalise_like_MediaWiki_titles()
     {
         Assert.Equal("Arrow Dynamics", Wikitext.NormaliseTitle(" arrow_Dynamics#History "));
@@ -236,7 +289,7 @@ public class ProjectorTests
 
         var json = JsonSerializer.Serialize(item);
         Assert.Equal(
-            """{"kind":"attraction","id":66486,"revision":42,"updated_at":"2026-10-11T12:00:00Z","settled":true,"settles_at":null,"sort_name":"skyride","sort_values":{"height":null,"speed":null,"length":null},"filters":{"type":"ride","status":"operating","country":null},"summary":{"id":66486,"type":"ride","name":"SkyRide","status":"operating","manufacturers":[{"id":9001,"name":"SkyRide Technology"}],"updated_at":"2026-10-11T12:00:00Z"},"record":{"id":66486,"type":"ride","name":"SkyRide","title":"SkyRide (Carnival Horizon)","url":"https://coasterpedia.net/wiki/SkyRide_(Carnival_Horizon)","status":"operating","location":{},"manufacturers":[{"id":9001,"name":"SkyRide Technology"}],"revision":42,"updated_at":"2026-10-11T12:00:00Z"}}""",
+            """{"kind":"attraction","id":66486,"revision":42,"updated_at":"2026-10-11T12:00:00Z","settled":true,"settles_at":null,"sort_name":"skyride","sort_values":{"height":null,"speed":null,"length":null},"filters":{"type":"ride","status":"operating","country":null},"summary":{"id":66486,"type":"ride","name":"SkyRide","status":"operating","manufacturers":[{"id":9001,"name":"SkyRide Technology"}],"products":[],"updated_at":"2026-10-11T12:00:00Z"},"record":{"id":66486,"type":"ride","name":"SkyRide","title":"SkyRide (Carnival Horizon)","url":"https://coasterpedia.net/wiki/SkyRide_(Carnival_Horizon)","status":"operating","location":{},"manufacturers":[{"id":9001,"name":"SkyRide Technology"}],"products":[],"revision":42,"updated_at":"2026-10-11T12:00:00Z"}}""",
             json);
     }
 }

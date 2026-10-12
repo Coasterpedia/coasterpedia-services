@@ -11,6 +11,8 @@ export async function resetData(): Promise<void> {
 		env.DATA.prepare('DELETE FROM attractions'),
 		// Emptied by the delete trigger too; explicit in case a test wrote it directly.
 		env.DATA.prepare('DELETE FROM attraction_manufacturers'),
+		env.DATA.prepare('DELETE FROM attraction_products'),
+		env.DATA.prepare('DELETE FROM product_installations'),
 		env.DATA.prepare('DELETE FROM parks'),
 		env.DATA.prepare('DELETE FROM manufacturers'),
 		env.DATA.prepare('DELETE FROM products'),

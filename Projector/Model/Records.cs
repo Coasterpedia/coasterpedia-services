@@ -74,6 +74,15 @@ public sealed record VariantStats : AttractionStats
 }
 
 /// <summary>
+/// One product an attraction was built as (openapi Attraction.products).
+/// Variant is written even when null: none recorded, or one the page doesn't
+/// pair with a single product.
+/// </summary>
+public sealed record AttractionProduct(
+    Ref Product,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Variant);
+
+/// <summary>
 /// Everything in an attraction record that comes from the wiki's content.
 /// The hash is taken over this alone, so a prose edit (new revision, same
 /// content) never counts as a change (DR-010 §6.3).
@@ -88,6 +97,7 @@ public sealed record AttractionContent
     public string? Status { get; init; }
     public required AttractionLocation Location { get; init; }
     public required IReadOnlyList<Ref> Manufacturers { get; init; }
+    public required IReadOnlyList<AttractionProduct> Products { get; init; }
     public AttractionStats? Stats { get; init; }
 }
 
@@ -184,8 +194,9 @@ public sealed record ProductVariant(
 
 /// <summary>
 /// Everything in a product record that comes from the wiki's content; hashed
-/// like AttractionContent. Installations wait for the attractions' product
-/// field (rebuild A3); designer and the open type lists are held back (DR-010 §12.10).
+/// like AttractionContent. Installations are counted at the edge from the
+/// attractions' products (DR-010 §12.13), so an attraction edit moves them at
+/// once; designer and the open type lists are held back (DR-010 §12.10).
 /// </summary>
 public sealed record ProductContent
 {

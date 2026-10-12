@@ -50,6 +50,8 @@ public static class Wire
         if (c.Status != null) summary["status"] = c.Status;
         if (c.Location.Country != null) summary["country"] = JsonSerializer.SerializeToNode(c.Location.Country, Json);
         summary["manufacturers"] = JsonSerializer.SerializeToNode(c.Manufacturers, Json);
+        // The edge links products[].product.id for /v1/products/{id}/installations and the product filter.
+        summary["products"] = JsonSerializer.SerializeToNode(c.Products, Json);
         // The figures a list is ranked by, so a sorted page shows what it is sorted on.
         var headline = new AttractionStats { Height = c.Stats?.Height, Speed = c.Stats?.Speed, Length = c.Stats?.Length };
         if (!headline.IsEmpty) summary["stats"] = JsonSerializer.SerializeToNode(headline, Json);

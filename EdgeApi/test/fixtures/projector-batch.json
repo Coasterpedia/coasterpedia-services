@@ -35,6 +35,15 @@
             "name": "Arrow Development"
           }
         ],
+        "products": [
+          {
+            "product": {
+              "id": 53318,
+              "name": "Runaway Train"
+            },
+            "variant": null
+          }
+        ],
         "stats": {
           "height": {
             "value": 21.3,
@@ -84,6 +93,15 @@
           {
             "id": 1829,
             "name": "Arrow Development"
+          }
+        ],
+        "products": [
+          {
+            "product": {
+              "id": 53318,
+              "name": "Runaway Train"
+            },
+            "variant": null
           }
         ],
         "stats": {
@@ -160,6 +178,15 @@
             "name": "Bolliger \u0026 Mabillard"
           }
         ],
+        "products": [
+          {
+            "product": {
+              "id": 1498,
+              "name": "Inverted Coaster"
+            },
+            "variant": "Batman"
+          }
+        ],
         "stats": {
           "height": {
             "value": 32,
@@ -209,6 +236,15 @@
           {
             "id": 543,
             "name": "Bolliger \u0026 Mabillard"
+          }
+        ],
+        "products": [
+          {
+            "product": {
+              "id": 1498,
+              "name": "Inverted Coaster"
+            },
+            "variant": "Batman"
           }
         ],
         "stats": {
@@ -294,6 +330,7 @@
             "name": "International Amusement Devices"
           }
         ],
+        "products": [],
         "stats": {
           "height": {
             "value": 38.1,
@@ -345,6 +382,7 @@
             "name": "International Amusement Devices"
           }
         ],
+        "products": [],
         "stats": {
           "height": {
             "value": 38.1,
@@ -430,6 +468,15 @@
             "name": "BHS"
           }
         ],
+        "products": [
+          {
+            "product": {
+              "id": 3213,
+              "name": "Boomerang"
+            },
+            "variant": null
+          }
+        ],
         "updated_at": "2026-10-11T12:00:00Z"
       },
       "record": {
@@ -452,6 +499,15 @@
           },
           {
             "name": "BHS"
+          }
+        ],
+        "products": [
+          {
+            "product": {
+              "id": 3213,
+              "name": "Boomerang"
+            },
+            "variant": null
           }
         ],
         "revision": 404,
@@ -488,6 +544,15 @@
         "manufacturers": [
           {
             "name": "Self-built"
+          }
+        ],
+        "products": [
+          {
+            "product": {
+              "id": 44361,
+              "name": "Star Flyer"
+            },
+            "variant": null
           }
         ],
         "stats": {
@@ -530,6 +595,15 @@
         "manufacturers": [
           {
             "name": "Self-built"
+          }
+        ],
+        "products": [
+          {
+            "product": {
+              "id": 44361,
+              "name": "Star Flyer"
+            },
+            "variant": null
           }
         ],
         "stats": {
@@ -592,6 +666,14 @@
             "name": "SkyRide Technology"
           }
         ],
+        "products": [
+          {
+            "product": {
+              "name": "SkyRide Human Powered"
+            },
+            "variant": null
+          }
+        ],
         "updated_at": "2026-10-11T12:00:00Z"
       },
       "record": {
@@ -606,6 +688,14 @@
           {
             "id": 66480,
             "name": "SkyRide Technology"
+          }
+        ],
+        "products": [
+          {
+            "product": {
+              "name": "SkyRide Human Powered"
+            },
+            "variant": null
           }
         ],
         "revision": 406,
@@ -640,6 +730,22 @@
           "name": "Kosovo"
         },
         "manufacturers": [],
+        "products": [
+          {
+            "product": {
+              "id": 82994,
+              "name": "AquaPlay"
+            },
+            "variant": null
+          },
+          {
+            "product": {
+              "id": 58307,
+              "name": "TWISTER"
+            },
+            "variant": null
+          }
+        ],
         "stats": {
           "height": {
             "value": 36.6,
@@ -678,6 +784,22 @@
           }
         },
         "manufacturers": [],
+        "products": [
+          {
+            "product": {
+              "id": 82994,
+              "name": "AquaPlay"
+            },
+            "variant": null
+          },
+          {
+            "product": {
+              "id": 58307,
+              "name": "TWISTER"
+            },
+            "variant": null
+          }
+        ],
         "stats": {
           "height": {
             "value": 36.6,

@@ -25,7 +25,8 @@ public class GoldenBatchTests
         {
             Type = "coaster", PageId = 171, PageName = "Gold Rusher (Six Flags Magic Mountain)", Revision = 401,
             Name = "Gold Rusher", Status = "operating", Country = "USA",
-            Manufacturer = "[[Arrow Dynamics|Arrow Development]]", Lat = 34.4234906, Lon = -118.598881,
+            Manufacturer = "[[Arrow Dynamics|Arrow Development]]",
+            Product = "[[Runaway Train (Arrow Dynamics product)|Runaway Train]]", Lat = 34.4234906, Lon = -118.598881,
             Stats = new StatsRow
             {
                 Units = "imperial", Height = 70, HeightMetric = 21.335999317248, Length = 2590, LengthMetric = 789.43197473818,
@@ -37,6 +38,7 @@ public class GoldenBatchTests
         {
             Type = "coaster", PageId = 165, PageName = "Batman The Ride (Six Flags Magic Mountain)", Revision = 402,
             Name = "Batman The Ride", Status = "operating", Country = "USA", Manufacturer = "[[Bolliger & Mabillard]]",
+            Product = "[[Inverted Coaster (Bolliger & Mabillard product)|Inverted Coaster]]", ProductVariant = "Batman",
             Lat = 34.425775, Lon = -118.600895,
             Stats = new StatsRow
             {
@@ -63,16 +65,18 @@ public class GoldenBatchTests
             Type = "coaster", PageId = 9101, PageName = "Example Twin (Example Park)", Revision = 404,
             Name = "Example Twin", Status = "standing but not operating", Country = "Germany",
             Manufacturer = "[[Zierer]] <br> [[BHS]]",
+            // A product in projector-product-batch.json, so the edge counts an installation pending.
+            Product = "[[Boomerang (Vekoma product)|Boomerang]]",
         },
         new()
         {
             Type = "ride", PageId = 19643, PageName = "Over the Hill 2: Spooksville", Revision = 405,
             Name = "Over the Hill 2: Spooksville", Status = "operating", Country = "UK", Manufacturer = "Self-built",
-            Lat = 51.532395, Lon = 0.717849,
-            // Diameter has no _Metric column yet (rebuild A8): converted by Units. Values from SkyScreamer (20166).
+            Product = "[[Star Flyer (Funtime product)|Star Flyer]]", Lat = 51.532395, Lon = 0.717849,
+            // Values from SkyScreamer (20166).
             Stats = new StatsRow
             {
-                Units = "imperial", Height = 242, HeightMetric = 73.761597639629, Diameter = 98, Speed = 35,
+                Units = "imperial", Height = 242, HeightMetric = 73.761597639629, Diameter = 98, DiameterMetric = 29.870399044147, Speed = 35,
                 SpeedMetric = 56.32705742624, RidersHour = "1,200",
             },
         },
@@ -80,11 +84,15 @@ public class GoldenBatchTests
         {
             Type = "ride", PageId = 66486, PageName = "SkyRide (Carnival Horizon)", Revision = 406, Name = "SkyRide",
             Status = "operating", Country = "ship", Manufacturer = "[[SkyRide Technology]]",
+            // A red link, as on the wiki.
+            Product = "[[SkyRide Human Powered (SkyRide Technology product)|SkyRide Human Powered]]",
         },
         new()
         {
             Type = "water_slide", PageId = 9102, PageName = "Élan (Example Waterpark)", Revision = 407, Name = "Élan",
             Status = "Operating", Country = "Kosovo", Manufacturer = "", Lat = 42.6, Lon = 21.1,
+            // A complex of two products, one of them in projector-product-batch.json.
+            Product = "[[AquaPlay (WhiteWater West product)|AquaPlay]]#[[TWISTER (ProSlide product)|TWISTER]]",
             // Values from Summit Plummet (55725).
             Stats = new StatsRow { Units = "imperial", Height = 120, HeightMetric = 36.575998829568, Length = 360, LengthMetric = 109.7279964887 },
         },
@@ -97,7 +105,15 @@ public class GoldenBatchTests
         ["International Amusement Devices"] = 2210,
         ["Zierer"] = 77,
         ["SkyRide Technology"] = 66480,
+        ["Runaway Train (Arrow Dynamics product)"] = 53318,
+        ["Inverted Coaster (Bolliger & Mabillard product)"] = 1498,
+        ["Star Flyer (Funtime product)"] = 44361,
+        ["AquaPlay (WhiteWater West product)"] = 82994,
+        ["TWISTER (ProSlide product)"] = 58307,
+        ["Boomerang (Vekoma product)"] = 3213,
     };
+
+    private static readonly HashSet<int> ProductIds = [53318, 1498, 44361, 82994, 58307, 3213];
 
     // Live Amusement_Parks rows, 2026-10-12 (revisions invented).
     private static readonly ParkRow[] ParkRows =
@@ -372,12 +388,12 @@ public class GoldenBatchTests
         // promote and discard name pages the edge has never seen, so they must be
         // accepted and do nothing.
         var upserts = Rows.Select(r => Wire.Upsert(
-            AttractionMapper.Map(r, vocab, Resolved, "https://coasterpedia.net", issues), r.Revision, at,
+            AttractionMapper.Map(r, vocab, Resolved, ProductIds, "https://coasterpedia.net", issues), r.Revision, at,
             r.PageId == 9101 ? at + TimeSpan.FromDays(7) : null));
         var batch = Wire.Batch(at, TimeSpan.FromDays(7), upserts, [Wire.Delete(170, 171)],
             [Wire.Promote(9998)], [Wire.Discard(9999)], VocabularyDocument.Build(vocab, templates, [Wire.Park, Wire.Manufacturer, Wire.Product]));
 
-        Assert.Empty(issues);
+        Assert.Equal([new DataIssue(66486, "products", "SkyRide Human Powered (SkyRide Technology product)", "links no page")], issues);
         AssertGolden("projector-batch.json", batch);
     }
 

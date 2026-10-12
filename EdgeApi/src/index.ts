@@ -147,8 +147,9 @@ function route(path: string, url: URL, env: Env, caller: Caller): Route | null {
 		return { name: '/v1/products', view: true, run: () => listProducts(url, env) };
 	}
 
-	if (/^\/v1\/products\/[^/]+\/installations$/.test(path)) {
-		return { name: '/v1/products/{id}/installations', view: true, run: () => productInstallations() };
+	const built = /^\/v1\/products\/([^/]+)\/installations$/.exec(path);
+	if (built) {
+		return { name: '/v1/products/{id}/installations', view: true, run: () => productInstallations(url, built[1], env) };
 	}
 
 	const product = /^\/v1\/products\/([^/]+)$/.exec(path);

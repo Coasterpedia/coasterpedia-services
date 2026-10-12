@@ -11,9 +11,11 @@ import manufacturers from './fixtures/projector-manufacturer-batch.json';
 
 const BASE = 'https://api.coasterpedia.net';
 const KEY = 'cpk_products';
+// The refusals' own account, so the two blocks stay under the per-account limit (60 a minute).
+const REFUSED_KEY = 'cpk_productsrefused';
 
-const get = (path: string) =>
-	exports.default.fetch(new Request(BASE + path, { redirect: 'manual', headers: { authorization: `Bearer ${KEY}` } }));
+const get = (path: string, key = KEY) =>
+	exports.default.fetch(new Request(BASE + path, { redirect: 'manual', headers: { authorization: `Bearer ${key}` } }));
 
 const ingest = (body: unknown) => exports.default.fetch(new Request(`${BASE}/internal/ingest`, {
 	method: 'POST',
@@ -30,7 +32,9 @@ describe('the Projector product batch', () => {
 		await resetData();
 		await env.KEYS.put(`key:${await sha256Hex(KEY)}`, JSON.stringify({ account: 'products', tier: 'beta', status: 'active' }));
 		expect(await (await ingest(batch)).json()).toEqual({ upserted: 8, deleted: 1, promoted: 1, discarded: 1 });
-		// Attractions carry the vocabularies; manufacturers make /manufacturers/{id}/products answer. Vekoma (548) is one; Zamperla is not.
+		// Attractions carry the vocabularies and link two of these products: Example Twin (pending) is a
+		// Boomerang, Élan is partly an AquaPlay. Manufacturers make /manufacturers/{id}/products answer.
+		// Vekoma (548) is one; Zamperla is not.
 		expect((await ingest(attractions)).status).toBe(200);
 		expect((await ingest(manufacturers)).status).toBe(200);
 		// Another manufacturer page merged into Vekoma.
@@ -46,11 +50,16 @@ describe('the Projector product batch', () => {
 		expect(await ids('/v1/products')).toEqual([82994, 3213, 18364, 84000, 68541, 54013, 52106]);
 	});
 
-	it('lists the summary the Projector built', async () => {
+	it('lists the summary the Projector built, with the installations the edge counted', async () => {
 		const body = await (await get('/v1/products?view=latest&type=coaster&limit=1')).json<any>();
-		expect(body.data).toEqual([upsert(3213).summary]);
+		expect(body.data).toEqual([{ ...upsert(3213).summary, installations: 1 }]);
 		expect(body.data[0]).not.toHaveProperty('variants');
-		expect(body.data[0]).not.toHaveProperty('installations');
+		// Example Twin waits to settle, so the settled view counts no Boomerang yet.
+		const settled = await (await get('/v1/products?type=coaster&limit=1')).json<any>();
+		expect(settled.data[0].installations).toBe(0);
+		// Under a manufacturer too, and a product nothing links is 0, never absent.
+		const made = await (await get('/v1/manufacturers/548/products?view=latest')).json<any>();
+		expect(made.data.map((p: any) => [p.id, p.installations])).toEqual([[3213, 1], [68541, 0]]);
 	});
 
 	it('filters by type and status', async () => {
@@ -111,8 +120,10 @@ describe('the Projector product batch', () => {
 		const boomerang = await (await get('/v1/products/3213')).json<any>();
 		expect(boomerang.data).toEqual({
 			...upsert(3213).record,
+			installations: 0,
 			settlement: { settled_revision: 701, pending_revision: null, settles_at: null },
 		});
+		expect((await (await get('/v1/products/3213?view=latest')).json<any>()).data.installations).toBe(1);
 		// The infobox's own specs: one variant, unnamed.
 		expect(boomerang.data.variants).toHaveLength(1);
 		expect(boomerang.data.variants[0].name).toBeNull();
@@ -148,16 +159,31 @@ describe('the Projector product batch', () => {
 		expect((await get('/v1/products/548?view=latest')).status).toBe(404);
 	});
 
-	it('answers installations as not available, not as an empty list', async () => {
-		const res = await get('/v1/products/3213/installations');
-		expect(res.status).toBe(404);
-		expect((await res.json<any>()).type).toMatch(/not-available$/);
+	it("lists a product's installations, in each view, as the attractions list does", async () => {
+		const aquaplay = await (await get('/v1/products/82994/installations')).json<any>();
+		expect(aquaplay.data).toEqual([attractions.upsert.find((u) => u.id === 9102)!.summary]);
+		expect(aquaplay.data[0].products.map((p: any) => p.product.id)).toEqual([82994, 58307]);
+		// Example Twin is a Boomerang waiting to settle; built, but nothing settled says so yet.
+		expect(await ids('/v1/products/3213/installations?view=latest')).toEqual([9101]);
+		const none = await get('/v1/products/3213/installations');
+		expect(none.status).toBe(200);
+		expect((await none.json<any>()).data).toEqual([]);
+		expect(await ids('/v1/attractions?view=latest&product=3213')).toEqual([9101]);
+	});
+
+	it('redirects installations of a merged product, and refuses a product it does not hold', async () => {
+		const res = await get('/v1/products/99201/installations?view=latest');
+		expect(res.status).toBe(301);
+		expect(res.headers.get('location')).toBe(`${BASE}/v1/products/3213/installations?view=latest`);
+		// TWISTER is linked by Élan but is not a product the API holds yet.
+		expect((await get('/v1/products/58307/installations')).status).toBe(404);
+		expect((await get('/v1/products/171/installations')).status).toBe(404);
 	});
 
 	it('counts products in /v1/meta, per view', async () => {
 		const latest = await (await exports.default.fetch(new Request(`${BASE}/v1/meta?view=latest`))).json<any>();
 		expect(latest.counts).toEqual({ attractions: 7, parks: 0, manufacturers: 7, products: 8 });
-		expect(latest.schema_version).toBe('1.0.0-beta.10');
+		expect(latest.schema_version).toBe('1.0.0-beta.11');
 		const settled = await (await exports.default.fetch(new Request(`${BASE}/v1/meta`))).json<any>();
 		expect(settled.counts.products).toBe(7);
 	});
@@ -218,6 +244,10 @@ describe('the Projector product batch', () => {
 });
 
 describe('what /v1/products refuses', () => {
+	beforeAll(async () => {
+		await env.KEYS.put(`key:${await sha256Hex(REFUSED_KEY)}`, JSON.stringify({ account: 'products-refused', tier: 'beta', status: 'active' }));
+	});
+
 	it.each([
 		['a contract filter whose field is not published', '/v1/products?updated_since=2026-10-01T00:00:00Z', 400, 'parameter-unavailable'],
 		['the full-text search, not yet built', '/v1/products?q=boomerang', 400, 'parameter-unavailable'],
@@ -229,8 +259,12 @@ describe('what /v1/products refuses', () => {
 		['an unpublished filter on the one-record endpoint', '/v1/products/3213?q=x', 400, 'parameter-unavailable'],
 		['a second manufacturer under a manufacturer', '/v1/manufacturers/548/products?manufacturer=2399', 400, 'parameter-unknown'],
 		['a manufacturer ID that is not a number', '/v1/manufacturers/vekoma/products', 404, 'not-found'],
+		['a second product under a product', '/v1/products/3213/installations?product=68541', 400, 'parameter-unknown'],
+		['an attraction filter whose field is not published', '/v1/products/3213/installations?park=182', 400, 'parameter-unavailable'],
+		['a product ID that is not a number', '/v1/products/boomerang/installations', 404, 'not-found'],
+		['an empty variant', '/v1/products/3213/installations?variant=', 400, 'parameter-invalid'],
 	])('%s', async (_, path, status, type) => {
-		const res = await get(path);
+		const res = await get(path, REFUSED_KEY);
 		expect(res.status).toBe(status);
 		expect((await res.json<any>()).type).toMatch(new RegExp(`${type}$`));
 	});
@@ -246,6 +280,8 @@ describe('a product list reads no more than the table, and a manufacturer its ow
 	beforeAll(async () => {
 		await resetData();
 		const statements = [];
+		// Every product's installation counter, as the attractions' triggers would leave them.
+		const counts: string[] = [];
 		for (let start = 1; start <= N; start += 250) {
 			const values = [];
 			for (let i = start; i < start + 250; i++) {
@@ -253,27 +289,34 @@ describe('a product list reads no more than the table, and a manufacturer its ow
 				// 30 manufacturers; the largest holds every tenth product, about 300, Zamperla-sized.
 				const maker = i % 10 === 0 ? 1 : 2 + (i % 29);
 				const summary = JSON.stringify({ id: i, manufacturers: [{ id: maker, name: `m${maker}` }] });
+				counts.push(`(${i}, ${i % 7}, ${i % 7})`);
 				values.push(`(${i}, 1, 1, '${TYPES[i % TYPES.length]}', '${status}', '${name(i)}', 1, '2026-10-12T00:00:00Z', '${summary}', '{}')`);
 			}
 			statements.push(env.DATA.prepare(
 				`INSERT INTO products (id, in_latest, in_settled, type, status, sort_name, revision, updated_at, summary, record) VALUES ${values.join(',')}`,
 			));
 		}
+		for (let start = 0; start < counts.length; start += 500) {
+			statements.push(env.DATA.prepare(
+				`INSERT INTO product_installations (product, latest, settled) VALUES ${counts.slice(start, start + 500).join(',')}`,
+			));
+		}
 		await env.DATA.batch(statements);
 	});
 
+	// Each bound includes one key read per row returned for the installations count (0011).
 	const mid = encodeCursor('name', 'product 01500', 0);
 	it.each([
-		['by name', `/v1/products?view=latest&limit=100&cursor=${mid}`, null, 101, 200],
-		['by name, descending, settled', `/v1/products?limit=100&sort=-name&cursor=${mid}`, null, 101, 200],
+		['by name', `/v1/products?view=latest&limit=100&cursor=${mid}`, null, 101, 300],
+		['by name, descending, settled', `/v1/products?limit=100&sort=-name&cursor=${mid}`, null, 101, 300],
 		// No filter index (0009): the name index walked past what it skips (one in twelve is a slide, so about
 		// 1,200 rows for a page), bounded by the table: at most about 1,100 rows on the real one.
-		['filtered to water slides', `/v1/products?view=latest&limit=100&type=water_slide`, null, 101, 1500],
-		['filtered by status', `/v1/products?view=latest&limit=100&status=discontinued&cursor=${mid}`, null, 101, 400],
-		// The link index alone, then one key read per row returned: about 200 for a page.
-		['by the largest manufacturer', `/v1/products?view=latest&limit=100`, 1, 101, 300],
-		['by the largest manufacturer, deep, settled', `/v1/products?limit=100&sort=-name&cursor=${mid}`, 1, 101, 300],
-		['by a manufacturer and a type', `/v1/products?view=latest&limit=100&type=coaster`, 1, 100, 500],
+		['filtered to water slides', `/v1/products?view=latest&limit=100&type=water_slide`, null, 101, 1600],
+		['filtered by status', `/v1/products?view=latest&limit=100&status=discontinued&cursor=${mid}`, null, 101, 500],
+		// The link index alone, then two key reads per row returned: about 300 for a page.
+		['by the largest manufacturer', `/v1/products?view=latest&limit=100`, 1, 101, 400],
+		['by the largest manufacturer, deep, settled', `/v1/products?limit=100&sort=-name&cursor=${mid}`, 1, 101, 400],
+		['by a manufacturer and a type', `/v1/products?view=latest&limit=100&type=coaster`, 1, 100, 600],
 	])('%s', async (_, url, manufacturer, rows, bound) => {
 		const { sql, binds } = productListQuery(new URL(url, BASE), manufacturer);
 		const result = await env.DATA.prepare(sql).bind(...binds).all();

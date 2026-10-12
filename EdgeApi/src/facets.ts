@@ -1,4 +1,4 @@
-import { checkParams, FLAG, followManufacturerMerge, list, manufacturerParam, viewParam, type View } from './attractions';
+import { checkParams, FLAG, followMerges, linkFilter, list, viewParam, type View } from './attractions';
 import type { Env } from './env';
 import { json, LICENCE } from './http';
 
@@ -8,7 +8,7 @@ import { json, LICENCE } from './http';
  * Attractions Browser's options call, answered from D1.
  */
 
-const FACET_PARAMS = new Set(['type', 'status', 'country', 'manufacturer', 'view']);
+const FACET_PARAMS = new Set(['type', 'status', 'country', 'manufacturer', 'product', 'variant', 'view']);
 
 /** The facet dimensions: every filter the beta publishes, each a column of attraction_facets. */
 const DIMENSIONS = ['type', 'status', 'country'] as const;
@@ -70,7 +70,7 @@ export interface FacetQueries {
 	filters: Filters;
 	/** Every non-empty cell in the view; the dimensions are counted from these in the Worker. */
 	cells: Query;
-	/** With a manufacturer, its cells carry no country names, so they come from attraction_facets. */
+	/** With a manufacturer or a product, its cells carry no country names, so they come from attraction_facets. */
 	countryNames: Query | null;
 	/** Per stat: each distinct value in the filtered set, with how many record it. */
 	ranges: Record<string, Query>;
@@ -85,24 +85,24 @@ export function facetQueries(url: URL): FacetQueries {
 	// No stat filter exists yet, so every range is measured under the full
 	// filter. A stat filter, when one comes, leaves out its own range, as the
 	// browser's whereWithout does: bounds measured inside the cut can't be widened.
-	// A manufacturer is a filter but not a dimension, so it narrows every list
-	// and every range. Its links (migration 0008) carry the dimension and stat
-	// columns, so its counts are read from its own range of them: at most its
-	// attractions (Zamperla's 1,900), not the table.
-	const manufacturer = manufacturerParam(url);
-	const where: string[] = manufacturer == null ? [] : ['manufacturer = ?'];
-	const binds: (string | number)[] = manufacturer == null ? [] : [manufacturer];
+	// A manufacturer or a product is a filter but not a dimension, so it
+	// narrows every list and every range. Its links (migrations 0008, 0011)
+	// carry the dimension and stat columns, so its counts are read from its own
+	// range of them: at most its attractions (Zamperla's 1,900), not the table.
+	const link = linkFilter(url);
+	const where: string[] = link == null ? [] : [...link.where];
+	const binds: (string | number)[] = link == null ? [] : [...link.binds];
 	for (const d of DIMENSIONS) {
 		const values = filters[d];
 		if (!values) continue;
 		// Not the status index (0010): it would read every row of the status
 		// and group them, where the stat's own index stops at its coverage.
-		const col = d === 'status' && manufacturer == null ? '+status' : d;
+		const col = d === 'status' && link == null ? '+status' : d;
 		where.push(`${col} IN (${[...values].map(() => '?').join(',')})`);
 		binds.push(...values);
 	}
 
-	const table = manufacturer == null ? 'attractions' : 'attraction_manufacturers';
+	const table = link == null ? 'attractions' : `${link.table} m`;
 	const ranges: FacetQueries['ranges'] = {};
 	for (const stat of Object.keys(RANGES)) {
 		// The flag and IS NOT NULL as literals, so SQLite matches the stat's partial index.
@@ -114,7 +114,7 @@ export function facetQueries(url: URL): FacetQueries {
 		};
 	}
 
-	if (manufacturer == null) {
+	if (link == null) {
 		return {
 			view,
 			filters,
@@ -131,9 +131,9 @@ export function facetQueries(url: URL): FacetQueries {
 		filters,
 		cells: {
 			sql: `SELECT type, IFNULL(status, '') AS status, IFNULL(country, '') AS country, NULL AS country_name, COUNT(*) AS n
-				FROM attraction_manufacturers WHERE manufacturer = ? AND ${FLAG[view]} = 1
+				FROM ${link.table} m WHERE ${[...link.where, `${FLAG[view]} = 1`].join(' AND ')}
 				GROUP BY type, IFNULL(status, ''), IFNULL(country, '')`,
-			binds: [manufacturer],
+			binds: link.binds,
 		},
 		countryNames: {
 			sql: `SELECT country, country_name FROM attraction_facets WHERE view = ? AND n > 0 AND country_name IS NOT NULL`,
@@ -234,7 +234,7 @@ export function histogram(unit: string, values: { v: number; n: number }[]): Ran
 }
 
 export async function attractionFacets(url: URL, env: Env): Promise<{ response: Response; rows: number }> {
-	const q = facetQueries(await followManufacturerMerge(url, env));
+	const q = facetQueries(await followMerges(url, env));
 	const stats = Object.keys(q.ranges);
 	const db = env.DATA;
 	const [cells, vocab, asOf, names, ...rangeResults] = await db.batch<any>([

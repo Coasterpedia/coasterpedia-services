@@ -7,10 +7,11 @@ namespace CoasterpediaServices.Projector.Mapping;
 
 /// <summary>
 /// Product row and its variant rows → public product record. Pure, like the
-/// other mappers. Held back (DR-010 §12.10): installations, which need the
-/// attractions' Product as a list (rebuild A3); designer, which mixes people
-/// with firms, and people are out; and the open lists (coaster and slide
-/// types, ride type, lift/launch), which have no allowed values to check.
+/// other mappers. Installations are not mapped here: the edge counts them from
+/// the attractions' products (DR-010 §12.13). Held back (§12.10): designer,
+/// which mixes people with firms, and people are out; and the open lists
+/// (coaster and slide types, ride type, lift/launch), which have no allowed
+/// values to check.
 /// </summary>
 public static class ProductMapper
 {
