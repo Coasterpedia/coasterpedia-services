@@ -59,7 +59,7 @@ public sealed class VocabularySource
             try
             {
                 var json = await FetchAsync(ct);
-                _current = Parse(json, _config.AttractionTemplates);
+                _current = Parse(json, _config.VocabularyTemplates());
                 _fetchedAt = DateTimeOffset.UtcNow;
                 await _redis.GetDatabase().StringSetAsync(CacheKey, json.ToJsonString());
                 return _current;
@@ -78,7 +78,7 @@ public sealed class VocabularySource
                     throw new InvalidOperationException("No vocabularies: TemplateData unreachable and nothing cached", ex);
                 }
 
-                _current = Parse(JsonNode.Parse(cached.ToString())!, _config.AttractionTemplates);
+                _current = Parse(JsonNode.Parse(cached.ToString())!, _config.VocabularyTemplates());
                 _fetchedAt = DateTimeOffset.UtcNow - MaxAge + TimeSpan.FromMinutes(5);
                 return _current;
             }
@@ -91,7 +91,7 @@ public sealed class VocabularySource
 
     private async Task<JsonNode> FetchAsync(CancellationToken ct)
     {
-        var titles = string.Join('|', _config.AttractionTemplates.Values.SelectMany(t => t).Distinct());
+        var titles = string.Join('|', _config.VocabularyTemplates().Values.SelectMany(t => t).Distinct());
         var url = "w/api.php?action=templatedata&format=json&formatversion=2&redirects=1&titles="
                   + Uri.EscapeDataString(titles);
         var client = _httpClientFactory.CreateClient(HttpClientName);
@@ -100,7 +100,7 @@ public sealed class VocabularySource
                ?? throw new InvalidOperationException("Empty TemplateData response");
     }
 
-    /// <param name="templates">Attraction type → the templates that store it.</param>
+    /// <param name="templates">Attraction type, or "park" → the templates that store it.</param>
     internal static Vocabularies Parse(JsonNode json, IReadOnlyDictionary<string, string[]> templates)
     {
         var byTitle = new Dictionary<string, JsonObject>(StringComparer.Ordinal);

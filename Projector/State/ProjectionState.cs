@@ -6,18 +6,16 @@ namespace CoasterpediaServices.Projector.State;
 
 /// <summary>
 /// The Projector's memory, in Redis beside Hangfire (keys under projector:).
-/// Losing it is safe but noisy: the next sweep finds every record unknown and
-/// pushes it again as pending. The settled view keeps the identical content it
-/// has, and the runs settle a week later.
+/// Each kind keeps its own records (projector:{kind}:…); trust and the pending
+/// edits are per page, shared by every kind. Losing it is safe but noisy: the
+/// next sweep finds every record unknown and pushes it again as pending. The
+/// settled view keeps the identical content it has, and the runs settle a week
+/// later.
 /// </summary>
 public sealed class ProjectionState
 {
-    private const string PushedKey = "projector:attraction:pushed";
-    private const string SettlingKey = "projector:attraction:settling";
-    private const string MissingKey = "projector:attraction:missing";
     private const string TrustedKey = "projector:trust:trusted";
     private const string UntrustedKey = "projector:trust:untrusted";
-    private const string IssuesKey = "projector:issues";
     private const string PendingKey = "projector:pending";
     private const string FlushScheduledKey = "projector:flush-scheduled";
     private const string VocabularyKey = "projector:vocabularies:pushed";
@@ -38,12 +36,17 @@ public sealed class ProjectionState
 
     private IDatabase Db => _redis.GetDatabase();
 
-    public async Task<Dictionary<int, RecordState>> GetStatesAsync(IReadOnlyCollection<int>? ids)
+    private static string PushedKey(string kind) => $"projector:{kind}:pushed";
+    private static string SettlingKey(string kind) => $"projector:{kind}:settling";
+    private static string MissingKey(string kind) => $"projector:{kind}:missing";
+    private static string IssuesKey(string kind) => $"projector:{kind}:issues";
+
+    public async Task<Dictionary<int, RecordState>> GetStatesAsync(string kind, IReadOnlyCollection<int>? ids)
     {
         var result = new Dictionary<int, RecordState>();
         if (ids == null)
         {
-            foreach (var e in await Db.HashGetAllAsync(PushedKey))
+            foreach (var e in await Db.HashGetAllAsync(PushedKey(kind)))
             {
                 if (RecordState.Decode(e.Value) is { } s)
                 {
@@ -60,7 +63,7 @@ public sealed class ProjectionState
             return result;
         }
 
-        var values = await Db.HashGetAsync(PushedKey, list.Select(i => (RedisValue)i).ToArray());
+        var values = await Db.HashGetAsync(PushedKey(kind), list.Select(i => (RedisValue)i).ToArray());
         for (var i = 0; i < list.Length; i++)
         {
             if (RecordState.Decode(values[i]) is { } s)
@@ -73,32 +76,36 @@ public sealed class ProjectionState
     }
 
     /// <summary>Queue a batch for the edge, then record what it did. The outbox delivers it eventually.</summary>
-    public async Task CommitAsync(string batchJson, IReadOnlyDictionary<int, RecordState> states, IReadOnlyCollection<int> deleted)
+    public async Task CommitAsync(string kind, string batchJson, IReadOnlyDictionary<int, RecordState> states,
+        IReadOnlyCollection<int> deleted)
     {
-        await Db.ListRightPushAsync(OutboxKey, batchJson);
-        await SaveAsync(states);
+        await EnqueueAsync(batchJson);
+        await SaveAsync(kind, states);
 
         if (deleted.Count > 0)
         {
             var keys = deleted.Select(d => (RedisValue)d).ToArray();
-            await Db.HashDeleteAsync(PushedKey, keys);
-            await Db.SortedSetRemoveAsync(SettlingKey, keys);
-            await Db.HashDeleteAsync(MissingKey, keys);
+            await Db.HashDeleteAsync(PushedKey(kind), keys);
+            await Db.SortedSetRemoveAsync(SettlingKey(kind), keys);
+            await Db.HashDeleteAsync(MissingKey(kind), keys);
             await Db.HashDeleteAsync(TrustedKey, keys);
             await Db.HashDeleteAsync(UntrustedKey, keys);
-            await Db.HashDeleteAsync(IssuesKey, keys);
+            await Db.HashDeleteAsync(IssuesKey(kind), keys);
         }
     }
 
+    /// <summary>Queue a batch that records no state: an empty one, carrying only data_as_of.</summary>
+    public Task EnqueueAsync(string batchJson) => Db.ListRightPushAsync(OutboxKey, batchJson);
+
     /// <summary>Record states with nothing to push: an unchanged record taking a newer revision.</summary>
-    public async Task SaveAsync(IReadOnlyDictionary<int, RecordState> states)
+    public async Task SaveAsync(string kind, IReadOnlyDictionary<int, RecordState> states)
     {
         if (states.Count == 0)
         {
             return;
         }
 
-        await Db.HashSetAsync(PushedKey, states.Select(p => new HashEntry(p.Key, p.Value.Encode())).ToArray());
+        await Db.HashSetAsync(PushedKey(kind), states.Select(p => new HashEntry(p.Key, p.Value.Encode())).ToArray());
 
         // The settling index: each pending run, scored by when its clock started.
         var pending = states.Where(s => s.Value.ClockFrom != null)
@@ -106,13 +113,13 @@ public sealed class ProjectionState
             .ToArray();
         if (pending.Length > 0)
         {
-            await Db.SortedSetAddAsync(SettlingKey, pending);
+            await Db.SortedSetAddAsync(SettlingKey(kind), pending);
         }
 
         var settled = states.Where(s => s.Value.ClockFrom == null).Select(s => (RedisValue)s.Key).ToArray();
         if (settled.Length > 0)
         {
-            await Db.SortedSetRemoveAsync(SettlingKey, settled);
+            await Db.SortedSetRemoveAsync(SettlingKey(kind), settled);
         }
     }
 
@@ -122,8 +129,8 @@ public sealed class ProjectionState
     public Task SetPushedVocabularyAsync(string hash) => Db.StringSetAsync(VocabularyKey, hash);
 
     /// <summary>Records whose pending run's clock started at or before <paramref name="cutoff"/>.</summary>
-    public async Task<int[]> GetDueAsync(DateTimeOffset cutoff) =>
-        (await Db.SortedSetRangeByScoreAsync(SettlingKey, double.NegativeInfinity, cutoff.ToUnixTimeSeconds()))
+    public async Task<int[]> GetDueAsync(string kind, DateTimeOffset cutoff) =>
+        (await Db.SortedSetRangeByScoreAsync(SettlingKey(kind), double.NegativeInfinity, cutoff.ToUnixTimeSeconds()))
         .Select(v => (int)v)
         .ToArray();
 
@@ -153,37 +160,37 @@ public sealed class ProjectionState
         return result;
     }
 
-    /// <summary>One more pass that found the page but no attraction row. Returns the count so far.</summary>
-    public Task<long> IncrementMissingAsync(int id) => Db.HashIncrementAsync(MissingKey, id);
+    /// <summary>One more pass that found the page but no row of this kind. Returns the count so far.</summary>
+    public Task<long> IncrementMissingAsync(string kind, int id) => Db.HashIncrementAsync(MissingKey(kind), id);
 
-    public async Task ClearMissingAsync(IReadOnlyCollection<int> ids)
+    public async Task ClearMissingAsync(string kind, IReadOnlyCollection<int> ids)
     {
         if (ids.Count > 0)
         {
-            await Db.HashDeleteAsync(MissingKey, ids.Select(i => (RedisValue)i).ToArray());
+            await Db.HashDeleteAsync(MissingKey(kind), ids.Select(i => (RedisValue)i).ToArray());
         }
     }
 
     /// <summary>Replace the open issues of every page this pass looked at.</summary>
-    public async Task SetIssuesAsync(IReadOnlyCollection<int> looked, IReadOnlyList<DataIssue> issues)
+    public async Task SetIssuesAsync(string kind, IReadOnlyCollection<int> looked, IReadOnlyList<DataIssue> issues)
     {
         var byPage = issues.GroupBy(i => i.PageId).ToDictionary(g => g.Key, g => g.ToList());
         var clear = looked.Where(id => !byPage.ContainsKey(id)).Select(id => (RedisValue)id).ToArray();
         if (clear.Length > 0)
         {
-            await Db.HashDeleteAsync(IssuesKey, clear);
+            await Db.HashDeleteAsync(IssuesKey(kind), clear);
         }
 
         if (byPage.Count > 0)
         {
-            await Db.HashSetAsync(IssuesKey, byPage
+            await Db.HashSetAsync(IssuesKey(kind), byPage
                 .Select(g => new HashEntry(g.Key, JsonSerializer.Serialize(g.Value, Wire.Json)))
                 .ToArray());
         }
     }
 
-    public async Task<Dictionary<int, string>> GetIssuesAsync() =>
-        (await Db.HashGetAllAsync(IssuesKey)).ToDictionary(e => (int)e.Name, e => e.Value.ToString());
+    public async Task<Dictionary<int, string>> GetIssuesAsync(string kind) =>
+        (await Db.HashGetAllAsync(IssuesKey(kind))).ToDictionary(e => (int)e.Name, e => e.Value.ToString());
 
     /// <summary>Note an edited page. True when no flush is scheduled yet, so the caller schedules one.</summary>
     public bool AddPending(int pageId, TimeSpan debounce)

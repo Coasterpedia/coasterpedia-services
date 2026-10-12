@@ -30,6 +30,9 @@ public static partial class Wikitext
     [GeneratedRegex(@"\s+")]
     private static partial Regex SpacePattern();
 
+    [GeneratedRegex(@"[\s-]+")]
+    private static partial Regex SlugSeparatorPattern();
+
     /// <summary>
     /// Every link in the value, in order, deduplicated by target. With no link,
     /// the whole value as one unlinked Ref, unless it is empty or a placeholder.
@@ -97,9 +100,13 @@ public static partial class Wikitext
         return first.ToUpper(CultureInfo.InvariantCulture) + t[first.Length..];
     }
 
-    /// <summary>A vocabulary value as the API spells it: lower case, spaces to underscores (DR-010 §6.2).</summary>
+    /// <summary>
+    /// A vocabulary value as the API spells it: lower case, spaces and hyphens
+    /// to underscores (DR-010 §6.2), so "Lap-bars" is lap_bars, as the contract
+    /// has it. No value published before products had a hyphen.
+    /// </summary>
     public static string Slug(string value) =>
-        SpacePattern().Replace(value.Trim().ToLowerInvariant(), "_");
+        SlugSeparatorPattern().Replace(value.Trim().ToLowerInvariant(), "_");
 
     /// <summary>Case- and accent-blind sort key, so "Él" sorts with "El".</summary>
     public static string SortKey(string name)

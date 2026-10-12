@@ -56,4 +56,25 @@ public record ProjectorConfig
         ["ride"] = ["Template:Infobox ride"],
         ["water_slide"] = ["Template:Infobox water slide"],
     };
+
+    /// <summary>The infobox that stores Amusement_Parks; its TemplateData supplies the parks' allowed values.</summary>
+    public string[] ParkTemplates { get; init; } = ["Template:Infobox amusement park"];
+
+    /// <summary>The infobox that stores Manufacturers; its TemplateData supplies the manufacturers' allowed values.</summary>
+    public string[] ManufacturerTemplates { get; init; } = ["Template:Infobox manufacturer"];
+
+    /// <summary>
+    /// The three product infoboxes, read as one list per param: every product
+    /// is a "product" whatever its type, and they share status and restraints.
+    /// </summary>
+    public string[] ProductTemplates { get; init; } =
+        ["Template:Infobox coaster product", "Template:Infobox ride product", "Template:Infobox water slide product"];
+
+    /// <summary>
+    /// Every list of allowed values the Projector validates against: each
+    /// attraction type's, then the parks' under "park", the manufacturers'
+    /// under "manufacturer" and the products' under "product".
+    /// </summary>
+    public Dictionary<string, string[]> VocabularyTemplates() =>
+        new(AttractionTemplates) { ["park"] = ParkTemplates, ["manufacturer"] = ManufacturerTemplates, ["product"] = ProductTemplates };
 }

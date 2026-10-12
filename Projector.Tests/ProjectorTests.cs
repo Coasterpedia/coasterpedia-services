@@ -28,7 +28,11 @@ public class ProjectorTests
     private static AttractionRow Row(string type = "coaster", int id = 171, string page = "Gold Rusher (Six Flags Magic Mountain)",
         string? name = "Gold Rusher", string? status = "operating", string? country = "USA",
         string? manufacturer = "[[Arrow Dynamics|Arrow Development]]", double? lat = 34.4234906, double? lon = -118.598881) =>
-        new(type, id, page, 123456, name, status, country, manufacturer, lat, lon);
+        new()
+        {
+            Type = type, PageId = id, PageName = page, Revision = 123456, Name = name, Status = status, Country = country,
+            Manufacturer = manufacturer, Lat = lat, Lon = lon,
+        };
 
     private static AttractionContent Map(AttractionRow row, List<DataIssue>? issues = null) =>
         AttractionMapper.Map(row, Vocab, Resolved, "https://coasterpedia.net", issues ?? []);

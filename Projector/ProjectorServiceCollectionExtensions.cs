@@ -43,6 +43,11 @@ public static class ProjectorServiceCollectionExtensions
         services.AddSingleton<VocabularySource>();
         services.AddSingleton<ProjectionState>();
         services.AddSingleton<EdgeClient>();
+        // Registration order is pass order; attractions stay first.
+        services.AddSingleton<IKindProjection, AttractionProjection>();
+        services.AddSingleton<IKindProjection, ParkProjection>();
+        services.AddSingleton<IKindProjection, ManufacturerProjection>();
+        services.AddSingleton<IKindProjection, ProductProjection>();
         services.AddSingleton<ProjectionService>();
         services.AddSingleton<ProjectorJobs>();
         services.AddSingleton<IEventSubscriber, ProjectorSubscriber>();

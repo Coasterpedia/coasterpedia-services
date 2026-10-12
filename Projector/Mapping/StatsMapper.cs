@@ -18,6 +18,7 @@ public static partial class StatsMapper
     // Module:UnitConverter's factors, so a computed value matches a stored one.
     private static readonly Dimension LengthUnit = new("m", "ft", 3.28084);
     private static readonly Dimension SpeedUnit = new("km/h", "mph", 0.621371);
+    private static readonly Dimension MassUnit = new("kg", "lb", 2.20462);
 
     [GeneratedRegex(@"^(\d+):([0-5]\d)$")]
     private static partial Regex DurationPattern();
@@ -27,12 +28,7 @@ public static partial class StatsMapper
 
     public static AttractionStats? Map(int pageId, StatsRow r, List<DataIssue> issues)
     {
-        bool? imperial = r.Units?.ToLowerInvariant() switch
-        {
-            null or "metric" => false,
-            "imperial" => true,
-            _ => null,
-        };
+        var imperial = Imperial(r.Units);
         if (imperial == null)
         {
             // The units are unknown, so no figure can be read safely.
@@ -49,7 +45,7 @@ public static partial class StatsMapper
             ElevationDifference = M(r.Elevation, r.ElevationMetric, LengthUnit, "elevation_difference"),
             Length = M(r.Length, r.LengthMetric, LengthUnit, "length"),
             Speed = M(r.Speed, r.SpeedMetric, SpeedUnit, "speed"),
-            Diameter = M(r.Diameter, null, LengthUnit, "diameter"),
+            Diameter = M(r.Diameter, r.DiameterMetric, LengthUnit, "diameter"),
             Inversions = r.TrackInversions == null && r.RiderInversions == null
                 ? null
                 : new Inversions(r.TrackInversions, r.RiderInversions),
@@ -69,6 +65,21 @@ public static partial class StatsMapper
 
         return stats.IsEmpty ? null : stats;
     }
+
+    /// <summary>
+    /// A weight, converted by the page's Units: no weight column has a _Metric
+    /// twin. Null when the units are unknown, which Map has already reported.
+    /// </summary>
+    public static Measurement? Weight(int pageId, double? entered, string? units, string field, List<DataIssue> issues) =>
+        Imperial(units) is { } imperial ? Measure(pageId, entered, null, MassUnit, imperial, field, issues) : null;
+
+    /// <summary>Null and blank are metric, as the infoboxes default; anything but the two is unknown.</summary>
+    private static bool? Imperial(string? units) => units?.ToLowerInvariant() switch
+    {
+        null or "metric" => false,
+        "imperial" => true,
+        _ => null,
+    };
 
     private static Measurement? Measure(int pageId, double? entered, double? storedMetric, Dimension unit, bool imperial,
         string field, List<DataIssue> issues)
