@@ -202,7 +202,6 @@ public static class AttractionMapper
             Indoor = r.Indoor,
             Enclosed = r.Enclosed,
             DarkRide = r.DarkRide,
-            Water = r.Water,
             // Text by A4's decision ("36 horses, 2 chariots" says more than a number): published only when plain.
             Cabins = int.TryParse(r.Cabins?.Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var cabins) && cabins > 0 ? cabins : null,
             Units = Count(r.PageId, "ride.units", r.NumberOfRides, issues),

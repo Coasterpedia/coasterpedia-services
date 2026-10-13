@@ -64,7 +64,6 @@ public sealed record AttractionRow
     public bool? Indoor { get; init; }
     public bool? Enclosed { get; init; }
     public bool? DarkRide { get; init; }
-    public bool? Water { get; init; }
     public string? Cabins { get; init; }
     public int? NumberOfRides { get; init; }
     public double? Coord2Lat { get; init; }
@@ -389,7 +388,7 @@ public sealed partial class CargoReader
     internal static readonly string[] AttractionOptional =
     [
         "Owner", "Restraints", "Propulsion", "TrackMaterial", "SupportMaterial",
-        "Indoor", "Enclosed", "DarkRide", "Water", "Cabins", "NumberOfRides",
+        "Indoor", "Enclosed", "DarkRide", "Cabins", "NumberOfRides",
         "Coord2Lat", "Coord2Lon", "Coord3Lat", "Coord3Lon", "Coord4Lat", "Coord4Lon", "Coord5Lat", "Coord5Lon", "Coord6Lat", "Coord6Lon",
         "SlideClasses", "Environment", "Containment", "ExitType", "NumberOfSlides", "MaxWeightPerTube",
     ];

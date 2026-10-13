@@ -103,13 +103,12 @@ public sealed record RideDetail
     public bool? Indoor { get; init; }
     public bool? Enclosed { get; init; }
     public bool? DarkRide { get; init; }
-    public bool? Water { get; init; }
     public int? Cabins { get; init; }
     public int? Units { get; init; }
     public IReadOnlyList<Coordinates>? ExtraCoordinates { get; init; }
 
     [JsonIgnore]
-    public bool IsEmpty => Indoor == null && Enclosed == null && DarkRide == null && Water == null && Cabins == null
+    public bool IsEmpty => Indoor == null && Enclosed == null && DarkRide == null && Cabins == null
         && Units == null && ExtraCoordinates == null;
 }
 
