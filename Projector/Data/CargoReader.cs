@@ -389,7 +389,7 @@ public sealed partial class CargoReader
     internal static readonly string[] AttractionOptional =
     [
         "Owner", "Restraints", "Propulsion", "TrackMaterial", "SupportMaterial",
-        "Indoor", "Enclosed", "DarkRide", "Cabins", "NumberOfRides",
+        "Indoor", "Enclosed", "DarkRide", "Water", "Cabins", "NumberOfRides",
         "Coord2Lat", "Coord2Lon", "Coord3Lat", "Coord3Lon", "Coord4Lat", "Coord4Lon", "Coord5Lat", "Coord5Lon", "Coord6Lat", "Coord6Lon",
         "SlideClasses", "Environment", "Containment", "ExitType", "NumberOfSlides", "MaxWeightPerTube",
     ];
