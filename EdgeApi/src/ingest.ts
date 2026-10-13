@@ -97,6 +97,12 @@ export const KINDS: Record<string, KindTable> = {
 		values: (u) => [u.filters.status ?? null, u.filters.country ?? null],
 		check: () => null,
 	},
+	park_company: {
+		table: 'park_companies',
+		columns: ['status', 'country'],
+		values: (u) => [u.filters.status ?? null, u.filters.country ?? null],
+		check: () => null,
+	},
 	product: {
 		table: 'products',
 		columns: ['type', 'status'],

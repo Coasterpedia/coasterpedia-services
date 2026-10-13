@@ -139,12 +139,12 @@ describe('GET /v1/attractions', () => {
 		expect(second.data.map((a: any) => a.name)).toEqual(['Gold Rusher', 'Colossus']);
 	});
 
-	it('refuses a filter whose field is not published yet rather than ignoring it', async () => {
-		const res = await get('/v1/attractions?view=latest&bbox=50,-1,51,0');
+	it('refuses what it cannot answer rather than ignoring it', async () => {
+		const res = await get('/v1/attractions?view=latest&sort=popularity');
 		expect(res.status).toBe(400);
 		expect((await res.json<any>()).type).toContain('parameter-unavailable');
 		expect((await get('/v1/attractions?view=latest&colour=red')).status).toBe(400);
-		expect((await get('/v1/attractions?view=latest&sort=updated')).status).toBe(400);
+		expect((await get('/v1/attractions?view=latest&bbox=50,-1,51')).status).toBe(400);
 		expect((await get('/v1/attractions?view=latest&limit=101')).status).toBe(400);
 		expect((await get('/v1/attractions?view=latest&cursor=garbage')).status).toBe(400);
 	});
@@ -198,9 +198,9 @@ describe('GET /v1/attractions/facets', () => {
 	});
 
 	it('refuses what the list would refuse, and the list-only parameters', async () => {
-		const res = await get('/v1/attractions/facets?q=batman');
+		const res = await get('/v1/attractions/facets?q=a');
 		expect(res.status).toBe(400);
-		expect((await res.json<any>()).type).toContain('parameter-unavailable');
+		expect((await res.json<any>()).type).toContain('parameter-invalid');
 		expect((await get('/v1/attractions/facets?sort=name')).status).toBe(400);
 		expect((await get('/v1/attractions/facets?cursor=x')).status).toBe(400);
 		expect((await get('/v1/attractions/facets?view=draft')).status).toBe(400);

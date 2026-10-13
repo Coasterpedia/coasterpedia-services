@@ -8,7 +8,9 @@ import { problem, ProblemError } from './http';
 import { ingest } from './ingest';
 import { getManufacturer, listManufacturers } from './manufacturers';
 import { getPark, listParks, parkAttractions } from './parks';
+import { getParkCompany, listParkCompanies, parkCompanyParks } from './park-companies';
 import { getProduct, listProducts, manufacturerProducts, productInstallations } from './products';
+import { search } from './search';
 import { LIMITED_HEADERS, withPolicy } from './ratelimit';
 import { vocabularies } from './vocabularies';
 
@@ -98,8 +100,12 @@ function route(path: string, url: URL, env: Env, caller: Caller): Route | null {
 			name: '/v1/changes', view: true,
 			// The tier's delay changes the answer; keyed by the delay, tiers that share one share entries.
 			extra: { delay: `PT${delayHours(caller.tier)}H` },
-			run: () => listChanges(url, env, caller.tier),
+			run: () => listChanges(url, env, delayHours(caller.tier)),
 		};
+	}
+
+	if (path === '/v1/search') {
+		return { name: '/v1/search', view: true, run: () => search(url, env) };
 	}
 
 	if (path === '/v1/attractions') {
@@ -142,6 +148,20 @@ function route(path: string, url: URL, env: Env, caller: Caller): Route | null {
 	const manufacturer = /^\/v1\/manufacturers\/([^/]+)$/.exec(path);
 	if (manufacturer) {
 		return { name: '/v1/manufacturers/{id}', view: true, run: () => getManufacturer(url, manufacturer[1], env) };
+	}
+
+	if (path === '/v1/park-companies') {
+		return { name: '/v1/park-companies', view: true, run: () => listParkCompanies(url, env) };
+	}
+
+	const owned = /^\/v1\/park-companies\/([^/]+)\/parks$/.exec(path);
+	if (owned) {
+		return { name: '/v1/park-companies/{id}/parks', view: true, run: () => parkCompanyParks(url, owned[1], env) };
+	}
+
+	const company = /^\/v1\/park-companies\/([^/]+)$/.exec(path);
+	if (company) {
+		return { name: '/v1/park-companies/{id}', view: true, run: () => getParkCompany(url, company[1], env) };
 	}
 
 	if (path === '/v1/products') {

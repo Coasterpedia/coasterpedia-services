@@ -125,11 +125,11 @@ describe('edge cache', () => {
 		const since = '/v1/changes?since=2026-01-01T00:00:00Z&view=latest';
 		const beta = await (await call(since)).json<any>();
 		const free = await (await call(since, { key: FREE })).json<any>();
+		// Both tiers are real time (DR-010 §9), so they share an entry; a delayed tier would key its own.
 		expect(beta.meta.delay).toBe('PT0H');
-		expect(beta.data).toHaveLength(2);
-		// Had they shared an entry, free would have read beta's undelayed feed.
-		expect(free.meta.delay).toBe('PT24H');
-		expect(free.data).toHaveLength(0);
+		expect(free.meta.delay).toBe('PT0H');
+		expect(free.data).toEqual(beta.data);
+		expect(free.data).toHaveLength(2);
 	});
 
 	it('serves the open endpoints publicly', async () => {

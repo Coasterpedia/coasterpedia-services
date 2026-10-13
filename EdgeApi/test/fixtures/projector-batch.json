@@ -29,6 +29,7 @@
         "id": 171,
         "type": "coaster",
         "name": "Gold Rusher",
+        "name_is_placeholder": false,
         "status": "operating",
         "park": {
           "id": 163,
@@ -91,6 +92,7 @@
         "id": 171,
         "type": "coaster",
         "name": "Gold Rusher",
+        "name_is_placeholder": false,
         "title": "Gold Rusher (Six Flags Magic Mountain)",
         "url": "https://coasterpedia.net/wiki/Gold_Rusher_(Six_Flags_Magic_Mountain)",
         "status": "operating",
@@ -136,6 +138,9 @@
             },
             "variant": null
           }
+        ],
+        "categories": [
+          "Terrain"
         ],
         "stats": {
           "height": {
@@ -225,6 +230,7 @@
         "id": 165,
         "type": "coaster",
         "name": "Batman The Ride",
+        "name_is_placeholder": false,
         "status": "operating",
         "park": {
           "id": 163,
@@ -287,6 +293,7 @@
         "id": 165,
         "type": "coaster",
         "name": "Batman The Ride",
+        "name_is_placeholder": false,
         "title": "Batman The Ride (Six Flags Magic Mountain)",
         "url": "https://coasterpedia.net/wiki/Batman_The_Ride_(Six_Flags_Magic_Mountain)",
         "status": "operating",
@@ -333,8 +340,22 @@
             "variant": "Batman"
           }
         ],
+        "designers": [
+          {
+            "name": "Ing.-B\u00FCro Stengel GmbH"
+          }
+        ],
+        "categories": [
+          "Inverted"
+        ],
         "restraints": [
           "over_the_shoulder"
+        ],
+        "replaced": [
+          {
+            "id": 26979,
+            "name": "Z-Force"
+          }
         ],
         "stats": {
           "height": {
@@ -453,6 +474,7 @@
         "id": 169,
         "type": "coaster",
         "name": "Colossus",
+        "name_is_placeholder": false,
         "status": "defunct",
         "park": {
           "id": 163,
@@ -512,6 +534,7 @@
         "id": 169,
         "type": "coaster",
         "name": "Colossus",
+        "name_is_placeholder": false,
         "title": "Colossus (Six Flags Magic Mountain)",
         "url": "https://coasterpedia.net/wiki/Colossus_(Six_Flags_Magic_Mountain)",
         "status": "defunct",
@@ -557,6 +580,12 @@
         "products": [],
         "restraints": [
           "shared_lap_bars"
+        ],
+        "replaced_by": [
+          {
+            "id": 9630,
+            "name": "Twisted Colossus"
+          }
         ],
         "stats": {
           "height": {
@@ -616,6 +645,16 @@
         "coaster": {
           "propulsion": "roller",
           "track_material": "wooden",
+          "train_manufacturers": [
+            {
+              "id": 3712,
+              "name": "Philadelphia Toboggan Coasters"
+            },
+            {
+              "id": 2582,
+              "name": "Morgan"
+            }
+          ],
           "elements": [
             {
               "id": 2915,
@@ -666,6 +705,7 @@
         "id": 9101,
         "type": "coaster",
         "name": "Example Twin",
+        "name_is_placeholder": true,
         "status": "standing_but_not_operating",
         "location_kind": "travelling",
         "country": {
@@ -701,6 +741,7 @@
         "id": 9101,
         "type": "coaster",
         "name": "Example Twin",
+        "name_is_placeholder": true,
         "title": "Example Twin (Example Park)",
         "url": "https://coasterpedia.net/wiki/Example_Twin_(Example_Park)",
         "status": "standing_but_not_operating",
@@ -739,6 +780,27 @@
             },
             "variant": null
           }
+        ],
+        "designers": [
+          {
+            "name": "Werner Stengel"
+          },
+          {
+            "name": "Hans Meier"
+          }
+        ],
+        "builders": [
+          {
+            "id": 77,
+            "name": "Zierer"
+          },
+          {
+            "name": "Example Steelworks"
+          }
+        ],
+        "categories": [
+          "Spinning",
+          "Family"
         ],
         "restraints": [
           "lap_bars",
@@ -803,6 +865,44 @@
                 "latest": "2010-12-31"
               }
             }
+          ],
+          "names": [
+            {
+              "name": "Twin Racer",
+              "start": {
+                "edtf": "1990",
+                "earliest": "1990-01-01",
+                "latest": "1990-12-31"
+              },
+              "end": {
+                "edtf": "1995",
+                "earliest": "1995-01-01",
+                "latest": "1995-12-31"
+              },
+              "location_index": 2
+            },
+            {
+              "name": "Example Twin",
+              "start": {
+                "edtf": "1996",
+                "earliest": "1996-01-01",
+                "latest": "1996-12-31"
+              },
+              "end": null,
+              "location_index": 2
+            },
+            {
+              "name": "Example Twin",
+              "start": null,
+              "end": null,
+              "location_index": 1
+            },
+            {
+              "name": "Example Twin",
+              "start": null,
+              "end": null,
+              "location_index": null
+            }
           ]
         },
         "revision": 404,
@@ -836,6 +936,7 @@
         "id": 19643,
         "type": "ride",
         "name": "Over the Hill 2: Spooksville",
+        "name_is_placeholder": false,
         "status": "operating",
         "park": {
           "id": 9136,
@@ -889,6 +990,7 @@
         "id": 19643,
         "type": "ride",
         "name": "Over the Hill 2: Spooksville",
+        "name_is_placeholder": false,
         "title": "Over the Hill 2: Spooksville",
         "url": "https://coasterpedia.net/wiki/Over_the_Hill_2:_Spooksville",
         "status": "operating",
@@ -932,6 +1034,9 @@
             },
             "variant": null
           }
+        ],
+        "categories": [
+          "Tracked Dark Ride"
         ],
         "stats": {
           "height": {
@@ -1013,6 +1118,7 @@
         "id": 66486,
         "type": "ride",
         "name": "SkyRide",
+        "name_is_placeholder": false,
         "status": "operating",
         "park": {
           "id": 67009,
@@ -1044,6 +1150,7 @@
         "id": 66486,
         "type": "ride",
         "name": "SkyRide",
+        "name_is_placeholder": false,
         "title": "SkyRide (Carnival Horizon)",
         "url": "https://coasterpedia.net/wiki/SkyRide_(Carnival_Horizon)",
         "status": "operating",
@@ -1079,6 +1186,9 @@
             "variant": null
           }
         ],
+        "categories": [
+          "Monorail"
+        ],
         "revision": 406,
         "updated_at": "2026-10-11T12:00:00Z"
       }
@@ -1110,6 +1220,7 @@
         "id": 9102,
         "type": "water_slide",
         "name": "\u00C9lan",
+        "name_is_placeholder": false,
         "status": "operating",
         "location_kind": "standalone",
         "country": {
@@ -1162,6 +1273,7 @@
         "id": 9102,
         "type": "water_slide",
         "name": "\u00C9lan",
+        "name_is_placeholder": false,
         "title": "\u00C9lan (Example Waterpark)",
         "url": "https://coasterpedia.net/wiki/%C3%89lan_(Example_Waterpark)",
         "status": "operating",
@@ -1319,7 +1431,8 @@
           "ride",
           "water_slide",
           "park",
-          "manufacturer"
+          "manufacturer",
+          "park_company"
         ]
       },
       {
@@ -1390,14 +1503,16 @@
           "ride",
           "water_slide",
           "park",
-          "manufacturer"
+          "manufacturer",
+          "park_company"
         ]
       },
       {
         "value": "active",
         "label": "Active",
         "applies_to": [
-          "manufacturer"
+          "manufacturer",
+          "park_company"
         ]
       },
       {

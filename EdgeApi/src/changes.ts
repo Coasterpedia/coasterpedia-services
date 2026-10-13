@@ -5,7 +5,7 @@ import { badRequest, CHANGES_WINDOW_DAYS, decodeOpaque, encodeOpaque, isoSeconds
 const PARAMS = new Set(['since', 'kinds', 'view', 'limit']);
 
 /** Kinds the log records. Any other is refused: filtering by it would answer "nothing changed". */
-const KINDS = new Set(['attraction', 'park', 'manufacturer', 'product']);
+const KINDS = new Set(['attraction', 'park', 'manufacturer', 'product', 'park_company']);
 
 /**
  * Log rows one request may scan. A settled feed skips latest-only rows, so a
@@ -14,11 +14,11 @@ const KINDS = new Set(['attraction', 'park', 'manufacturer', 'product']);
 const SCAN = 1000;
 
 /**
- * How far behind now each tier's feed runs (DR-010 §9). Free's 24 hours is the
- * DR's placeholder (§11). A tier not named here gets free's delay, so an
- * unknown tier is never real time by accident.
+ * How far behind now each tier's feed runs (DR-010 §9). Every tier is real time:
+ * freshness is not what the paid tier sells. Kept so a delay can be restored by
+ * config. A tier not named here gets free's delay.
  */
-const DELAY_HOURS: Record<string, number> = { free: 24, beta: 0, commercial: 0 };
+const DELAY_HOURS: Record<string, number> = { free: 0, beta: 0, commercial: 0 };
 
 /** The tier's feed delay in hours. The cache key carries it, since it changes the answer. */
 export function delayHours(tier: string): number {
@@ -97,7 +97,7 @@ export function pageQuery(after: number, upper: number, view: View, kinds: strin
 
 function expired(detail: string): Response {
 	return problem(410, 'cursor-expired', 'This cursor has expired',
-		`${detail} Resync from the lists (/v1/attractions, /v1/parks, /v1/manufacturers), then follow /v1/changes with since set to the time the resync began.`);
+		`${detail} Resync from the lists (/v1/attractions, /v1/parks, /v1/manufacturers, /v1/products, /v1/park-companies), then follow /v1/changes with since set to the time the resync began.`);
 }
 
 function encodeCursor(epoch: string, seq: number): string {
@@ -120,10 +120,10 @@ function decodeCursor(cursor: string): [string, number] {
 /**
  * GET /v1/changes (DR-010 §6, §6.3, §9). Ordered by the log, from a cursor or
  * a time. The view picks which log lines count: settled lists only changes to
- * the settled view, so a vandal edit and its revert never appear there. The
- * tier's delay hides the newest lines in both views.
+ * the settled view, so a vandal edit and its revert never appear there. A
+ * delay (delayHours) hides the newest lines in both views.
  */
-export async function listChanges(url: URL, env: Env, tier: string, now = new Date()): Promise<{ response: Response; rows: number }> {
+export async function listChanges(url: URL, env: Env, delay: number, now = new Date()): Promise<{ response: Response; rows: number }> {
 	for (const name of url.searchParams.keys()) {
 		if (!PARAMS.has(name)) throw badRequest('parameter-unknown', `Unknown parameter ${name}`);
 	}
@@ -132,7 +132,7 @@ export async function listChanges(url: URL, env: Env, tier: string, now = new Da
 	const kinds = list(url, 'kinds');
 	for (const kind of kinds) {
 		if (!KINDS.has(kind)) {
-			throw badRequest('parameter-unavailable', `kinds=${kind} is not available yet`, 'The beta publishes attractions, parks, manufacturers and products.');
+			throw badRequest('parameter-unavailable', `kinds=${kind} is not available yet`, 'The beta publishes attractions, parks, manufacturers, products and park companies.');
 		}
 	}
 	const since = url.searchParams.get('since');
@@ -166,7 +166,6 @@ export async function listChanges(url: URL, env: Env, tier: string, now = new Da
 		after = seq;
 	}
 
-	const delay = delayHours(tier);
 	const visibleBefore = delay > 0 ? isoSeconds(new Date(now.getTime() - delay * HOUR)) : null;
 	// The newest line this caller may see. A prefix by seq, never a filter on at,
 	// so a cursor can never step over a line that becomes visible later.

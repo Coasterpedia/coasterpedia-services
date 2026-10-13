@@ -29,6 +29,7 @@ public static class Wire
     public const string Park = "park";
     public const string Manufacturer = "manufacturer";
     public const string Product = "product";
+    public const string ParkCompany = "park_company";
 
     /// <summary>SHA-256 over the content's serialisation. Property order is the type's, so it is stable.</summary>
     public static string Hash<T>(T content) =>
@@ -46,6 +47,7 @@ public static class Wire
             ["id"] = c.Id,
             ["type"] = c.Type,
             ["name"] = c.Name,
+            ["name_is_placeholder"] = c.NameIsPlaceholder,
         };
         if (c.Status != null) summary["status"] = c.Status;
         if (c.Location.Park != null) summary["park"] = JsonSerializer.SerializeToNode(c.Location.Park, Json);
@@ -153,6 +155,33 @@ public static class Wire
         return new JsonObject
         {
             ["kind"] = Manufacturer,
+            ["id"] = c.Id,
+            ["revision"] = revision,
+            ["updated_at"] = Iso(updatedAt),
+            ["settled"] = settlesAt == null,
+            ["settles_at"] = settlesAt is { } at ? Iso(at) : null,
+            ["sort_name"] = Wikitext.SortKey(c.Name),
+            ["filters"] = new JsonObject
+            {
+                ["status"] = c.Status,
+                ["country"] = c.Country?.Code,
+            },
+            ["summary"] = record.DeepClone(),
+            ["record"] = record,
+        };
+    }
+
+    /// <summary>As for manufacturers: the contract lists full records (ParkCompanyList), so the summary is the record.</summary>
+    /// <param name="settlesAt">As for an attraction.</param>
+    public static JsonObject UpsertParkCompany(ParkCompanyContent c, long revision, DateTimeOffset updatedAt, DateTimeOffset? settlesAt = null)
+    {
+        var record = JsonSerializer.SerializeToNode(c, Json)!.AsObject();
+        record["revision"] = revision;
+        record["updated_at"] = Iso(updatedAt);
+
+        return new JsonObject
+        {
+            ["kind"] = ParkCompany,
             ["id"] = c.Id,
             ["revision"] = revision,
             ["updated_at"] = Iso(updatedAt),

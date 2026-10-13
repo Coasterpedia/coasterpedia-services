@@ -219,6 +219,22 @@ public static partial class FieldMapper
     /// for. Anything else (two links, a note after the link, no scheme) is
     /// null and reported: it is wikitext, and wikitext is never published.
     /// </summary>
+    /// <summary>
+    /// A cell naming one or more pages, as Refs with their page IDs
+    /// (<see cref="Wikitext.RefList"/>). A red link keeps a null id and is not
+    /// reported; text beside a link that is more than a note is. Null when the
+    /// cell names nothing.
+    /// </summary>
+    /// <param name="resolved">Link target → page ID; null leaves every id null (designers, for now).</param>
+    public static IReadOnlyList<Ref>? Refs(int pageId, string field, string? wikitext, IReadOnlyDictionary<string, int>? resolved,
+        List<DataIssue> issues)
+    {
+        var refs = Wikitext.RefList(wikitext, text => issues.Add(new DataIssue(pageId, field, text, "unlinked text beside a link is left out")))
+            .Select(x => resolved != null && x.Target != null && resolved.TryGetValue(x.Target, out var id) ? x.Ref with { Id = id } : x.Ref)
+            .ToList();
+        return refs.Count == 0 ? null : refs;
+    }
+
     public static string? Website(int pageId, string? value, List<DataIssue> issues)
     {
         if (string.IsNullOrWhiteSpace(value))

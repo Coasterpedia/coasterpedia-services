@@ -72,7 +72,7 @@ public sealed class ProjectionService
         var vocab = await _vocabularies.GetAsync(ct);
         await using var conn = await _reader.OpenAsync(ct);
 
-        var vocabulary = VocabularyDocument.Build(vocab, _config.AttractionTemplates, [Wire.Park, Wire.Manufacturer, Wire.Product]);
+        var vocabulary = VocabularyDocument.Build(vocab, _config.AttractionTemplates, [Wire.Park, Wire.Manufacturer, Wire.Product, Wire.ParkCompany]);
         var vocabularyHash = VocabularyDocument.Hash(vocabulary);
         var pass = new Pass(DateTimeOffset.UtcNow, _config.SettleAfter,
             await _state.GetPushedVocabularyAsync() == vocabularyHash ? null : vocabulary);

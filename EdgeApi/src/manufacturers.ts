@@ -2,15 +2,16 @@ import {
 	checkParams, dataAsOf, decodeCursor, encodeCursor, FLAG, getRecord, limitParam, list, viewParam, type View,
 } from './attractions';
 import type { Env } from './env';
+import { searchMatch, searchWhere, updatedSinceParam } from './filters';
 import { badRequest, json, LICENCE } from './http';
 
 /**
  * Contract parameters of /v1/manufacturers whose field is not published yet
  * (DR-010 §12.8). Refused, never ignored, as on the other lists.
  */
-const NOT_YET = new Set(['updated_since', 'q']);
+const NOT_YET = new Set<string>();
 
-const LIST_PARAMS = new Set(['status', 'country', 'sort', 'view', 'limit', 'cursor']);
+const LIST_PARAMS = new Set(['status', 'country', 'updated_since', 'q', 'sort', 'view', 'limit', 'cursor']);
 const ONE_PARAMS = new Set(['view']);
 
 interface Row {
@@ -47,6 +48,17 @@ export function manufacturerListQuery(url: URL): ListQuery {
 	// Both walk the name index (0007): the table is too small to index them.
 	inList('status', list(url, 'status'));
 	inList('country', list(url, 'country', (v) => v.toUpperCase()));
+	const since = updatedSinceParam(url);
+	if (since != null) {
+		where.push('updated_at >= ?');
+		binds.push(since);
+	}
+	const match = searchMatch(url);
+	if (match != null) {
+		const q = searchWhere('manufacturer', 'id', 'in_latest', match);
+		where.push(q.sql);
+		binds.push(...q.binds);
+	}
 
 	const cursor = url.searchParams.get('cursor');
 	if (cursor) {

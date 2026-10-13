@@ -63,6 +63,9 @@ public record ProjectorConfig
     /// <summary>The infobox that stores Manufacturers; its TemplateData supplies the manufacturers' allowed values.</summary>
     public string[] ManufacturerTemplates { get; init; } = ["Template:Infobox manufacturer"];
 
+    /// <summary>The infobox that stores Park_Companies; its TemplateData supplies the park companies' allowed values.</summary>
+    public string[] ParkCompanyTemplates { get; init; } = ["Template:Infobox park company"];
+
     /// <summary>
     /// The three product infoboxes, read as one list per param: every product
     /// is a "product" whatever its type, and they share status and restraints.
@@ -73,8 +76,13 @@ public record ProjectorConfig
     /// <summary>
     /// Every list of allowed values the Projector validates against: each
     /// attraction type's, then the parks' under "park", the manufacturers'
-    /// under "manufacturer" and the products' under "product".
+    /// under "manufacturer", the products' under "product" and the park
+    /// companies' under "park_company".
     /// </summary>
     public Dictionary<string, string[]> VocabularyTemplates() =>
-        new(AttractionTemplates) { ["park"] = ParkTemplates, ["manufacturer"] = ManufacturerTemplates, ["product"] = ProductTemplates };
+        new(AttractionTemplates)
+        {
+            ["park"] = ParkTemplates, ["manufacturer"] = ManufacturerTemplates, ["product"] = ProductTemplates,
+            ["park_company"] = ParkCompanyTemplates,
+        };
 }

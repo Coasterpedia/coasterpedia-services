@@ -12,7 +12,8 @@ namespace CoasterpediaServices.Projector.Tests;
 /// <summary>
 /// The ingest batches the Projector emits for real rows, pinned in files that
 /// the Worker's tests also ingest (EdgeApi/test/fixtures/projector-batch.json,
-/// projector-park-batch.json, projector-manufacturer-batch.json and projector-product-batch.json). A change on either side of the wire fails
+/// projector-park-batch.json, projector-manufacturer-batch.json, projector-product-batch.json and
+/// projector-park-company-batch.json). A change on either side of the wire fails
 /// one of the two suites.
 /// Regenerate after a deliberate change: UPDATE_GOLDEN=1 dotnet test.
 /// </summary>
@@ -24,6 +25,8 @@ public class GoldenBatchTests
         new()
         {
             Type = "coaster", PageId = 171, PageName = "Gold Rusher (Six Flags Magic Mountain)", Revision = 401,
+            // Live 2026-10-13: one type tag.
+            Category1 = "Terrain",
             Name = "Gold Rusher", Status = "operating", Country = "USA",
             Manufacturer = "[[Arrow Dynamics|Arrow Development]]",
             Product = "[[Runaway Train (Arrow Dynamics product)|Runaway Train]]", Lat = 34.4234906, Lon = -118.598881,
@@ -41,6 +44,8 @@ public class GoldenBatchTests
         new()
         {
             Type = "coaster", PageId = 165, PageName = "Batman The Ride (Six Flags Magic Mountain)", Revision = 402,
+            // Live 2026-10-13: a firm as designer, and the coaster it replaced.
+            Designer = "[[Ing.-Büro Stengel GmbH]]", Replaced = "[[Z-Force]]", Category1 = "Inverted",
             Name = "Batman The Ride", Status = "operating", Country = "USA", Manufacturer = "[[Bolliger & Mabillard]]",
             Product = "[[Inverted Coaster (Bolliger & Mabillard product)|Inverted Coaster]]", ProductVariant = "Batman",
             Lat = 34.425775, Lon = -118.600895,
@@ -58,6 +63,9 @@ public class GoldenBatchTests
         new()
         {
             Type = "coaster", PageId = 169, PageName = "Colossus (Six Flags Magic Mountain)", Revision = 403,
+            // Live 2026-10-13: two train makers, dated; what replaced it.
+            TrainManufacturer = "[[Philadelphia Toboggan Coasters]] (1978-1987) <br> [[Morgan]] (1988-2014)",
+            Replacement = "[[Twisted Colossus]]",
             Name = "Colossus", Status = "defunct", Country = "USA", Manufacturer = "[[International Amusement Devices]]",
             Lat = 34.427553, Lon = -118.59786,
             LocationKind = "park", OnLoan = false, Park = "[[Six Flags Magic Mountain]]", Location = "Valencia", State = "California",
@@ -76,7 +84,12 @@ public class GoldenBatchTests
         new()
         {
             Type = "coaster", PageId = 9101, PageName = "Example Twin (Example Park)", Revision = 404,
+            // Invented: people by name, linked and not, two builders, and type tags in three slots.
+            Designer = "[[Werner Stengel]] <br> Hans Meier", Builder = "[[Zierer]] <br> Example Steelworks",
+            Category1 = "Spinning", Category2 = "", Category3 = "Family",
             Name = "Example Twin", Status = "standing but not operating", Country = "Germany",
+            // Carries {{Placeholder title}}.
+            PlaceholderTitle = 1,
             Manufacturer = "[[Zierer]] <br> [[BHS]]",
             // A product in projector-product-batch.json, so the edge counts an installation pending.
             Product = "[[Boomerang (Vekoma product)|Boomerang]]",
@@ -100,10 +113,19 @@ public class GoldenBatchTests
                     ClosedEdtf = "[2000..2001]", ClosedEarliest = "2000-01-01", ClosedLatest = "2001-12-31",
                 },
             ],
+            // Renamed at Cedar Point, then kept its name on the road; as project 3 stores Sand Serpent's.
+            Names =
+            [
+                new() { PageId = 9101, Type = "name", Name = "Twin Racer", Start = "1990-01-01", StartPrecision = 3, End = "1995-01-01", EndPrecision = 3, Position = 2, LocationOrdering = 2 },
+                new() { PageId = 9101, Type = "name", Name = "Example Twin", Start = "1996-01-01", StartPrecision = 3, Position = 1, LocationOrdering = 2 },
+                new() { PageId = 9101, Type = "name", Name = "Example Twin", Position = 1, LocationOrdering = 1 },
+                new() { PageId = 9101, Type = "name", Name = "Example Twin", Position = 1, LocationOrdering = 0 },
+            ],
         },
         new()
         {
             Type = "ride", PageId = 19643, PageName = "Over the Hill 2: Spooksville", Revision = 405,
+            Category1 = "Tracked Dark Ride",
             Name = "Over the Hill 2: Spooksville", Status = "operating", Country = "UK", Manufacturer = "Self-built",
             Product = "[[Star Flyer (Funtime product)|Star Flyer]]", Lat = 51.532395, Lon = 0.717849,
             // On loan: the park runs it, someone else owns it.
@@ -120,7 +142,7 @@ public class GoldenBatchTests
         },
         new()
         {
-            Type = "ride", PageId = 66486, PageName = "SkyRide (Carnival Horizon)", Revision = 406, Name = "SkyRide",
+            Type = "ride", PageId = 66486, PageName = "SkyRide (Carnival Horizon)", Revision = 406, Name = "SkyRide", Category1 = "Monorail",
             Status = "operating", Country = "ship", Manufacturer = "[[SkyRide Technology]]",
             LocationKind = "park", OnLoan = false, Park = "[[Carnival Horizon]]", Section = "SportSquare",
             OpenedEdtf = "2018-04-02", OpenedEarliest = "2018-04-02", OpenedLatest = "2018-04-02", Cabins = "36 horses, 2 chariots",
@@ -151,6 +173,8 @@ public class GoldenBatchTests
 
     private static readonly Dictionary<string, int> Resolved = new()
     {
+        ["Ing.-Büro Stengel GmbH"] = 9098, ["Z-Force"] = 26979, ["Twisted Colossus"] = 9630,
+        ["Philadelphia Toboggan Coasters"] = 3712, ["Morgan"] = 2582,
         ["Arrow Dynamics"] = 1829,
         ["Bolliger & Mabillard"] = 543,
         ["International Amusement Devices"] = 2210,
@@ -189,6 +213,21 @@ public class GoldenBatchTests
             Country = "USA", State = "Ohio", Location = "Sandusky", Website = "http://cedarpoint.com/", Lat = 41.48,
             Lon = -82.6825,
             OpenedEdtf = "1870", OpenedEarliest = "1870-01-01", OpenedLatest = "1870-12-31",
+            // Live History rows, 2026-10-13: three owners, the first unlinked.
+            History =
+            [
+                new() { PageId = 182, Type = "owner", Name = "[[Six Flags]]", Start = "2024-01-01", StartPrecision = 3, Position = 1 },
+                new()
+                {
+                    PageId = 182, Type = "owner", Name = "[[Cedar Fair]]", Start = "1983-01-01", StartPrecision = 3,
+                    End = "2024-01-01", EndPrecision = 3, Position = 2,
+                },
+                new()
+                {
+                    PageId = 182, Type = "owner", Name = "Independent", Start = "1870-01-01", StartPrecision = 3,
+                    End = "1983-01-01", EndPrecision = 3, Position = 3,
+                },
+            ],
         },
         new()
         {
@@ -196,6 +235,15 @@ public class GoldenBatchTests
             Country = "USA", State = "Tennessee", Location = "Pigeon Forge", Website = "http://dollywood.com",
             Lat = 35.796504, Lon = -83.533699,
             OpenedEdtf = "1961", OpenedEarliest = "1961-01-01", OpenedLatest = "1961-12-31",
+            // One spell, two owners; the second an interwiki link with no page here.
+            History =
+            [
+                new()
+                {
+                    PageId = 2156, Type = "owner", Position = 1,
+                    Name = "[[Herschend]] (1976-present)<br>[[wikipedia:Dolly Parton|Dolly Parton]] (1986-present)",
+                },
+            ],
         },
         new()
         {
@@ -224,6 +272,7 @@ public class GoldenBatchTests
             Country = "ship", Location = "",
             Website = "[https://www.carnival.com/cruise-ships/carnival-horizon https://www.carnival.com]",
             OpenedEdtf = "2018-04-02", OpenedEarliest = "2018-04-02", OpenedLatest = "2018-04-02",
+            History = [new() { PageId = 67009, Type = "owner", Name = "[[Carnival Cruise Line]]", Position = 1 }],
         },
         new()
         {
@@ -243,6 +292,49 @@ public class GoldenBatchTests
         new() { ResortId = 57454, Resort = "Dollywood Resort", Park = "Dollywood's Splash Country", Ordering = 2 },
     ];
 
+    // Live Park_Companies rows, 2026-10-13 (revisions invented).
+    private static readonly ParkCompanyRow[] ParkCompanyRows =
+    [
+        new()
+        {
+            PageId = 821, PageName = "Six Flags", Revision = 701, Name = "Six Flags", Status = "active", Country = "USA",
+            Headquarters = "Charlotte, North Carolina", Website = "http://sixflags.com", Established = "1959-01-01",
+            EstablishedPrecision = 3,
+        },
+        // Defunct, with a closing year; its successor is held back.
+        new()
+        {
+            PageId = 823, PageName = "Cedar Fair", Revision = 702, Name = "Cedar Fair", Status = "defunct", Country = "USA",
+            Headquarters = "Sandusky, Ohio", Website = "", Established = "1983-01-01", EstablishedPrecision = 3,
+            Closed = "2024-01-01", ClosedPrecision = 3,
+        },
+        // Established to the month; no website.
+        new()
+        {
+            PageId = 5800, PageName = "Merlin Entertainments", Revision = 703, Name = "Merlin Entertainments", Status = "active",
+            Country = "UK", Headquarters = "London, England", Website = "", Established = "1998-12-01", EstablishedPrecision = 2,
+        },
+        new()
+        {
+            PageId = 7906, PageName = "Herschend", Revision = 704, Name = "Herschend", Status = "active", Country = "USA",
+            Headquarters = "Branson, Missouri", Website = "http://www.hfecorp.com/", Established = "1950-01-01",
+            EstablishedPrecision = 3,
+        },
+        // No date at all.
+        new()
+        {
+            PageId = 66330, PageName = "Carnival Cruise Line", Revision = 705, Name = "Carnival Cruise Line", Status = "active",
+            Country = "USA", Headquarters = "Miami, Florida", Website = "https://www.carnival.com/",
+        },
+    ];
+
+    /// <summary>The company links the park rows cite, resolved as _pageData has them on 2026-10-13.</summary>
+    private static readonly Dictionary<string, int> ParkLinks = new()
+    {
+        ["Cedar Point"] = 182, ["Cedar Point Shores"] = 61001, ["Dollywood"] = 2156,
+        ["Six Flags"] = 821, ["Cedar Fair"] = 823, ["Herschend"] = 7906, ["Carnival Cruise Line"] = 66330,
+    };
+
     // Live Manufacturers rows, 2026-10-12 (revisions invented).
     private static readonly ManufacturerRow[] ManufacturerRows =
     [
@@ -257,6 +349,9 @@ public class GoldenBatchTests
         {
             PageId = 1829, PageName = "Arrow Dynamics", Revision = 602, Name = "Arrow Dynamics", Status = "defunct",
             Country = "USA", Headquarters = "Clearfield, Utah, USA", Website = "",
+            // Live 2026-10-13: two plain predecessors, and a successor written as a note around a link.
+            Predecessor = "Arrow Development Company Inc<br />Arrow-Huss Inc",
+            Successor = "Bankrupt December 3, 2001, bought by [[S&S Worldwide|S&S Power]]",
         },
         new()
         {
@@ -301,6 +396,7 @@ public class GoldenBatchTests
         new()
         {
             Type = "coaster", PageId = 3213, PageName = "Boomerang (Vekoma product)", Revision = 701, Name = "Boomerang",
+            Types = "Shuttle", LiftLaunch = "[[Chain lift]]",
             Status = "Discontinued", Manufacturer = "[[Vekoma]]", Units = "metric",
             Introduced = "1984-01-01", IntroducedPrecision = 3, TrackMaterial = "Steel", SupportMaterial = "Steel",
             Variants =
@@ -342,6 +438,7 @@ public class GoldenBatchTests
         new()
         {
             Type = "coaster", PageId = 54013, PageName = "Swiss Bob", Revision = 703, Name = "Swiss Bob",
+            Designer = "[[Intamin]] <br> [[Giovanola]]", Types = "Bobsled", LiftLaunch = "[[Chain lift]] hill",
             Status = "discontinued", Manufacturer = "[[Giovanola]] <br> [[Intamin]]", Units = "metric",
             TrackMaterial = "Steel", SupportMaterial = "Steel", Variants = [new VariantRow { PageId = 54013, RowId = 500 }],
         },
@@ -355,7 +452,7 @@ public class GoldenBatchTests
         // Grouped ride variants.
         new()
         {
-            Type = "ride", PageId = 18364, PageName = "Disk'O (Zamperla product)", Revision = 705, Name = "Disk'O",
+            Type = "ride", PageId = 18364, PageName = "Disk'O (Zamperla product)", Revision = 705, Name = "Disk'O", TypeText = "Disk'O",
             Status = "in production", Manufacturer = "[[Zamperla]]", Units = "metric",
             Introduced = "2003-01-01", IntroducedPrecision = 3,
             Variants =
@@ -456,7 +553,7 @@ public class GoldenBatchTests
             AttractionMapper.Map(r, vocab, Resolved, ProductIds, "https://coasterpedia.net", issues), r.Revision, at,
             r.PageId == 9101 ? at + TimeSpan.FromDays(7) : null));
         var batch = Wire.Batch(at, TimeSpan.FromDays(7), upserts, [Wire.Delete(170, 171)],
-            [Wire.Promote(9998)], [Wire.Discard(9999)], VocabularyDocument.Build(vocab, templates, [Wire.Park, Wire.Manufacturer, Wire.Product]));
+            [Wire.Promote(9998)], [Wire.Discard(9999)], VocabularyDocument.Build(vocab, templates, [Wire.Park, Wire.Manufacturer, Wire.Product, Wire.ParkCompany]));
 
         Assert.Empty(issues);
         AssertGolden("projector-batch.json", batch);
@@ -468,12 +565,10 @@ public class GoldenBatchTests
         var at = DateTimeOffset.Parse("2026-10-12T12:00:00Z");
         var issues = new List<DataIssue>();
         var vocab = Vocab();
-        var resorts = ParkMapper.Resorts(ResortMembers,
-            new Dictionary<string, int> { ["Cedar Point"] = 182, ["Cedar Point Shores"] = 61001, ["Dollywood"] = 2156 },
-            ParkRows.Select(r => r.PageId).ToHashSet(), issues);
+        var resorts = ParkMapper.Resorts(ResortMembers, ParkLinks, ParkRows.Select(r => r.PageId).ToHashSet(), issues);
         // Acushnet Park waits to settle; 99001 was merged into Cedar Point. The
         // promote and discard name parks the edge has never seen.
-        var upserts = ParkRows.Select(r => Wire.UpsertPark(ParkMapper.Map(r, vocab, "https://coasterpedia.net", issues, resorts.GetValueOrDefault(r.PageId)),
+        var upserts = ParkRows.Select(r => Wire.UpsertPark(ParkMapper.Map(r, vocab, "https://coasterpedia.net", issues, ParkLinks, resorts.GetValueOrDefault(r.PageId)),
             r.Revision, at, r.PageId == 65834 ? at + TimeSpan.FromDays(7) : null));
         var batch = Wire.Batch(at, TimeSpan.FromDays(7), upserts, [Wire.Delete(99001, 182, Wire.Park)],
             [Wire.Promote(99998, Wire.Park)], [Wire.Discard(99999, Wire.Park)]);
@@ -490,13 +585,32 @@ public class GoldenBatchTests
         var vocab = Vocab();
         // Adesko waits to settle; 99101 was merged into Bolliger & Mabillard. The
         // promote and discard name manufacturers the edge has never seen.
-        var upserts = ManufacturerRows.Select(r => Wire.UpsertManufacturer(ManufacturerMapper.Map(r, vocab, "https://coasterpedia.net", issues),
+        var resolved = new Dictionary<string, int> { ["S&S Worldwide"] = 10162 };
+        var upserts = ManufacturerRows.Select(r => Wire.UpsertManufacturer(ManufacturerMapper.Map(r, vocab, "https://coasterpedia.net", issues, resolved),
             r.Revision, at, r.PageId == 17469 ? at + TimeSpan.FromDays(7) : null));
         var batch = Wire.Batch(at, TimeSpan.FromDays(7), upserts, [Wire.Delete(99101, 543, Wire.Manufacturer)],
             [Wire.Promote(99198, Wire.Manufacturer)], [Wire.Discard(99199, Wire.Manufacturer)]);
 
-        Assert.Empty(issues);
+        // Arrow's successor is a note around a link: the link is published, the note reported.
+        Assert.Equal([new DataIssue(1829, "successors", "Bankrupt December 3, 2001, bought by S&S Power", "unlinked text beside a link is left out")], issues);
         AssertGolden("projector-manufacturer-batch.json", batch);
+    }
+
+    [Fact]
+    public void The_park_company_batch_matches_the_shared_fixture()
+    {
+        var at = DateTimeOffset.Parse("2026-10-13T12:00:00Z");
+        var issues = new List<DataIssue>();
+        var vocab = Vocab();
+        // Herschend waits to settle; 99301 was merged into Six Flags. The
+        // promote and discard name companies the edge has never seen.
+        var upserts = ParkCompanyRows.Select(r => Wire.UpsertParkCompany(ParkCompanyMapper.Map(r, vocab, "https://coasterpedia.net", issues),
+            r.Revision, at, r.PageId == 7906 ? at + TimeSpan.FromDays(7) : null));
+        var batch = Wire.Batch(at, TimeSpan.FromDays(7), upserts, [Wire.Delete(99301, 821, Wire.ParkCompany)],
+            [Wire.Promote(99398, Wire.ParkCompany)], [Wire.Discard(99399, Wire.ParkCompany)]);
+
+        Assert.Empty(issues);
+        AssertGolden("projector-park-company-batch.json", batch);
     }
 
     [Fact]

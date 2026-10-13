@@ -127,7 +127,7 @@ describe('the Projector product batch', () => {
 		// The infobox's own specs: one variant, unnamed.
 		expect(boomerang.data.variants).toHaveLength(1);
 		expect(boomerang.data.variants[0].name).toBeNull();
-		expect(boomerang.data.offered).toEqual({ track_material: ['steel'], support_material: ['steel'] });
+		expect(boomerang.data.offered).toEqual({ track_material: ['steel'], support_material: ['steel'], types: ['Shuttle'], lift_launch: ['Chain lift'] });
 
 		const disko = await (await get('/v1/products/18364')).json<any>();
 		expect(disko.data.variants.map((v: any) => [v.name, v.group])).toEqual([["Disk'O 16", 'Simple'], ["Disk'O Coaster (40)", 'Coaster']]);
@@ -182,8 +182,8 @@ describe('the Projector product batch', () => {
 
 	it('counts products in /v1/meta, per view', async () => {
 		const latest = await (await exports.default.fetch(new Request(`${BASE}/v1/meta?view=latest`))).json<any>();
-		expect(latest.counts).toEqual({ attractions: 7, parks: 0, manufacturers: 7, products: 8 });
-		expect(latest.schema_version).toBe('1.0.0-beta.12');
+		expect(latest.counts).toEqual({ attractions: 7, parks: 0, manufacturers: 7, products: 8, park_companies: 0 });
+		expect(latest.schema_version).toBe('1.0.0-beta.17');
 		const settled = await (await exports.default.fetch(new Request(`${BASE}/v1/meta`))).json<any>();
 		expect(settled.counts.products).toBe(7);
 	});
@@ -250,18 +250,18 @@ describe('what /v1/products refuses', () => {
 	});
 
 	it.each([
-		['a contract filter whose field is not published', '/v1/products?updated_since=2026-10-01T00:00:00Z', 400, 'parameter-unavailable'],
-		['the full-text search, not yet built', '/v1/products?q=boomerang', 400, 'parameter-unavailable'],
+		['a time with no offset', '/v1/products?updated_since=2026-10-01', 400, 'parameter-invalid'],
+		['a search with no word of two letters', '/v1/products?q=b', 400, 'parameter-invalid'],
 		['an attraction filter', '/v1/products?country=NL', 400, 'parameter-unknown'],
 		['a sort products do not have', '/v1/products?sort=height', 400, 'parameter-unavailable'],
 		['more than one manufacturer', '/v1/products?manufacturer=548,2399', 400, 'parameter-invalid'],
 		['a cursor from a stat sort', `/v1/products?cursor=${encodeCursor('height', 20, 1)}`, 400, 'cursor-invalid'],
 		['a product ID that is not a number', '/v1/products/boomerang', 404, 'not-found'],
-		['an unpublished filter on the one-record endpoint', '/v1/products/3213?q=x', 400, 'parameter-unavailable'],
+		['a list filter on the one-record endpoint', '/v1/products/3213?q=boomerang', 400, 'parameter-unknown'],
 		['a second manufacturer under a manufacturer', '/v1/manufacturers/548/products?manufacturer=2399', 400, 'parameter-unknown'],
 		['a manufacturer ID that is not a number', '/v1/manufacturers/vekoma/products', 404, 'not-found'],
 		['a second product under a product', '/v1/products/3213/installations?product=68541', 400, 'parameter-unknown'],
-		['an attraction filter whose field is not published', '/v1/products/3213/installations?bbox=50,-1,51,0', 400, 'parameter-unavailable'],
+		['a park-only parameter', '/v1/products/3213/installations?include=former', 400, 'parameter-unknown'],
 		['a product ID that is not a number', '/v1/products/boomerang/installations', 404, 'not-found'],
 		['an empty variant', '/v1/products/3213/installations?variant=', 400, 'parameter-invalid'],
 	])('%s', async (_, path, status, type) => {

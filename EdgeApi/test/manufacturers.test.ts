@@ -103,10 +103,10 @@ describe('the Projector manufacturer batch', () => {
 
 	it('counts manufacturers in /v1/meta, per view', async () => {
 		const latest = await (await exports.default.fetch(new Request(`${BASE}/v1/meta?view=latest`))).json<any>();
-		expect(latest.counts).toEqual({ attractions: 7, parks: 7, manufacturers: 7, products: 0 });
-		expect(latest.schema_version).toBe('1.0.0-beta.12');
+		expect(latest.counts).toEqual({ attractions: 7, parks: 7, manufacturers: 7, products: 0, park_companies: 0 });
+		expect(latest.schema_version).toBe('1.0.0-beta.17');
 		const settled = await (await exports.default.fetch(new Request(`${BASE}/v1/meta`))).json<any>();
-		expect(settled.counts).toEqual({ attractions: 6, parks: 6, manufacturers: 6, products: 0 });
+		expect(settled.counts).toEqual({ attractions: 6, parks: 6, manufacturers: 6, products: 0, park_companies: 0 });
 	});
 
 	it('logs manufacturer changes for /v1/changes, by kind and view', async () => {
@@ -122,7 +122,7 @@ describe('the Projector manufacturer batch', () => {
 	it('lists the manufacturer statuses in /v1/vocabularies', async () => {
 		const body = await (await exports.default.fetch(new Request(`${BASE}/v1/vocabularies`))).json<any>();
 		const status = Object.fromEntries(body.data.status.map((s: any) => [s.value, s.applies_to]));
-		expect(status.active).toEqual(['manufacturer']);
+		expect(status.active).toEqual(['manufacturer', 'park_company']);
 		expect(status.defunct).toContain('manufacturer');
 		expect(status.operating).not.toContain('manufacturer');
 	});
@@ -150,14 +150,14 @@ describe('the Projector manufacturer batch', () => {
 
 describe('what /v1/manufacturers refuses', () => {
 	it.each([
-		['a contract filter whose field is not published', '/v1/manufacturers?updated_since=2026-10-01T00:00:00Z', 400, 'parameter-unavailable'],
-		['the full-text search, not yet built', '/v1/manufacturers?q=arrow', 400, 'parameter-unavailable'],
+		['a time with no offset', '/v1/manufacturers?updated_since=2026-10-01', 400, 'parameter-invalid'],
+		['a search with no word of two letters', '/v1/manufacturers?q=a', 400, 'parameter-invalid'],
 		['a park filter', '/v1/manufacturers?state=Ohio', 400, 'parameter-unknown'],
 		['a sort manufacturers do not have', '/v1/manufacturers?sort=founded', 400, 'parameter-unavailable'],
 		['a cursor from a stat sort', `/v1/manufacturers?cursor=${encodeCursor('height', 20, 1)}`, 400, 'cursor-invalid'],
 		['a manufacturer ID that is not a number', '/v1/manufacturers/arrow-dynamics', 404, 'not-found'],
 		['the products of a manufacturer it does not hold', '/v1/manufacturers/424242/products', 404, 'not-found'],
-		['an unpublished filter on the one-record endpoint', '/v1/manufacturers/543?q=arrow', 400, 'parameter-unavailable'],
+		['a list filter on the one-record endpoint', '/v1/manufacturers/543?q=arrow', 400, 'parameter-unknown'],
 	])('%s', async (_, path, status, type) => {
 		const res = await get(path);
 		expect(res.status).toBe(status);

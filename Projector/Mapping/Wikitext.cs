@@ -33,6 +33,129 @@ public static partial class Wikitext
     [GeneratedRegex(@"[\s-]+")]
     private static partial Regex SlugSeparatorPattern();
 
+    [GeneratedRegex(@"<br\s*/?>|\n", RegexOptions.IgnoreCase)]
+    private static partial Regex BreakPattern();
+
+    [GeneratedRegex(@"<small>.*?</small>", RegexOptions.IgnoreCase | RegexOptions.Singleline)]
+    private static partial Regex SmallPattern();
+
+    [GeneratedRegex(@"\([^()]*\)")]
+    private static partial Regex ParenthesesPattern();
+
+    // A comma separates two names unless what follows is a company or name suffix ("The Gravity Group, LLC", "Clair Hain, Jr.").
+    [GeneratedRegex(@",(?!\s*(?:LLC|L\.L\.C\.|Inc|Ltd|Limited|Co|Corp|Corporation|Jr|Sr|GmbH|AG|S\.?A|S\.?A\.?U|S\.?L|B\.?V|N\.?V|plc|LLP|L\.?P|S\.?p\.?A|Pty|K\.?K|Oy|AB|A/S)(?:\W|$))\s*", RegexOptions.IgnoreCase)]
+    private static partial Regex NameCommaPattern();
+
+    // Joining words and punctuation left between links: "[[A]] and [[B]]", "[[A]], [[B]]", "[[A]] / [[B]]".
+    [GeneratedRegex(@"^(?:[\s,;/&+–—-]|\band\b)*$", RegexOptions.IgnoreCase)]
+    private static partial Regex JoinerPattern();
+
+    [GeneratedRegex(@"^[?~\s]+$")]
+    private static partial Regex QuestionMarksPattern();
+
+    /// <summary>
+    /// A cell that may name several things, as Refs (DR-010 §12.18). Pieces are
+    /// split at line breaks. A piece with links gives its links, and anything
+    /// else in it is a note ("(2016-present)", "(95%)") and goes; text that is
+    /// more than a note is passed to <paramref name="dropped"/> to report. A
+    /// piece without links is plain names, split at commas unless a suffix
+    /// follows ("The Gravity Group, LLC"), with bracketed notes removed and
+    /// placeholders left out. Deduplicated by target, else by name.
+    /// </summary>
+    public static IReadOnlyList<(string? Target, Ref Ref)> RefList(string? wikitext, Action<string>? dropped = null)
+    {
+        if (string.IsNullOrWhiteSpace(wikitext))
+        {
+            return [];
+        }
+
+        var refs = new List<(string?, Ref)>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        void Add(string? target, string name)
+        {
+            if (seen.Add(target ?? "\0" + name))
+            {
+                refs.Add((target, new Ref(null, name)));
+            }
+        }
+
+        foreach (var piece in BreakPattern().Split(wikitext))
+        {
+            var links = LinkPattern().Matches(piece);
+            if (links.Count > 0)
+            {
+                foreach (Match m in links)
+                {
+                    var target = NormaliseTitle(m.Groups[1].Value);
+                    if (target == null)
+                    {
+                        continue;
+                    }
+
+                    var display = m.Groups[2].Success ? Strip(m.Groups[2].Value) : null;
+                    Add(target, string.IsNullOrEmpty(display) ? target : display);
+                }
+
+                var rest = Notes(LinkPattern().Replace(piece, " "));
+                if (!JoinerPattern().IsMatch(rest))
+                {
+                    dropped?.Invoke(Strip(piece));
+                }
+
+                continue;
+            }
+
+            foreach (var part in NameCommaPattern().Split(Notes(piece)))
+            {
+                var name = part.Trim().Trim(',', ';').Trim();
+                if (name.Length > 0 && !IsPlaceholder(name) && !QuestionMarksPattern().IsMatch(name))
+                {
+                    Add(null, name);
+                }
+            }
+        }
+
+        return refs;
+    }
+
+    /// <summary>Plain text with &lt;small&gt; asides and bracketed notes removed.</summary>
+    private static string Notes(string wikitext)
+    {
+        var text = SmallPattern().Replace(wikitext, " ");
+        string before;
+        do
+        {
+            before = text;
+            text = ParenthesesPattern().Replace(text, " ");
+        } while (text != before);
+
+        return Strip(text);
+    }
+
+    /// <summary>
+    /// A cell of plain labels (a type, a category): markup stripped, split at
+    /// line breaks, blanks and placeholders left out, deduplicated case-blind,
+    /// in order.
+    /// </summary>
+    public static IReadOnlyList<string> Labels(IEnumerable<string?> cells)
+    {
+        var result = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var cell in cells)
+        {
+            foreach (var piece in BreakPattern().Split(cell ?? ""))
+            {
+                var label = Strip(piece);
+                if (label.Length > 0 && !IsPlaceholder(label) && seen.Add(label))
+                {
+                    result.Add(label);
+                }
+            }
+        }
+
+        return result;
+    }
+
     /// <summary>
     /// Every link in the value, in order, deduplicated by target. With no link,
     /// the whole value as one unlinked Ref, unless it is empty or a placeholder.
@@ -67,6 +190,9 @@ public static partial class Wikitext
         var text = Strip(wikitext);
         return text.Length == 0 || Placeholders.Contains(text) ? [] : [(null, new Ref(null, text))];
     }
+
+    /// <summary>A value that stands for "not known" ("unknown", "?", "TBA"): it names nothing.</summary>
+    public static bool IsPlaceholder(string text) => Placeholders.Contains(text.Trim());
 
     /// <summary>Plain text: links become their display text, tags and bold/italic go.</summary>
     public static string Strip(string wikitext)

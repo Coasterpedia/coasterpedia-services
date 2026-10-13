@@ -68,6 +68,62 @@
           "name": "Cedar Point Resort"
         },
         "website": "http://cedarpoint.com/",
+        "owners": [
+          {
+            "id": 821,
+            "name": "Six Flags"
+          }
+        ],
+        "history": {
+          "owners": [
+            {
+              "company": {
+                "name": "Independent"
+              },
+              "start": {
+                "edtf": "1870",
+                "earliest": "1870-01-01",
+                "latest": "1870-12-31"
+              },
+              "end": {
+                "edtf": "1983",
+                "earliest": "1983-01-01",
+                "latest": "1983-12-31"
+              },
+              "current": false
+            },
+            {
+              "company": {
+                "id": 823,
+                "name": "Cedar Fair"
+              },
+              "start": {
+                "edtf": "1983",
+                "earliest": "1983-01-01",
+                "latest": "1983-12-31"
+              },
+              "end": {
+                "edtf": "2024",
+                "earliest": "2024-01-01",
+                "latest": "2024-12-31"
+              },
+              "current": false
+            },
+            {
+              "company": {
+                "id": 821,
+                "name": "Six Flags"
+              },
+              "start": {
+                "edtf": "2024",
+                "earliest": "2024-01-01",
+                "latest": "2024-12-31"
+              },
+              "end": null,
+              "current": true
+            }
+          ]
+        },
         "revision": 501,
         "updated_at": "2026-10-12T12:00:00Z"
       }
@@ -138,6 +194,36 @@
           "name": "Dollywood Resort"
         },
         "website": "http://dollywood.com",
+        "owners": [
+          {
+            "id": 7906,
+            "name": "Herschend"
+          },
+          {
+            "name": "Dolly Parton"
+          }
+        ],
+        "history": {
+          "owners": [
+            {
+              "company": {
+                "id": 7906,
+                "name": "Herschend"
+              },
+              "start": null,
+              "end": null,
+              "current": true
+            },
+            {
+              "company": {
+                "name": "Dolly Parton"
+              },
+              "start": null,
+              "end": null,
+              "current": true
+            }
+          ]
+        },
         "revision": 502,
         "updated_at": "2026-10-12T12:00:00Z"
       }
@@ -360,6 +446,25 @@
           }
         },
         "website": "https://www.carnival.com/cruise-ships/carnival-horizon",
+        "owners": [
+          {
+            "id": 66330,
+            "name": "Carnival Cruise Line"
+          }
+        ],
+        "history": {
+          "owners": [
+            {
+              "company": {
+                "id": 66330,
+                "name": "Carnival Cruise Line"
+              },
+              "start": null,
+              "end": null,
+              "current": true
+            }
+          ]
+        },
         "revision": 506,
         "updated_at": "2026-10-12T12:00:00Z"
       }

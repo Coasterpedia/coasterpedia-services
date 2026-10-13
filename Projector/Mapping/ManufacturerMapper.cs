@@ -6,16 +6,20 @@ namespace CoasterpediaServices.Projector.Mapping;
 
 /// <summary>
 /// Manufacturers row → public manufacturer record. Pure, like the other
-/// mappers. Predecessor and successor are held back: the columns hold lists
-/// and notes ("Bankrupt December 3, 2001, bought by [[S&amp;S Worldwide]]"),
-/// not the one link the contract's Ref promises (DR-010 §12.8).
+/// mappers. Predecessors and successors are lists of Refs (DR-010 §12.18): the
+/// columns hold lists, and a merger has two.
 /// </summary>
 public static class ManufacturerMapper
 {
     /// <summary>The Vocabularies key for the manufacturer infobox's allowed values.</summary>
     public const string VocabType = "manufacturer";
 
-    public static ManufacturerContent Map(ManufacturerRow row, Vocabularies vocab, string publicBaseUrl, List<DataIssue> issues)
+    /// <summary>Every link the rows' predecessors and successors cite, for one batched resolve.</summary>
+    public static IEnumerable<string> LinkTargets(IEnumerable<ManufacturerRow> rows) =>
+        rows.SelectMany(r => Wikitext.RefList(r.Predecessor).Concat(Wikitext.RefList(r.Successor))).Select(x => x.Target).OfType<string>();
+
+    public static ManufacturerContent Map(ManufacturerRow row, Vocabularies vocab, string publicBaseUrl, List<DataIssue> issues,
+        IReadOnlyDictionary<string, int>? resolved = null)
     {
         var title = row.PageName;
         var headquarters = Wikitext.Strip(row.Headquarters ?? "");
@@ -30,6 +34,8 @@ public static class ManufacturerMapper
             Headquarters = headquarters.Length == 0 ? null : headquarters,
             Country = FieldMapper.Country(row.PageId, VocabType, row.Country, vocab, issues),
             Website = FieldMapper.Website(row.PageId, row.Website, issues),
+            Predecessors = FieldMapper.Refs(row.PageId, "predecessors", row.Predecessor, resolved ?? new Dictionary<string, int>(), issues),
+            Successors = FieldMapper.Refs(row.PageId, "successors", row.Successor, resolved ?? new Dictionary<string, int>(), issues),
         };
     }
 }

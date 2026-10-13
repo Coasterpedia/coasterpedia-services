@@ -48,6 +48,7 @@ public static class ProjectorServiceCollectionExtensions
         services.AddSingleton<IKindProjection, ParkProjection>();
         services.AddSingleton<IKindProjection, ManufacturerProjection>();
         services.AddSingleton<IKindProjection, ProductProjection>();
+        services.AddSingleton<IKindProjection, ParkCompanyProjection>();
         services.AddSingleton<ProjectionService>();
         services.AddSingleton<ProjectorJobs>();
         services.AddSingleton<IEventSubscriber, ProjectorSubscriber>();

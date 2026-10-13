@@ -78,6 +78,20 @@
           "code": "US",
           "name": "USA"
         },
+        "predecessors": [
+          {
+            "name": "Arrow Development Company Inc"
+          },
+          {
+            "name": "Arrow-Huss Inc"
+          }
+        ],
+        "successors": [
+          {
+            "id": 10162,
+            "name": "S\u0026S Power"
+          }
+        ],
         "revision": 602,
         "updated_at": "2026-10-12T12:00:00Z"
       },
@@ -92,6 +106,20 @@
           "code": "US",
           "name": "USA"
         },
+        "predecessors": [
+          {
+            "name": "Arrow Development Company Inc"
+          },
+          {
+            "name": "Arrow-Huss Inc"
+          }
+        ],
+        "successors": [
+          {
+            "id": 10162,
+            "name": "S\u0026S Power"
+          }
+        ],
         "revision": 602,
         "updated_at": "2026-10-12T12:00:00Z"
       }

@@ -56,6 +56,12 @@
           ],
           "support_material": [
             "steel"
+          ],
+          "types": [
+            "Shuttle"
+          ],
+          "lift_launch": [
+            "Chain lift"
           ]
         },
         "variants": [
@@ -281,12 +287,26 @@
             "name": "Intamin"
           }
         ],
+        "designers": [
+          {
+            "name": "Intamin"
+          },
+          {
+            "name": "Giovanola"
+          }
+        ],
         "offered": {
           "track_material": [
             "steel"
           ],
           "support_material": [
             "steel"
+          ],
+          "types": [
+            "Bobsled"
+          ],
+          "lift_launch": [
+            "Chain lift hill"
           ]
         },
         "revision": 703,
@@ -400,6 +420,11 @@
           "edtf": "2003",
           "earliest": "2003-01-01",
           "latest": "2003-12-31"
+        },
+        "offered": {
+          "types": [
+            "Disk\u0027O"
+          ]
         },
         "variants": [
           {

@@ -1,5 +1,6 @@
 import { checkParams, FLAG, followMerges, linkFilter, list, openedParams, parkParam, stateParam, viewParam, type View } from './attractions';
 import type { Env } from './env';
+import { bboxParam, boxCells, boxWhere, searchMatch, searchWhere, updatedSinceParam } from './filters';
 import { json, LICENCE } from './http';
 
 /**
@@ -9,7 +10,8 @@ import { json, LICENCE } from './http';
  */
 
 const FACET_PARAMS = new Set([
-	'type', 'status', 'country', 'location_kind', 'park', 'state', 'opened_from', 'opened_to', 'manufacturer', 'product', 'variant', 'view',
+	'type', 'status', 'country', 'location_kind', 'park', 'state', 'opened_from', 'opened_to', 'manufacturer', 'product', 'variant',
+	'bbox', 'updated_since', 'q', 'view',
 ]);
 
 /**
@@ -102,11 +104,19 @@ export function facetQueries(url: URL): FacetQueries {
 	const park = parkParam(url);
 	const states = stateParam(url);
 	const opened = openedParams(url);
+	const match = searchMatch(url);
+	const box = bboxParam(url);
+	const since = updatedSinceParam(url);
+	// As on the list (DR-010 §12.19): names, a box and what changed since narrow
+	// too, each driving from its own index when nothing narrower does.
 	const driver = link != null ? 'link'
 		: park != null ? 'park'
+		: match != null ? 'search'
+		: box != null ? 'bbox'
 		: states.length > 0 ? 'state'
 		: opened.from != null ? 'opened'
 		: opened.to != null ? 'opened_latest'
+		: since != null ? 'updated'
 		: null;
 	// The link table's own columns, and the row's.
 	const m = (col: string) => (link == null ? col : `m.${col}`);
@@ -137,6 +147,25 @@ export function facetQueries(url: URL): FacetQueries {
 		narrow.push(`${driver === 'opened_latest' ? 'opened_latest' : off('opened_latest')} <= ?`);
 		narrowBinds.push(opened.to);
 	}
+	if (match != null) {
+		const q = searchWhere('attraction', m('id'), m('in_latest'), match);
+		narrow.push(q.sql);
+		narrowBinds.push(...q.binds);
+	}
+	if (box != null) {
+		if (driver === 'bbox') {
+			const cells = boxCells(box);
+			narrow.push(`cell IN (${cells.map(() => '?').join(',')})`);
+			narrowBinds.push(...cells);
+		}
+		const w = boxWhere(box, off('lat'), off('lon'));
+		narrow.push(w.sql);
+		narrowBinds.push(...w.binds);
+	}
+	if (since != null) {
+		narrow.push(`${driver === 'updated' ? 'updated_at' : off('updated_at')} >= ?`);
+		narrowBinds.push(since);
+	}
 
 	const where = [...narrow];
 	const binds = [...narrowBinds];
@@ -154,13 +183,16 @@ export function facetQueries(url: URL): FacetQueries {
 
 	const forced = driver === 'opened' ? ` INDEXED BY attractions_${view}_by_opened`
 		: driver === 'opened_latest' ? ` INDEXED BY attractions_${view}_by_opened_latest`
+		: driver === 'bbox' ? ` INDEXED BY attractions_${view}_by_cell`
+		: driver === 'updated' ? ` INDEXED BY attractions_${view}_by_updated`
 		: '';
 	const table = link == null
 		? `attractions${forced}`
 		: `${link.table} m JOIN attractions a ON a.id = m.id AND a.in_latest = m.in_latest`;
 	// A link carries every stat and dimension but the kind and the narrowing
 	// columns: without those, the histograms read its index alone, as before.
-	const needsRow = park != null || states.length > 0 || opened.from != null || opened.to != null || filters.location_kind != null;
+	const needsRow = park != null || states.length > 0 || opened.from != null || opened.to != null || filters.location_kind != null
+		|| box != null || since != null;
 	const rangeTable = link != null && !needsRow ? `${link.table} m` : table;
 	const ranges: FacetQueries['ranges'] = {};
 	for (const stat of Object.keys(RANGES)) {

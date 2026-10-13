@@ -1,7 +1,7 @@
 import { env, exports } from 'cloudflare:workers';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { sha256Hex } from '../src/auth';
-import { pruneChanges } from '../src/changes';
+import { listChanges, pruneChanges } from '../src/changes';
 import { encodeOpaque } from '../src/http';
 import { resetData } from './reset';
 
@@ -133,7 +133,7 @@ describe('GET /v1/changes', () => {
 		await batch({ upsert: [upsert(1, 10)] });
 		expect((await feed(`since=${START}&kinds=attraction`)).data).toHaveLength(1);
 		expect((await feed(`since=${START}&kinds=park`)).data).toHaveLength(0);
-		const res = await get(`/v1/changes?since=${START}&kinds=park_company`);
+		const res = await get(`/v1/changes?since=${START}&kinds=person`);
 		expect(res.status).toBe(400);
 		expect((await res.json<any>()).type).toMatch(/parameter-unavailable$/);
 	});
@@ -158,24 +158,33 @@ describe('GET /v1/changes', () => {
 	});
 });
 
-describe('the free tier is delayed', () => {
-	it('sees nothing newer than 24 hours, and its cursor never steps over it', async () => {
-		await lines([daysAgo(3), daysAgo(2), daysAgo(0.5)]);
-		const free = await feed(`since=${START}`, FREE);
-		expect(free.data.map((c) => c.id)).toEqual([1000, 1001]);
-		expect(free.meta).toMatchObject({ delay: 'PT24H', has_more: false });
-		expect(free.meta.data_as_of < daysAgo(0.99)).toBe(true);
+describe('a feed delay', () => {
+	// No tier is delayed (DR-010 §9), so the mechanism is driven directly.
+	async function delayed(query: string, hours: number) {
+		const { response } = await listChanges(new URL(`${BASE}/v1/changes?${query}`), env, hours);
+		expect(response.status).toBe(200);
+		return response.json<{ data: any[]; meta: any }>();
+	}
 
-		// The hidden line is still ahead of the cursor: a key that is not delayed reads it from there.
-		expect((await feed(`since=${free.meta.next_cursor}`)).data.map((c) => c.id)).toEqual([1002]);
-		expect((await feed(`since=${START}`)).data).toHaveLength(3);
+	it('every tier is real time, an unknown one included', async () => {
+		await lines([daysAgo(0.5)]);
+		for (const key of [FREE, ODD]) {
+			const body = await feed(`since=${START}`, key);
+			expect(body.data.map((c) => c.id)).toEqual([1000]);
+			expect(body.meta.delay).toBe('PT0H');
+		}
 	});
 
-	it('an unknown tier gets the free delay', async () => {
-		await lines([daysAgo(0.5)]);
-		const body = await feed(`since=${START}`, ODD);
-		expect(body.data).toEqual([]);
-		expect(body.meta.delay).toBe('PT24H');
+	it('hides lines newer than the delay, and its cursor never steps over them', async () => {
+		await lines([daysAgo(3), daysAgo(2), daysAgo(0.5)]);
+		const late = await delayed(`since=${START}`, 24);
+		expect(late.data.map((c) => c.id)).toEqual([1000, 1001]);
+		expect(late.meta).toMatchObject({ delay: 'PT24H', has_more: false });
+		expect(late.meta.data_as_of < daysAgo(0.99)).toBe(true);
+
+		// The hidden line is still ahead of the cursor: a feed without the delay reads it from there.
+		expect((await feed(`since=${late.meta.next_cursor}`)).data.map((c) => c.id)).toEqual([1002]);
+		expect((await feed(`since=${START}`)).data).toHaveLength(3);
 	});
 });
 

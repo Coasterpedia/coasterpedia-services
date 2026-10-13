@@ -1,0 +1,286 @@
+{
+  "as_of": "2026-10-13T12:00:00Z",
+  "settle_after": "P7D",
+  "upsert": [
+    {
+      "kind": "park_company",
+      "id": 821,
+      "revision": 701,
+      "updated_at": "2026-10-13T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
+      "sort_name": "six flags",
+      "filters": {
+        "status": "active",
+        "country": "US"
+      },
+      "summary": {
+        "id": 821,
+        "name": "Six Flags",
+        "title": "Six Flags",
+        "url": "https://coasterpedia.net/wiki/Six_Flags",
+        "status": "active",
+        "established": {
+          "edtf": "1959",
+          "earliest": "1959-01-01",
+          "latest": "1959-12-31"
+        },
+        "headquarters": "Charlotte, North Carolina",
+        "country": {
+          "code": "US",
+          "name": "USA"
+        },
+        "website": "http://sixflags.com",
+        "revision": 701,
+        "updated_at": "2026-10-13T12:00:00Z"
+      },
+      "record": {
+        "id": 821,
+        "name": "Six Flags",
+        "title": "Six Flags",
+        "url": "https://coasterpedia.net/wiki/Six_Flags",
+        "status": "active",
+        "established": {
+          "edtf": "1959",
+          "earliest": "1959-01-01",
+          "latest": "1959-12-31"
+        },
+        "headquarters": "Charlotte, North Carolina",
+        "country": {
+          "code": "US",
+          "name": "USA"
+        },
+        "website": "http://sixflags.com",
+        "revision": 701,
+        "updated_at": "2026-10-13T12:00:00Z"
+      }
+    },
+    {
+      "kind": "park_company",
+      "id": 823,
+      "revision": 702,
+      "updated_at": "2026-10-13T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
+      "sort_name": "cedar fair",
+      "filters": {
+        "status": "defunct",
+        "country": "US"
+      },
+      "summary": {
+        "id": 823,
+        "name": "Cedar Fair",
+        "title": "Cedar Fair",
+        "url": "https://coasterpedia.net/wiki/Cedar_Fair",
+        "status": "defunct",
+        "established": {
+          "edtf": "1983",
+          "earliest": "1983-01-01",
+          "latest": "1983-12-31"
+        },
+        "closed": {
+          "edtf": "2024",
+          "earliest": "2024-01-01",
+          "latest": "2024-12-31"
+        },
+        "headquarters": "Sandusky, Ohio",
+        "country": {
+          "code": "US",
+          "name": "USA"
+        },
+        "revision": 702,
+        "updated_at": "2026-10-13T12:00:00Z"
+      },
+      "record": {
+        "id": 823,
+        "name": "Cedar Fair",
+        "title": "Cedar Fair",
+        "url": "https://coasterpedia.net/wiki/Cedar_Fair",
+        "status": "defunct",
+        "established": {
+          "edtf": "1983",
+          "earliest": "1983-01-01",
+          "latest": "1983-12-31"
+        },
+        "closed": {
+          "edtf": "2024",
+          "earliest": "2024-01-01",
+          "latest": "2024-12-31"
+        },
+        "headquarters": "Sandusky, Ohio",
+        "country": {
+          "code": "US",
+          "name": "USA"
+        },
+        "revision": 702,
+        "updated_at": "2026-10-13T12:00:00Z"
+      }
+    },
+    {
+      "kind": "park_company",
+      "id": 5800,
+      "revision": 703,
+      "updated_at": "2026-10-13T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
+      "sort_name": "merlin entertainments",
+      "filters": {
+        "status": "active",
+        "country": "GB"
+      },
+      "summary": {
+        "id": 5800,
+        "name": "Merlin Entertainments",
+        "title": "Merlin Entertainments",
+        "url": "https://coasterpedia.net/wiki/Merlin_Entertainments",
+        "status": "active",
+        "established": {
+          "edtf": "1998-12",
+          "earliest": "1998-12-01",
+          "latest": "1998-12-31"
+        },
+        "headquarters": "London, England",
+        "country": {
+          "code": "GB",
+          "name": "UK"
+        },
+        "revision": 703,
+        "updated_at": "2026-10-13T12:00:00Z"
+      },
+      "record": {
+        "id": 5800,
+        "name": "Merlin Entertainments",
+        "title": "Merlin Entertainments",
+        "url": "https://coasterpedia.net/wiki/Merlin_Entertainments",
+        "status": "active",
+        "established": {
+          "edtf": "1998-12",
+          "earliest": "1998-12-01",
+          "latest": "1998-12-31"
+        },
+        "headquarters": "London, England",
+        "country": {
+          "code": "GB",
+          "name": "UK"
+        },
+        "revision": 703,
+        "updated_at": "2026-10-13T12:00:00Z"
+      }
+    },
+    {
+      "kind": "park_company",
+      "id": 7906,
+      "revision": 704,
+      "updated_at": "2026-10-13T12:00:00Z",
+      "settled": false,
+      "settles_at": "2026-10-20T12:00:00Z",
+      "sort_name": "herschend",
+      "filters": {
+        "status": "active",
+        "country": "US"
+      },
+      "summary": {
+        "id": 7906,
+        "name": "Herschend",
+        "title": "Herschend",
+        "url": "https://coasterpedia.net/wiki/Herschend",
+        "status": "active",
+        "established": {
+          "edtf": "1950",
+          "earliest": "1950-01-01",
+          "latest": "1950-12-31"
+        },
+        "headquarters": "Branson, Missouri",
+        "country": {
+          "code": "US",
+          "name": "USA"
+        },
+        "website": "http://www.hfecorp.com/",
+        "revision": 704,
+        "updated_at": "2026-10-13T12:00:00Z"
+      },
+      "record": {
+        "id": 7906,
+        "name": "Herschend",
+        "title": "Herschend",
+        "url": "https://coasterpedia.net/wiki/Herschend",
+        "status": "active",
+        "established": {
+          "edtf": "1950",
+          "earliest": "1950-01-01",
+          "latest": "1950-12-31"
+        },
+        "headquarters": "Branson, Missouri",
+        "country": {
+          "code": "US",
+          "name": "USA"
+        },
+        "website": "http://www.hfecorp.com/",
+        "revision": 704,
+        "updated_at": "2026-10-13T12:00:00Z"
+      }
+    },
+    {
+      "kind": "park_company",
+      "id": 66330,
+      "revision": 705,
+      "updated_at": "2026-10-13T12:00:00Z",
+      "settled": true,
+      "settles_at": null,
+      "sort_name": "carnival cruise line",
+      "filters": {
+        "status": "active",
+        "country": "US"
+      },
+      "summary": {
+        "id": 66330,
+        "name": "Carnival Cruise Line",
+        "title": "Carnival Cruise Line",
+        "url": "https://coasterpedia.net/wiki/Carnival_Cruise_Line",
+        "status": "active",
+        "headquarters": "Miami, Florida",
+        "country": {
+          "code": "US",
+          "name": "USA"
+        },
+        "website": "https://www.carnival.com/",
+        "revision": 705,
+        "updated_at": "2026-10-13T12:00:00Z"
+      },
+      "record": {
+        "id": 66330,
+        "name": "Carnival Cruise Line",
+        "title": "Carnival Cruise Line",
+        "url": "https://coasterpedia.net/wiki/Carnival_Cruise_Line",
+        "status": "active",
+        "headquarters": "Miami, Florida",
+        "country": {
+          "code": "US",
+          "name": "USA"
+        },
+        "website": "https://www.carnival.com/",
+        "revision": 705,
+        "updated_at": "2026-10-13T12:00:00Z"
+      }
+    }
+  ],
+  "delete": [
+    {
+      "kind": "park_company",
+      "id": 99301,
+      "merged_into": 821
+    }
+  ],
+  "promote": [
+    {
+      "kind": "park_company",
+      "id": 99398
+    }
+  ],
+  "discard": [
+    {
+      "kind": "park_company",
+      "id": 99399
+    }
+  ]
+}

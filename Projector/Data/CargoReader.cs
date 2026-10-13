@@ -21,9 +21,27 @@ public sealed record AttractionRow
     public required string PageName { get; init; }
     public required long Revision { get; init; }
     public string? Name { get; init; }
+
+    /// <summary>1 when the page carries {{Placeholder title}} (its category, from _pageData); 0 otherwise.</summary>
+    public long PlaceholderTitle { get; init; }
+
     public string? Status { get; init; }
     public string? Country { get; init; }
     public string? Manufacturer { get; init; }
+
+    // One-or-many cells, as typed (DR-010 §12.18): every table has them.
+    public string? Designer { get; init; }
+    public string? Builder { get; init; }
+    public string? Replaced { get; init; }
+    public string? Replacement { get; init; }
+
+    /// <summary>The site's type tags. Category1 on every table; 2–6 on coasters and slides only (AttractionColumns).</summary>
+    public string? Category1 { get; init; }
+    public string? Category2 { get; init; }
+    public string? Category3 { get; init; }
+    public string? Category4 { get; init; }
+    public string? Category5 { get; init; }
+    public string? Category6 { get; init; }
 
     /// <summary>Product and Product_Variant are list fields on all three tables (rebuild A3), read as stored ('#'-separated).</summary>
     public string? Product { get; init; }
@@ -59,6 +77,7 @@ public sealed record AttractionRow
     public string? Propulsion { get; init; }
     public string? TrackMaterial { get; init; }
     public string? SupportMaterial { get; init; }
+    public string? TrainManufacturer { get; init; }
 
     // Rides.
     public bool? Indoor { get; init; }
@@ -113,6 +132,9 @@ public sealed record AttractionRow
 
     /// <summary>Water_Slide_Components rows on the page, by Ordering.</summary>
     public IReadOnlyList<ComponentRow> Components { get; init; } = [];
+
+    /// <summary>The page's name History rows (project 3): one set per location, LocationOrdering 0 the current one.</summary>
+    public IReadOnlyList<HistoryRow> Names { get; init; } = [];
 }
 
 /// <summary>One past stint. Every attraction type stores here, despite the table's name.</summary>
@@ -208,6 +230,48 @@ public sealed record ParkRow
     /// <summary>Opening has no EDTF columns (not part of A9): a Date and Cargo's precision for it.</summary>
     public string? Opening { get; init; }
     public int? OpeningPrecision { get; init; }
+
+    /// <summary>The page's owner and operator History rows, in page order (Position 1 is the spell in force).</summary>
+    public IReadOnlyList<HistoryRow> History { get; init; } = [];
+}
+
+/// <summary>
+/// One History row: an owner or operator spell on a park page, or a name on a
+/// park or an attraction. Name is as typed: a link, several, or plain text.
+/// Start and End are Dates at Cargo's precision; History has no EDTF columns.
+/// LocationOrdering is set only on an attraction's rows: 0 for the current
+/// location, else the past stint's Ordering.
+/// </summary>
+public sealed record HistoryRow
+{
+    public required int PageId { get; init; }
+    public required string Type { get; init; }
+    public string? Name { get; init; }
+    public string? Start { get; init; }
+    public int? StartPrecision { get; init; }
+    public string? End { get; init; }
+    public int? EndPrecision { get; init; }
+    public int? Position { get; init; }
+    public int? LocationOrdering { get; init; }
+}
+
+/// <summary>One park company's stored row (Park_Companies). Established and Closed are Dates at Cargo's precision.</summary>
+public sealed record ParkCompanyRow
+{
+    public required int PageId { get; init; }
+    public required string PageName { get; init; }
+    public required long Revision { get; init; }
+    public string? Name { get; init; }
+    public string? Status { get; init; }
+    public string? Country { get; init; }
+    public string? Headquarters { get; init; }
+    public string? Website { get; init; }
+    public string? Established { get; init; }
+    public int? EstablishedPrecision { get; init; }
+    public string? Closed { get; init; }
+    public int? ClosedPrecision { get; init; }
+    public string? Predecessor { get; init; }
+    public string? Successor { get; init; }
 }
 
 /// <summary>One manufacturer's stored row. Founded is a Date (yyyy-mm-dd) and Cargo's precision for it; there are no EDTF columns.</summary>
@@ -223,6 +287,8 @@ public sealed record ManufacturerRow
     public string? Website { get; init; }
     public string? Founded { get; init; }
     public int? FoundedPrecision { get; init; }
+    public string? Predecessor { get; init; }
+    public string? Successor { get; init; }
 }
 
 /// <summary>
@@ -239,7 +305,11 @@ public sealed record ProductRow
     public string? Name { get; init; }
     public string? Status { get; init; }
     public string? Manufacturer { get; init; }
+    public string? Designer { get; init; }
     public string? Units { get; init; }
+
+    /// <summary>Ride products' Type: one wikitext cell, where the other two tables keep a list (Types).</summary>
+    public string? TypeText { get; init; }
 
     public string? Introduced { get; init; }
     public int? IntroducedPrecision { get; init; }
@@ -253,6 +323,8 @@ public sealed record ProductRow
     public string? Containment { get; init; }
     public string? SlideMaterial { get; init; }
     public string? RidersTube { get; init; }
+    public string? Types { get; init; }
+    public string? LiftLaunch { get; init; }
 
     /// <summary>The page's variant rows in the order they were stored: the infobox's own (unnamed) first, then each block.</summary>
     public IReadOnlyList<VariantRow> Variants { get; init; } = [];
@@ -366,6 +438,9 @@ public sealed partial class CargoReader
         {
             ["Owner"] = "Owner", ["Restraints"] = "Restraints__full",
             ["Propulsion"] = "Class", ["TrackMaterial"] = "Track_Material", ["SupportMaterial"] = "Support_Material",
+            ["TrainManufacturer"] = "Train_Manufacturer",
+            ["Category2"] = "Category2", ["Category3"] = "Category3", ["Category4"] = "Category4",
+            ["Category5"] = "Category5", ["Category6"] = "Category6",
         },
         ["Rides"] = new()
         {
@@ -381,6 +456,8 @@ public sealed partial class CargoReader
         {
             ["SlideClasses"] = "Class__full", ["Environment"] = "Environment", ["Containment"] = "Containment",
             ["ExitType"] = "Exit_Type", ["NumberOfSlides"] = "Number_Of_Slides", ["MaxWeightPerTube"] = "Max_Weight_Per_Tube",
+            ["Category2"] = "Category2", ["Category3"] = "Category3", ["Category4"] = "Category4",
+            ["Category5"] = "Category5", ["Category6"] = "Category6",
         },
     };
 
@@ -391,6 +468,7 @@ public sealed partial class CargoReader
         "Indoor", "Enclosed", "DarkRide", "Cabins", "NumberOfRides",
         "Coord2Lat", "Coord2Lon", "Coord3Lat", "Coord3Lon", "Coord4Lat", "Coord4Lon", "Coord5Lat", "Coord5Lon", "Coord6Lat", "Coord6Lon",
         "SlideClasses", "Environment", "Containment", "ExitType", "NumberOfSlides", "MaxWeightPerTube",
+        "TrainManufacturer", "Category2", "Category3", "Category4", "Category5", "Category6",
     ];
 
     /// <summary>
@@ -401,19 +479,23 @@ public sealed partial class CargoReader
     internal static readonly IReadOnlyList<(string Type, string Table, string Variants, Dictionary<string, string> Lists)> ProductTables =
     [
         ("coaster", "Roller_Coaster_Products", "Roller_Coaster_Product_Variants",
-            new() { ["TrackMaterial"] = "Track_Material", ["SupportMaterial"] = "Support_Material", ["Restraints"] = "Restraints" }),
+            new()
+            {
+                ["TrackMaterial"] = "Track_Material", ["SupportMaterial"] = "Support_Material", ["Restraints"] = "Restraints",
+                ["Types"] = "Type", ["LiftLaunch"] = "Lift_Launch",
+            }),
         ("ride", "Ride_Products", "Ride_Product_Variants",
             new() { ["Restraints"] = "Restraints" }),
         ("water_slide", "Water_Slide_Products", "Water_Slide_Product_Variants",
             new()
             {
                 ["Classes"] = "Class", ["Containment"] = "Containment", ["SlideMaterial"] = "Slide_Material",
-                ["RidersTube"] = "Riders_Tube",
+                ["RidersTube"] = "Riders_Tube", ["Types"] = "Type",
             }),
     ];
 
     internal static readonly string[] ListProperties =
-        ["TrackMaterial", "SupportMaterial", "Restraints", "Classes", "Containment", "SlideMaterial", "RidersTube"];
+        ["TrackMaterial", "SupportMaterial", "Restraints", "Classes", "Containment", "SlideMaterial", "RidersTube", "Types", "LiftLaunch"];
 
     /// <summary>
     /// The variant tables' StatsRow columns, plus their own (VariantSpecs). Coaster
@@ -482,6 +564,13 @@ public sealed partial class CargoReader
     // page_latest is unsigned, and Dapper wraps an unsigned value past 2^31 when it widens it to long.
     private const string Revision = "CAST(p.page_latest AS SIGNED) AS Revision";
 
+    /// <summary>
+    /// {{Placeholder title}}'s category in both spellings: a save stores it with
+    /// spaces, Cargo's category hooks with underscores.
+    /// </summary>
+    internal static readonly string[] PlaceholderCategories =
+        ["Articles with a placeholder title", "Articles_with_a_placeholder_title"];
+
     private string Cargo(string table) => $"`{_config.CargoDatabase}`.`{table}`";
     private string Page => $"`{_config.WikiDatabase}`.`{_config.WikiTablePrefix}page`";
 
@@ -506,6 +595,7 @@ public sealed partial class CargoReader
         var past = new List<PastLocationRow>();
         var elements = new List<ElementRow>();
         var components = new List<ComponentRow>();
+        var names = new List<HistoryRow>();
         foreach (var ids in Chunks(pageIds))
         {
             past.AddRange(await QueryAsync<PastLocationRow>(conn, tx, $"""
@@ -531,12 +621,22 @@ public sealed partial class CargoReader
                 WHERE t._pageNamespace = 0 {PageFilter("t._pageID", ids)}
                 ORDER BY t._pageID, t.Ordering, t._ID
                 """, new { ids }, ct));
+            // LocationOrdering is set only on attraction rows: a park's names never come back here.
+            names.AddRange(await QueryAsync<HistoryRow>(conn, tx, $"""
+                SELECT t._pageID AS PageId, t.Type, t.Name,
+                       CAST(t.Start AS CHAR) AS Start, t.Start__precision AS StartPrecision,
+                       CAST(t.`End` AS CHAR) AS `End`, t.End__precision AS EndPrecision, t.Position, t.LocationOrdering
+                FROM {Cargo("History")} t
+                WHERE t._pageNamespace = 0 AND t.Type = 'name' AND t.LocationOrdering >= 0 {PageFilter("t._pageID", ids)}
+                ORDER BY t._pageID, t.LocationOrdering, t.Position, t._ID
+                """, new { ids }, ct));
         }
 
         var pastByPage = past.ToLookup(r => r.PageId);
         // One Coaster_Elements row per page on 2026-10-12 (1,722); a second would be a second infobox's.
         var elementsByPage = elements.GroupBy(r => r.PageId).ToDictionary(g => g.Key, g => g.First().Elements);
         var componentsByPage = components.ToLookup(r => r.PageId);
+        var namesByPage = names.ToLookup(r => r.PageId);
 
         foreach (var (type, table) in AttractionTables)
         {
@@ -544,7 +644,12 @@ public sealed partial class CargoReader
             {
                 var found = await QueryAsync<AttractionRow>(conn, tx, $"""
                     SELECT @type AS Type, t._pageID AS PageId, t._pageName AS PageName, {Revision},
-                           t.Name, t.Status, t.Country, t.Manufacturer,
+                           t.Name,
+                           CAST(EXISTS (SELECT 1 FROM {Cargo("_pageData")} d
+                                   JOIN {Cargo("_pageData___categories")} c ON c._rowID = d._ID
+                                   WHERE d._pageID = t._pageID AND c._value IN @placeholder) AS SIGNED) AS PlaceholderTitle,
+                           t.Status, t.Country, t.Manufacturer,
+                           t.Designer, t.Builder, t.Replaced, t.Replacement, t.Category1,
                            CAST(t.Product__full AS CHAR) AS Product, CAST(t.Product_Variant__full AS CHAR) AS ProductVariant,
                            t.Coord__lat AS Lat, t.Coord__lon AS Lon,
                            t.LocationKind, t.OnLoan, t.Park, t.Location, t.State, t.Section, t.Subsection,
@@ -566,12 +671,13 @@ public sealed partial class CargoReader
                     FROM {Cargo(table)} t
                     JOIN {Page} p ON p.page_id = t._pageID
                     WHERE t._pageNamespace = 0 {PageFilter("t._pageID", ids)}
-                    """, new { type, ids }, ct, (row, stats) => row with { Stats = stats });
+                    """, new { type, ids, placeholder = PlaceholderCategories }, ct, (row, stats) => row with { Stats = stats });
                 rows.AddRange(found.Select(r => r with
                 {
                     PastLocations = [.. pastByPage[r.PageId]],
                     Elements = elementsByPage.GetValueOrDefault(r.PageId)?.Split('#').Select(e => e.Trim()).Where(e => e.Length > 0).ToList() ?? [],
                     Components = [.. componentsByPage[r.PageId]],
+                    Names = [.. namesByPage[r.PageId]],
                 }));
             }
         }
@@ -594,6 +700,7 @@ public sealed partial class CargoReader
     public async Task<List<ParkRow>> ReadParksAsync(MySqlConnection conn, IReadOnlyCollection<int>? pageIds, CancellationToken ct)
     {
         var rows = new List<ParkRow>();
+        var history = new List<HistoryRow>();
         await using var tx = await conn.BeginTransactionAsync(IsolationLevel.RepeatableRead, ct);
         foreach (var ids in Chunks(pageIds))
         {
@@ -609,6 +716,40 @@ public sealed partial class CargoReader
                 FROM {Cargo("Amusement_Parks")} t
                 JOIN {Page} p ON p.page_id = t._pageID
                 WHERE t._pageNamespace = 0 {PageFilter("t._pageID", ids)}
+                """, new { ids }, ct));
+            history.AddRange(await QueryAsync<HistoryRow>(conn, tx, $"""
+                SELECT t._pageID AS PageId, t.Type, t.Name,
+                       CAST(t.Start AS CHAR) AS Start, t.Start__precision AS StartPrecision,
+                       CAST(t.`End` AS CHAR) AS `End`, t.End__precision AS EndPrecision, t.Position, t.LocationOrdering
+                FROM {Cargo("History")} t
+                WHERE t._pageNamespace = 0 AND t.Type IN ('owner', 'operator') {PageFilter("t._pageID", ids)}
+                ORDER BY t._pageID, t.Type, t.Position, t._ID
+                """, new { ids }, ct));
+        }
+
+        await tx.CommitAsync(ct);
+        var byPage = history.ToLookup(h => h.PageId);
+        return rows.Select(r => r with { History = [.. byPage[r.PageId]] }).ToList();
+    }
+
+    /// <summary>Every park company row, or only those of <paramref name="pageIds"/>.</summary>
+    public async Task<List<ParkCompanyRow>> ReadParkCompaniesAsync(MySqlConnection conn, IReadOnlyCollection<int>? pageIds,
+        CancellationToken ct)
+    {
+        var rows = new List<ParkCompanyRow>();
+        await using var tx = await conn.BeginTransactionAsync(IsolationLevel.RepeatableRead, ct);
+        foreach (var ids in Chunks(pageIds))
+        {
+            rows.AddRange(await QueryAsync<ParkCompanyRow>(conn, tx, $"""
+                SELECT t._pageID AS PageId, t._pageName AS PageName, {Revision},
+                       t.Name, t.Status, t.Country, t.Headquarters, t.Website,
+                       CAST(t.Established AS CHAR) AS Established, t.Established__precision AS EstablishedPrecision,
+                       CAST(t.Closed AS CHAR) AS Closed, t.Closed__precision AS ClosedPrecision,
+                       t.Predecessor, t.Successor
+                FROM {Cargo("Park_Companies")} t
+                JOIN {Page} p ON p.page_id = t._pageID
+                WHERE t._pageNamespace = 0 {PageFilter("t._pageID", ids)}
+                ORDER BY t._pageID, t._ID
                 """, new { ids }, ct));
         }
 
@@ -627,7 +768,8 @@ public sealed partial class CargoReader
             rows.AddRange(await QueryAsync<ManufacturerRow>(conn, tx, $"""
                 SELECT t._pageID AS PageId, t._pageName AS PageName, {Revision},
                        t.Name, t.Status, t.Country, t.Headquarters, t.Website,
-                       CAST(t.Founded AS CHAR) AS Founded, t.Founded__precision AS FoundedPrecision
+                       CAST(t.Founded AS CHAR) AS Founded, t.Founded__precision AS FoundedPrecision,
+                       t.Predecessor, t.Successor
                 FROM {Cargo("Manufacturers")} t
                 JOIN {Page} p ON p.page_id = t._pageID
                 WHERE t._pageNamespace = 0 {PageFilter("t._pageID", ids)}
@@ -674,7 +816,8 @@ public sealed partial class CargoReader
             {
                 var products = await QueryAsync<ProductRow>(conn, tx, $"""
                     SELECT @type AS Type, t._pageID AS PageId, t._pageName AS PageName, {Revision},
-                           t.Name, t.Status, t.Manufacturer, t.Units,
+                           t.Name, t.Status, t.Manufacturer, t.Designer, t.Units,
+                           {(lists.ContainsKey("Types") ? "NULL" : "CAST(t.`Type` AS CHAR)")} AS TypeText,
                            CAST(t.Introduced AS CHAR) AS Introduced, t.Introduced__precision AS IntroducedPrecision,
                            CAST(t.Discontinued AS CHAR) AS Discontinued, t.Discontinued__precision AS DiscontinuedPrecision,
                            {listSelect}

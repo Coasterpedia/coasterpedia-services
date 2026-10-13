@@ -16,6 +16,7 @@ public static class AttractionMapper
         rows.SelectMany(r => Wikitext.Refs(r.Manufacturer)
                 .Concat(ProductRefs(r.Product))
                 .Concat(r.Components.SelectMany(c => Wikitext.Refs(c.Product)))
+                .Concat(new[] { r.Builder, r.Replaced, r.Replacement, r.TrainManufacturer }.SelectMany(c => Wikitext.RefList(c)))
                 .Select(x => x.Target)
                 .Concat(LocationMapper.LinkTargets(r.Park, r.Owner))
                 .Concat(r.PastLocations.SelectMany(p => LocationMapper.LinkTargets(p.Park, p.Owner)))
@@ -33,6 +34,7 @@ public static class AttractionMapper
             Type = row.Type,
             // Never blank on any table (checked 2026-10-11).
             Name = FieldMapper.Name(row.Name, title),
+            NameIsPlaceholder = row.PlaceholderTitle != 0,
             Title = title,
             Url = Wikitext.ArticleUrl(publicBaseUrl, title),
             Status = FieldMapper.Status(row.PageId, row.Type, row.Status, vocab, issues),
@@ -42,7 +44,14 @@ public static class AttractionMapper
                 .Select(x => x.Target != null && resolved.TryGetValue(x.Target, out var id) ? x.Ref with { Id = id } : x.Ref)
                 .ToList(),
             Products = Products(row, resolved, productIds, issues),
+            // By name only for now: no id, though the shape allows one later.
+            Designers = FieldMapper.Refs(row.PageId, "designers", row.Designer, null, issues),
+            Builders = FieldMapper.Refs(row.PageId, "builders", row.Builder, resolved, issues),
+            Categories = Wikitext.Labels([row.Category1, row.Category2, row.Category3, row.Category4, row.Category5, row.Category6])
+                is { Count: > 0 } categories ? categories : null,
             Restraints = FieldMapper.Choices(row.PageId, "restraints", row.Type, "restraints1", row.Restraints, vocab, issues),
+            Replaced = FieldMapper.Refs(row.PageId, "replaced", row.Replaced, resolved, issues),
+            ReplacedBy = FieldMapper.Refs(row.PageId, "replaced_by", row.Replacement, resolved, issues),
             Stats = StatsMapper.Map(row.PageId, row.Stats, issues),
             Restrictions = Restrictions(row, issues),
             Coaster = Coaster(row, vocab, resolved, issues),
@@ -177,6 +186,7 @@ public static class AttractionMapper
             Propulsion = FieldMapper.Choice(r.PageId, "coaster.propulsion", r.Type, "class", r.Propulsion, vocab, issues),
             TrackMaterial = FieldMapper.Choice(r.PageId, "coaster.track_material", r.Type, "track_material", r.TrackMaterial, vocab, issues),
             SupportMaterial = FieldMapper.Choice(r.PageId, "coaster.support_material", r.Type, "support_material", r.SupportMaterial, vocab, issues),
+            TrainManufacturers = FieldMapper.Refs(r.PageId, "coaster.train_manufacturers", r.TrainManufacturer, resolved, issues),
             Elements = elements.Count == 0 ? null : elements,
         };
         return detail.IsEmpty ? null : detail;
@@ -287,7 +297,45 @@ public static class AttractionMapper
             });
         }
 
-        return locations.Count == 0 ? null : new AttractionHistory(locations);
+        var names = Names(r, locations.Select(l => l.Index).ToHashSet(), issues);
+        return locations.Count == 0 && names == null ? null : new AttractionHistory(locations.Count == 0 ? null : locations, names);
+    }
+
+    /// <summary>
+    /// The names History records (project 3), oldest first: the oldest stint
+    /// first (highest LocationOrdering), the current location last, and within
+    /// each the page's order reversed (Position 1 is the latest there). A
+    /// placeholder ("Unknown") names nothing and is left out. Null unless one
+    /// name differs from the current one: an attraction never renamed, moved
+    /// or not, has nothing here that <c>name</c> doesn't already say.
+    /// </summary>
+    /// <param name="stints">The indexes history.locations publishes, so a name at a stint the page doesn't record is reported.</param>
+    private static List<DatedName>? Names(AttractionRow r, IReadOnlySet<int> stints, List<DataIssue> issues)
+    {
+        var current = FieldMapper.Name(r.Name, r.PageName);
+        var names = new List<DatedName>();
+        foreach (var h in r.Names.OrderByDescending(h => h.LocationOrdering).ThenByDescending(h => h.Position ?? 0))
+        {
+            var name = Wikitext.Strip(h.Name ?? "");
+            if (name.Length == 0 || Wikitext.IsPlaceholder(name))
+            {
+                continue;
+            }
+
+            int? index = h.LocationOrdering is > 0 and var i ? i : null;
+            if (index is { } stint && !stints.Contains(stint))
+            {
+                issues.Add(new DataIssue(r.PageId, "history.names", name, $"named at past location {stint}, which the page doesn't record"));
+            }
+
+            var field = index == null ? "history.names" : $"history.names[{index}]";
+            names.Add(new DatedName(name,
+                FieldMapper.Precise(r.PageId, field + ".start", h.Start, h.StartPrecision, issues),
+                FieldMapper.Precise(r.PageId, field + ".end", h.End, h.EndPrecision, issues),
+                index));
+        }
+
+        return names.Any(n => n.Name != current) ? names : null;
     }
 
     /// <summary>Plain text, or null when blank.</summary>

@@ -1,29 +1,26 @@
 import {
 	checkParams, dataAsOf, decodeCursor, encodeCursor, FLAG, followMerges, getRecord, limitParam, list, listQuery, runAttractionList,
-	stateParam, viewParam, type View,
+	stateParam, viewParam, type Include, type View,
 } from './attractions';
 import type { Env } from './env';
+import { bboxParam, boxWhere, searchMatch, searchWhere, updatedSinceParam } from './filters';
 import { badRequest, json, LICENCE, problem } from './http';
 
-/**
- * Contract parameters of /v1/parks whose field is not published yet (DR-010
- * §12.7). Refused, never ignored: ?bbox= answering with every park would look
- * like an answer.
- */
-const NOT_YET = new Set(['bbox', 'updated_since', 'q']);
+/** Contract parameters of /v1/parks not answered yet: none since DR-010 §12.19. */
+const NOT_YET = new Set<string>();
 
-const LIST_PARAMS = new Set(['status', 'country', 'state', 'resort', 'sort', 'view', 'limit', 'cursor']);
+const LIST_PARAMS = new Set(['status', 'country', 'state', 'resort', 'bbox', 'updated_since', 'q', 'sort', 'view', 'limit', 'cursor']);
 const ONE_PARAMS = new Set(['view']);
 /**
  * /v1/parks/{id}/attractions: the attractions list for the park in the path,
  * so it takes that list's filters and sorts, less the park and where a park
- * already is. include=former needs past stints indexed at the edge: not yet.
+ * already is; include reaches back through past stints (DR-010 §12.19).
  */
 const ATTRACTION_PARAMS = new Set([
 	'type', 'status', 'location_kind', 'manufacturer', 'product', 'variant', 'opened_from', 'opened_to',
-	'sort', 'view', 'limit', 'cursor',
+	'updated_since', 'q', 'include', 'sort', 'view', 'limit', 'cursor',
 ]);
-const ATTRACTIONS_NOT_YET = new Set(['include', 'updated_since', 'q']);
+const INCLUDE = new Set(['current', 'former', 'all']);
 
 interface Row {
 	id: number;
@@ -70,6 +67,24 @@ export function parkListQuery(url: URL): ListQuery {
 	inList('state', stateParam(url));
 	// IN implies IS NOT NULL to SQLite, so this matches the partial resort index.
 	inList('resort', resorts(url));
+	// 2,200 parks: these walk the name index with the rest, bounded by the table.
+	const box = bboxParam(url);
+	if (box != null) {
+		const w = boxWhere(box, 'lat', 'lon');
+		where.push(w.sql);
+		binds.push(...w.binds);
+	}
+	const since = updatedSinceParam(url);
+	if (since != null) {
+		where.push('updated_at >= ?');
+		binds.push(since);
+	}
+	const match = searchMatch(url);
+	if (match != null) {
+		const q = searchWhere('park', 'id', 'in_latest', match);
+		where.push(q.sql);
+		binds.push(...q.binds);
+	}
 
 	// The leading range first, as on attractions, so D1 seeks the index to the cursor.
 	const cursor = url.searchParams.get('cursor');
@@ -115,7 +130,9 @@ export async function getPark(url: URL, idText: string, env: Env): Promise<{ res
  * list would read as "has no attractions". One key read on top.
  */
 export async function parkAttractions(url: URL, idText: string, env: Env): Promise<{ response: Response; rows: number }> {
-	checkParams(url, ATTRACTION_PARAMS, ATTRACTIONS_NOT_YET);
+	checkParams(url, ATTRACTION_PARAMS, NOT_YET);
+	const include = url.searchParams.get('include') ?? 'current';
+	if (!INCLUDE.has(include)) throw badRequest('parameter-invalid', `include=${include} is not one of current, former, all`);
 	const id = Number(idText);
 	if (!/^\d+$/.test(idText) || !Number.isSafeInteger(id) || id < 1) {
 		return { rows: 0, response: problem(404, 'not-found', 'No such park') };
@@ -135,5 +152,6 @@ export async function parkAttractions(url: URL, idText: string, env: Env): Promi
 
 	const asList = new URL(await followMerges(url, env));
 	asList.searchParams.set('park', String(id));
-	return runAttractionList(listQuery(asList), env);
+	asList.searchParams.delete('include');
+	return runAttractionList(listQuery(asList, include as Include), env);
 }

@@ -51,8 +51,22 @@ public sealed record PastLocation
     public DateValue? Closed { get; init; }
 }
 
-/// <summary>Past stints, oldest first. Names wait for their own slice.</summary>
-public sealed record AttractionHistory(IReadOnlyList<PastLocation> Locations);
+/// <summary>
+/// Past stints and the names carried, each oldest first; either list is absent
+/// when empty. Names appear only when one differs from the current name.
+/// </summary>
+public sealed record AttractionHistory(IReadOnlyList<PastLocation>? Locations, IReadOnlyList<DatedName>? Names = null);
+
+/// <summary>
+/// One name the attraction carried (openapi AttractionHistory.names). Location
+/// index is the past stint's index (history.locations.index), or null at the
+/// current location. Dates are at Cargo's precision, null when not recorded.
+/// </summary>
+public sealed record DatedName(
+    string Name,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] DateValue? Start,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] DateValue? End,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? LocationIndex);
 
 public sealed record AttractionDates(DateValue? Opened, DateValue? Closed, DateValue? Opening, DateValue? Closing)
 {
@@ -91,10 +105,12 @@ public sealed record CoasterDetail
     public string? Propulsion { get; init; }
     public string? TrackMaterial { get; init; }
     public string? SupportMaterial { get; init; }
+    public IReadOnlyList<Ref>? TrainManufacturers { get; init; }
     public IReadOnlyList<Ref>? Elements { get; init; }
 
     [JsonIgnore]
-    public bool IsEmpty => Propulsion == null && TrackMaterial == null && SupportMaterial == null && Elements == null;
+    public bool IsEmpty => Propulsion == null && TrackMaterial == null && SupportMaterial == null && TrainManufacturers == null
+                           && Elements == null;
 }
 
 /// <summary>What only a ride records (openapi RideDetail). The flags are stored only when set, so false is rare and absent is usual.</summary>
@@ -203,6 +219,10 @@ public sealed record AttractionContent
     public required int Id { get; init; }
     public required string Type { get; init; }
     public required string Name { get; init; }
+
+    /// <summary>The name is descriptive, written because the real one isn't known ({{Placeholder title}}). Always written.</summary>
+    public required bool NameIsPlaceholder { get; init; }
+
     public required string Title { get; init; }
     public required string Url { get; init; }
     public string? Status { get; init; }
@@ -210,7 +230,22 @@ public sealed record AttractionContent
     public required AttractionLocation Location { get; init; }
     public required IReadOnlyList<Ref> Manufacturers { get; init; }
     public required IReadOnlyList<AttractionProduct> Products { get; init; }
+
+    /// <summary>Who designed it, by name only: people and firms mixed, and people have no records yet (DR-010 §12.18).</summary>
+    public IReadOnlyList<Ref>? Designers { get; init; }
+
+    public IReadOnlyList<Ref>? Builders { get; init; }
+
+    /// <summary>The site's type tags as written ("Kiddie", "Log Flume"), from Category1–6.</summary>
+    public IReadOnlyList<string>? Categories { get; init; }
+
     public IReadOnlyList<string>? Restraints { get; init; }
+
+    /// <summary>What it replaced, and what replaced it: usually attractions, sometimes plain text.</summary>
+    public IReadOnlyList<Ref>? Replaced { get; init; }
+
+    public IReadOnlyList<Ref>? ReplacedBy { get; init; }
+
     public AttractionStats? Stats { get; init; }
     public Restrictions? Restrictions { get; init; }
     public CoasterDetail? Coaster { get; init; }
@@ -257,12 +292,55 @@ public sealed record ParkContent
     public Coordinates? Coordinates { get; init; }
     public Resort? Resort { get; init; }
     public string? Website { get; init; }
+
+    /// <summary>The companies in the spell in force (history's current entries); absent at a park that has closed.</summary>
+    public IReadOnlyList<Ref>? Owners { get; init; }
+
+    public IReadOnlyList<Ref>? Operators { get; init; }
+
+    /// <summary>Owner and operator spells from History; null when the page records none. Names wait for their own slice.</summary>
+    public ParkHistory? History { get; init; }
+}
+
+/// <summary>A park's owner and operator spells, oldest first, as openapi.yaml Park.history.</summary>
+public sealed record ParkHistory(IReadOnlyList<DatedRef>? Owners, IReadOnlyList<DatedRef>? Operators);
+
+/// <summary>
+/// One company in one spell (openapi.yaml DatedRefs). A spell naming two
+/// companies is two of these with the same dates. Current: the spell in force
+/// (Position 1, no end) at a park that hasn't closed or been cancelled.
+/// </summary>
+public sealed record DatedRef(
+    Ref Company,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] DateValue? Start,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] DateValue? End,
+    bool Current);
+
+/// <summary>
+/// Everything in a park company record that comes from the wiki's content;
+/// hashed like AttractionContent.
+/// </summary>
+public sealed record ParkCompanyContent
+{
+    public required int Id { get; init; }
+    public required string Name { get; init; }
+    public required string Title { get; init; }
+    public required string Url { get; init; }
+    public string? Status { get; init; }
+    public DateValue? Established { get; init; }
+    public DateValue? Closed { get; init; }
+    public string? Headquarters { get; init; }
+    public Country? Country { get; init; }
+    public string? Website { get; init; }
+
+    public IReadOnlyList<Ref>? Predecessors { get; init; }
+
+    public IReadOnlyList<Ref>? Successors { get; init; }
 }
 
 /// <summary>
 /// Everything in a manufacturer record that comes from the wiki's content;
-/// hashed like AttractionContent. Predecessor and successor wait for their own
-/// decision: the columns hold lists and notes, not one link (DR-010 §12.8).
+/// hashed like AttractionContent.
 /// </summary>
 public sealed record ManufacturerContent
 {
@@ -275,6 +353,11 @@ public sealed record ManufacturerContent
     public string? Headquarters { get; init; }
     public Country? Country { get; init; }
     public string? Website { get; init; }
+
+    /// <summary>Companies before and after it: a merger has two predecessors (DR-010 §12.18).</summary>
+    public IReadOnlyList<Ref>? Predecessors { get; init; }
+
+    public IReadOnlyList<Ref>? Successors { get; init; }
 }
 
 /// <summary>
@@ -291,6 +374,11 @@ public sealed record ProductOffered
     public IReadOnlyList<string>? Containment { get; init; }
     public IReadOnlyList<string>? SlideMaterial { get; init; }
     public IReadOnlyList<int>? RidersPerTube { get; init; }
+
+    /// <summary>Open lists, as written: the site's type tags, and coasters' lift and launch methods.</summary>
+    public IReadOnlyList<string>? Types { get; init; }
+
+    public IReadOnlyList<string>? LiftLaunch { get; init; }
 
     [JsonIgnore]
     public bool IsEmpty => this == new ProductOffered();
@@ -314,7 +402,7 @@ public sealed record ProductVariant(
 /// Everything in a product record that comes from the wiki's content; hashed
 /// like AttractionContent. Installations are counted at the edge from the
 /// attractions' products (DR-010 §12.13), so an attraction edit moves them at
-/// once; designer and the open type lists are held back (DR-010 §12.10).
+/// once.
 /// </summary>
 public sealed record ProductContent
 {
@@ -325,6 +413,10 @@ public sealed record ProductContent
     public required string Url { get; init; }
     public string? Status { get; init; }
     public required IReadOnlyList<Ref> Manufacturers { get; init; }
+
+    /// <summary>By name only, as on attractions.</summary>
+    public IReadOnlyList<Ref>? Designers { get; init; }
+
     public DateValue? Introduced { get; init; }
     public DateValue? Discontinued { get; init; }
     public ProductOffered? Offered { get; init; }

@@ -203,7 +203,7 @@ public class ParkTests
 
         Assert.Null(Map(Row()).Resort);
         Assert.Equal(new Resort(56391, "Walt Disney World"),
-            ParkMapper.Map(Row(), Vocab, "https://coasterpedia.net", [], resorts[182]).Resort);
+            ParkMapper.Map(Row(), Vocab, "https://coasterpedia.net", [], resort: resorts[182]).Resort);
     }
 
     [Fact]
@@ -247,7 +247,7 @@ public class ParkTests
     [Fact]
     public void The_park_upsert_filters_and_lists_by_resort()
     {
-        var item = Wire.UpsertPark(ParkMapper.Map(Row(), Vocab, "https://coasterpedia.net", [], new Resort(58420, "Cedar Point Resort")),
+        var item = Wire.UpsertPark(ParkMapper.Map(Row(), Vocab, "https://coasterpedia.net", [], resort: new Resort(58420, "Cedar Point Resort")),
             42, DateTimeOffset.Parse("2026-10-12T12:00:00Z"));
         Assert.Equal(58420, item["filters"]!["resort"]!.GetValue<int>());
         Assert.Equal("""{"id":58420,"name":"Cedar Point Resort"}""", item["summary"]!["resort"]!.ToJsonString());

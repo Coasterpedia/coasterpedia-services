@@ -65,6 +65,94 @@ public class ProjectorTests
     }
 
     [Fact]
+    public void A_placeholder_title_is_flagged_on_the_record_and_the_summary()
+    {
+        var placeholder = Map(Row(id: 90001, page: "Unknown Wild Swing (Europa Park)", name: "Unknown") with { PlaceholderTitle = 1 });
+        Assert.True(placeholder.NameIsPlaceholder);
+        Assert.Equal("Unknown", placeholder.Name);
+
+        var named = Map(Row());
+        Assert.False(named.NameIsPlaceholder);
+
+        // Always written, false included, so a client never reads absence as unknown.
+        var upsert = Wire.Upsert(named, 1, DateTimeOffset.UnixEpoch);
+        Assert.False(upsert["record"]!["name_is_placeholder"]!.GetValue<bool>());
+        Assert.False(upsert["summary"]!["name_is_placeholder"]!.GetValue<bool>());
+        Assert.True(Wire.Upsert(placeholder, 1, DateTimeOffset.UnixEpoch)["summary"]!["name_is_placeholder"]!.GetValue<bool>());
+    }
+
+    private static HistoryRow NameRow(string name, int position, int location, string? start = null, string? end = null) =>
+        new()
+        {
+            PageId = 1, Type = "name", Name = name, Position = position, LocationOrdering = location,
+            Start = start, StartPrecision = start == null ? null : 3, End = end, EndPrecision = end == null ? null : 3,
+        };
+
+    private static AttractionRow SandSerpent(params HistoryRow[] names) =>
+        Row(page: "Sand Serpent", name: "Sand Serpent") with
+        {
+            PastLocations = [new PastLocationRow { PageId = 171, Ordering = 1, LocationKind = "park", Park = "[[Six Flags Magic Mountain]]" }],
+            Names = names,
+        };
+
+    [Fact]
+    public void Past_names_come_oldest_first_across_locations()
+    {
+        // Sand Serpent's History rows, as stored on 2026-10-13.
+        var issues = new List<DataIssue>();
+        var names = Map(SandSerpent(
+            NameRow("Sand Serpent", 1, 0, "2011-01-01", "2023-01-01"),
+            NameRow("Cheetah Chase", 2, 0, "2004-01-01", "2010-01-01"),
+            NameRow("Wild Maus", 1, 1, "1997-01-01", "2003-01-01"),
+            NameRow("Wild Izzy", 2, 1, "1996-01-01", "1996-01-01")), issues).History!.Names!;
+
+        Assert.Empty(issues);
+        Assert.Equal(["Wild Izzy", "Wild Maus", "Cheetah Chase", "Sand Serpent"], names.Select(n => n.Name));
+        Assert.Equal([1, 1, null, null], names.Select(n => n.LocationIndex));
+        Assert.Equal(new DateValue("2004", "2004-01-01", "2004-12-31"), names[2].Start);
+    }
+
+    [Fact]
+    public void An_attraction_never_renamed_has_no_names_moved_or_not()
+    {
+        Assert.Null(Map(Row(name: "Batman The Ride", page: "Batman The Ride (Six Flags Magic Mountain)") with
+        {
+            Names = [NameRow("Batman The Ride", 1, 0)],
+        }).History);
+        var moved = Map(SandSerpent(NameRow("Sand Serpent", 1, 1), NameRow("Sand Serpent", 1, 0))).History!;
+        Assert.Null(moved.Names);
+        Assert.Single(moved.Locations!);
+    }
+
+    [Fact]
+    public void A_placeholder_name_is_left_out_and_a_markup_name_is_stripped()
+    {
+        var names = Map(SandSerpent(
+            NameRow("''Sand Serpent''", 1, 0),
+            NameRow("''unknown''", 2, 0),
+            NameRow("[[Wild Maus]]", 1, 1))).History!.Names!;
+        Assert.Equal(["Wild Maus", "Sand Serpent"], names.Select(n => n.Name));
+    }
+
+    [Fact]
+    public void A_name_at_a_stint_the_page_does_not_record_is_reported()
+    {
+        var issues = new List<DataIssue>();
+        var names = Map(SandSerpent(NameRow("Sand Serpent", 1, 0), NameRow("Wild Maus", 1, 3)), issues).History!.Names!;
+        Assert.Equal(3, names[0].LocationIndex);
+        Assert.Contains(issues, i => i.Field == "history.names" && i.Value == "Wild Maus");
+    }
+
+    [Fact]
+    public void Names_are_always_written_with_their_nulls()
+    {
+        var item = Wire.Upsert(Map(SandSerpent(NameRow("Sand Serpent", 1, 0), NameRow("Cheetah Chase", 2, 0))), 1, DateTimeOffset.UnixEpoch);
+        var first = item["record"]!["history"]!["names"]![0]!.AsObject();
+        Assert.Equal(["name", "start", "end", "location_index"], first.Select(p => p.Key));
+        Assert.Null(first["location_index"]);
+    }
+
+    [Fact]
     public void Every_country_the_wiki_allows_has_an_ISO_code_except_ship()
     {
         var allowed = Vocab.All["ride"]["country"];
@@ -369,7 +457,7 @@ public class ProjectorTests
 
         var json = JsonSerializer.Serialize(item);
         Assert.Equal(
-            """{"kind":"attraction","id":66486,"revision":42,"updated_at":"2026-10-11T12:00:00Z","settled":true,"settles_at":null,"sort_name":"skyride","sort_values":{"height":null,"speed":null,"length":null},"filters":{"type":"ride","status":"operating","country":null,"park":67009,"location_kind":"park","state":null,"opened_earliest":null,"opened_latest":null},"summary":{"id":66486,"type":"ride","name":"SkyRide","status":"operating","park":{"id":67009,"name":"Carnival Horizon"},"location_kind":"park","manufacturers":[{"id":9001,"name":"SkyRide Technology"}],"products":[],"updated_at":"2026-10-11T12:00:00Z"},"record":{"id":66486,"type":"ride","name":"SkyRide","title":"SkyRide (Carnival Horizon)","url":"https://coasterpedia.net/wiki/SkyRide_(Carnival_Horizon)","status":"operating","location":{"kind":"park","on_loan":false,"park":{"id":67009,"name":"Carnival Horizon"}},"manufacturers":[{"id":9001,"name":"SkyRide Technology"}],"products":[],"revision":42,"updated_at":"2026-10-11T12:00:00Z"}}""",
+            """{"kind":"attraction","id":66486,"revision":42,"updated_at":"2026-10-11T12:00:00Z","settled":true,"settles_at":null,"sort_name":"skyride","sort_values":{"height":null,"speed":null,"length":null},"filters":{"type":"ride","status":"operating","country":null,"park":67009,"location_kind":"park","state":null,"opened_earliest":null,"opened_latest":null},"summary":{"id":66486,"type":"ride","name":"SkyRide","name_is_placeholder":false,"status":"operating","park":{"id":67009,"name":"Carnival Horizon"},"location_kind":"park","manufacturers":[{"id":9001,"name":"SkyRide Technology"}],"products":[],"updated_at":"2026-10-11T12:00:00Z"},"record":{"id":66486,"type":"ride","name":"SkyRide","name_is_placeholder":false,"title":"SkyRide (Carnival Horizon)","url":"https://coasterpedia.net/wiki/SkyRide_(Carnival_Horizon)","status":"operating","location":{"kind":"park","on_loan":false,"park":{"id":67009,"name":"Carnival Horizon"}},"manufacturers":[{"id":9001,"name":"SkyRide Technology"}],"products":[],"revision":42,"updated_at":"2026-10-11T12:00:00Z"}}""",
             json);
     }
 }

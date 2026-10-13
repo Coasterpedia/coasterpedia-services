@@ -8,10 +8,8 @@ namespace CoasterpediaServices.Projector.Mapping;
 /// <summary>
 /// Product row and its variant rows → public product record. Pure, like the
 /// other mappers. Installations are not mapped here: the edge counts them from
-/// the attractions' products (DR-010 §12.13). Held back (§12.10): designer,
-/// which mixes people with firms, and people are out; and the open lists
-/// (coaster and slide types, ride type, lift/launch), which have no allowed
-/// values to check.
+/// the attractions' products (DR-010 §12.13). Designers are names only, and
+/// the open lists (types, lift/launch) are published as written (§12.18).
 /// </summary>
 public static class ProductMapper
 {
@@ -48,6 +46,9 @@ public static class ProductMapper
             Containment = Offered(row.PageId, "containment", row.Containment, vocab, issues),
             SlideMaterial = Offered(row.PageId, "slide_material", row.SlideMaterial, vocab, issues),
             RidersPerTube = RidersPerTube(row.PageId, row.RidersTube, issues),
+            // Coaster and slide products keep Type as a list, ride products as one cell.
+            Types = Wikitext.Labels([.. FieldMapper.Split(row.Types), row.TypeText]) is { Count: > 0 } types ? types : null,
+            LiftLaunch = Wikitext.Labels(FieldMapper.Split(row.LiftLaunch)) is { Count: > 0 } lift ? lift : null,
         };
         var variants = Variants(row, issues);
 
@@ -64,6 +65,7 @@ public static class ProductMapper
             Manufacturers = Wikitext.Refs(row.Manufacturer)
                 .Select(x => x.Target != null && resolved.TryGetValue(x.Target, out var id) ? x.Ref with { Id = id } : x.Ref)
                 .ToList(),
+            Designers = FieldMapper.Refs(row.PageId, "designers", row.Designer, null, issues),
             Introduced = FieldMapper.Precise(row.PageId, "introduced", row.Introduced, row.IntroducedPrecision, issues),
             Discontinued = FieldMapper.Precise(row.PageId, "discontinued", row.Discontinued, row.DiscontinuedPrecision, issues),
             Offered = offered.IsEmpty ? null : offered,

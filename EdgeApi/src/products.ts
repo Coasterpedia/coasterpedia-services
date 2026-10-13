@@ -3,17 +3,18 @@ import {
 	manufacturerParam, NOT_YET as ATTRACTION_NOT_YET, runAttractionList, viewParam, type View,
 } from './attractions';
 import type { Env } from './env';
+import { searchMatch, searchWhere, updatedSinceParam } from './filters';
 import { badRequest, json, LICENCE, problem } from './http';
 
 /**
  * Contract parameters of /v1/products whose field is not published yet
  * (DR-010 §12.10). Refused, never ignored, as on the other lists.
  */
-const NOT_YET = new Set(['updated_since', 'q']);
+const NOT_YET = new Set<string>();
 
-const LIST_PARAMS = new Set(['type', 'status', 'manufacturer', 'sort', 'view', 'limit', 'cursor']);
+const LIST_PARAMS = new Set(['type', 'status', 'manufacturer', 'updated_since', 'q', 'sort', 'view', 'limit', 'cursor']);
 /** /v1/manufacturers/{id}/products: the list's own, less the manufacturer the path already names. */
-const OF_MANUFACTURER_PARAMS = new Set(['type', 'status', 'sort', 'view', 'limit', 'cursor']);
+const OF_MANUFACTURER_PARAMS = new Set(['type', 'status', 'updated_since', 'q', 'sort', 'view', 'limit', 'cursor']);
 const ONE_PARAMS = new Set(['view']);
 /**
  * /v1/products/{id}/installations: the attractions list for the product in
@@ -21,7 +22,7 @@ const ONE_PARAMS = new Set(['view']);
  */
 const INSTALLATION_PARAMS = new Set([
 	'type', 'status', 'country', 'state', 'park', 'location_kind', 'manufacturer', 'variant', 'opened_from', 'opened_to',
-	'sort', 'view', 'limit', 'cursor',
+	'bbox', 'updated_since', 'q', 'sort', 'view', 'limit', 'cursor',
 ]);
 
 /** product_installations' column for each view (migration 0011). */
@@ -71,6 +72,18 @@ export function productListQuery(url: URL, manufacturer: number | null): ListQue
 	// Without a manufacturer both walk the name index (0009): the table is too small to index them.
 	inList('type', list(url, 'type'));
 	inList('status', list(url, 'status'));
+	// Products have no updated_at on their links: read from the row, bounded by the manufacturer's range.
+	const since = updatedSinceParam(url);
+	if (since != null) {
+		where.push(`${manufacturer == null ? 'updated_at' : 'p.updated_at'} >= ?`);
+		binds.push(since);
+	}
+	const match = searchMatch(url);
+	if (match != null) {
+		const q = searchWhere('product', c('id'), c('in_latest'), match);
+		where.push(q.sql);
+		binds.push(...q.binds);
+	}
 
 	const cursor = url.searchParams.get('cursor');
 	if (cursor) {

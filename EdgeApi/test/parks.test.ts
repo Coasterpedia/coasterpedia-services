@@ -105,10 +105,10 @@ describe('the Projector park batch', () => {
 
 	it('counts parks in /v1/meta, per view', async () => {
 		const latest = await (await exports.default.fetch(new Request(`${BASE}/v1/meta?view=latest`))).json<any>();
-		expect(latest.counts).toEqual({ attractions: 7, parks: 7, manufacturers: 0, products: 0 });
-		expect(latest.schema_version).toBe('1.0.0-beta.12');
+		expect(latest.counts).toEqual({ attractions: 7, parks: 7, manufacturers: 0, products: 0, park_companies: 0 });
+		expect(latest.schema_version).toBe('1.0.0-beta.17');
 		const settled = await (await exports.default.fetch(new Request(`${BASE}/v1/meta`))).json<any>();
-		expect(settled.counts).toEqual({ attractions: 6, parks: 6, manufacturers: 0, products: 0 });
+		expect(settled.counts).toEqual({ attractions: 6, parks: 6, manufacturers: 0, products: 0, park_companies: 0 });
 	});
 
 	it('logs park changes for /v1/changes, by kind and view', async () => {
@@ -147,9 +147,9 @@ describe('the Projector park batch', () => {
 
 describe('what /v1/parks refuses', () => {
 	it.each([
-		['a contract filter whose field is not published', '/v1/parks?bbox=0,0,1,1', 400, 'parameter-unavailable'],
+		['a box over 20° high', '/v1/parks?bbox=0,0,30,1', 400, 'parameter-invalid'],
 		['a resort that is not an ID', '/v1/parks?resort=Cedar%20Point%20Resort', 400, 'parameter-invalid'],
-		['the full-text search, not yet built', '/v1/parks?q=cedar', 400, 'parameter-unavailable'],
+		['a search with no word of two letters', '/v1/parks?q=c', 400, 'parameter-invalid'],
 		['an attraction filter', '/v1/parks?type=coaster', 400, 'parameter-unknown'],
 		['a sort parks do not have', '/v1/parks?sort=height', 400, 'parameter-unavailable'],
 		['a cursor from a stat sort', `/v1/parks?cursor=${encodeCursor('height', 20, 1)}`, 400, 'cursor-invalid'],
@@ -162,7 +162,7 @@ describe('what /v1/parks refuses', () => {
 	});
 
 	it('refuses an ingest item of a kind it does not store', async () => {
-		const res = await ingest({ as_of: '2026-10-12T12:00:00Z', upsert: [], delete: [{ kind: 'park_company', id: 1, merged_into: null }] });
+		const res = await ingest({ as_of: '2026-10-12T12:00:00Z', upsert: [], delete: [{ kind: 'person', id: 1, merged_into: null }] });
 		expect(res.status).toBe(400);
 	});
 });

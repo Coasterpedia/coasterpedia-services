@@ -118,7 +118,7 @@ describe('where an attraction is, and when it opened', () => {
 	});
 
 	it.each([
-		['past stints, not published yet', '/v1/parks/67009/attractions?include=former', 400, 'parameter-unavailable'],
+		['an include that is not one of the three', '/v1/parks/67009/attractions?include=some', 400, 'parameter-invalid'],
 		['a second park under a park', '/v1/parks/67009/attractions?park=182', 400, 'parameter-unknown'],
 		['two parks', '/v1/attractions?park=163,182', 400, 'parameter-invalid'],
 		['a year that is not one', '/v1/attractions?opened_from=94', 400, 'parameter-invalid'],

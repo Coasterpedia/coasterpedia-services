@@ -45,6 +45,14 @@ it('serves the record as sent, with its settlement', async () => {
 	});
 });
 
+it('flags a placeholder name on the record and in the list', async () => {
+	expect((await (await get('/v1/attractions/9101?view=latest')).json<any>()).data.name_is_placeholder).toBe(true);
+	const list = (await (await get('/v1/attractions?view=latest')).json<any>()).data;
+	expect(list.filter((a: any) => a.name_is_placeholder).map((a: any) => a.id)).toEqual([9101]);
+	// Always written: false is false, never absent.
+	expect(list.every((a: any) => typeof a.name_is_placeholder === 'boolean')).toBe(true);
+});
+
 it('keeps the pending upsert out of the settled view', async () => {
 	const ids = async (view: string) => (await (await get(`/v1/attractions?view=${view}&type=coaster`)).json<any>()).data.map((a: any) => a.id);
 	expect(await ids('latest')).toContain(9101);

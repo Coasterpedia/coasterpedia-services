@@ -1,4 +1,5 @@
 import type { Env } from './env';
+import { bboxParam, boxCells, boxWhere, searchMatch, searchWhere, updatedSinceParam } from './filters';
 import { badRequest, CHANGES_WINDOW, decodeOpaque, encodeOpaque, json, LICENCE, problem, SCHEMA_VERSION } from './http';
 
 /**
@@ -6,11 +7,11 @@ import { badRequest, CHANGES_WINDOW, decodeOpaque, encodeOpaque, json, LICENCE, 
  * parameter whose field is not published yet is refused, never ignored:
  * ignoring ?park= would return every attraction and look like an answer.
  */
-export const NOT_YET = new Set(['bbox', 'updated_since', 'q']);
+export const NOT_YET = new Set<string>();
 
 const LIST_PARAMS = new Set([
 	'type', 'status', 'country', 'state', 'park', 'location_kind', 'manufacturer', 'product', 'variant', 'opened_from', 'opened_to',
-	'sort', 'view', 'limit', 'cursor',
+	'bbox', 'updated_since', 'q', 'sort', 'view', 'limit', 'cursor',
 ]);
 const ONE_PARAMS = new Set(['view']);
 const META_PARAMS = new Set(['view']);
@@ -21,11 +22,14 @@ const META_PARAMS = new Set(['view']);
  * can be (0012), so "[..1989]" is left out of it the same way.
  */
 const SORT_COLUMNS: Record<string, string> = {
-	name: 'sort_name', height: 'height', speed: 'speed', length: 'length', opened: 'opened_earliest',
+	name: 'sort_name', height: 'height', speed: 'speed', length: 'length', opened: 'opened_earliest', updated: 'updated_at',
 };
 
-/** Sorts whose cursor holds text: a name, or a day. */
-const TEXT_SORTS = new Set(['name', 'opened']);
+/** Sorts whose cursor holds text: a name, a day or a time. */
+const TEXT_SORTS = new Set(['name', 'opened', 'updated']);
+
+/** Columns the link tables don't carry, so a link-driven list reads them from the row joined back. */
+const ROW_ONLY = new Set(['opened_earliest', 'updated_at']);
 
 interface Row {
 	id: number;
@@ -234,8 +238,15 @@ export interface ListQuery {
 	column: string;
 }
 
+/**
+ * Where a park's list looks (/v1/parks/{id}/attractions, DR-010 §12.19):
+ * current is where each attraction is now; former adds those with a past stint
+ * there (history.locations) and not there now; all is both.
+ */
+export type Include = 'current' | 'former' | 'all';
+
 /** The list query for a request, apart from running it, so tests can measure what it reads. */
-export function listQuery(url: URL): ListQuery {
+export function listQuery(url: URL, include: Include = 'current'): ListQuery {
 	checkParams(url, LIST_PARAMS);
 	const view = viewParam(url);
 	const limit = limitParam(url);
@@ -245,29 +256,46 @@ export function listQuery(url: URL): ListQuery {
 	const column = SORT_COLUMNS[sort];
 	if (!column) {
 		throw badRequest('parameter-unavailable', `sort=${sortParam} is not available yet`,
-			'The beta sorts by name, height, speed, length or opened, each with - for descending.');
+			'The beta sorts by name, height, speed, length, opened or updated, each with - for descending.');
 	}
 
 	// One index drives each request, the narrowest the filters allow: a
-	// manufacturer's or product's links, then a park, a state, the opened range.
-	// The links carry every attraction filter and sort column but these four,
-	// which are read from the row joined back (a), bounded by the links.
+	// manufacturer's or product's links, then a park (or its past stints), the
+	// names q matches, a box, a state, the opened range, then what changed since.
+	// The links carry every attraction filter and sort column but the location,
+	// opened and updated ones, which are read from the row joined back (a),
+	// bounded by the links.
 	const link = linkFilter(url);
 	const park = parkParam(url);
 	const states = stateParam(url);
 	const opened = openedParams(url);
+	const match = searchMatch(url);
+	const box = bboxParam(url);
+	const since = updatedSinceParam(url);
+	const pastStints = park != null && include !== 'current';
 	const driver = link != null ? 'link'
+		: pastStints ? 'park_history'
 		: park != null ? 'park'
+		: match != null ? 'search'
+		: box != null ? 'bbox'
 		: states.length > 0 ? 'state'
 		: opened.from != null ? 'opened'
 		: opened.to != null ? 'opened_latest'
+		: since != null ? 'updated'
 		: null;
 	const c = (col: string) => (link == null ? col : `m.${col}`);
 	const a = (col: string) => (link == null ? col : `a.${col}`);
 	// Without statistics SQLite takes any equality's index (§12.12), so every
 	// filter but the driver's is kept out of the plan with unary +.
 	const off = (col: string) => (link == null ? `+${col}` : col);
-	const sortCol = column === 'opened_earliest' ? a(column) : c(column);
+	const sortCol = ROW_ONLY.has(column) ? a(column) : c(column);
+	// A driver whose index doesn't hold the order sorts what it reads: the sort
+	// column is kept off the plan too, or SQLite would walk it instead and read
+	// the table to find the few rows the driver names.
+	const sortsItself = driver === 'park_history' || driver === 'search' || driver === 'bbox'
+		|| (driver === 'updated' && column !== 'updated_at')
+		|| (column === 'updated_at' && driver != null && driver !== 'updated' && driver !== 'link');
+	const orderCol = sortsItself ? `+${sortCol}` : sortCol;
 
 	const where: string[] = [`${c(FLAG[view])} = 1`];
 	const binds: (string | number)[] = [];
@@ -275,7 +303,7 @@ export function listQuery(url: URL): ListQuery {
 		where.push(...link.where);
 		binds.push(...link.binds);
 	}
-	if (column !== 'sort_name') where.push(`${sortCol} IS NOT NULL`);
+	if (column !== 'sort_name') where.push(`${orderCol} IS NOT NULL`);
 	const inList = (col: string, values: (string | number)[]) => {
 		if (values.length === 0) return;
 		where.push(`${col} IN (${values.map(() => '?').join(',')})`);
@@ -296,7 +324,41 @@ export function listQuery(url: URL): ListQuery {
 	const kinds = list(url, 'location_kind');
 	const kindIndexed = driver == null && column === 'sort_name' && kinds.length === 1 && !statusIndexed;
 	inList(link != null ? a('location_kind') : kindIndexed ? 'location_kind' : '+location_kind', kinds);
-	if (park != null) inList(driver === 'park' ? 'park' : a('park'), [park]);
+	// The park's past stints (0014) lead the join, so each row is one key read;
+	// as a filter on the row, SQLite scanned the table and tested each one.
+	// former leaves out what is there now; all adds it, read from the park index
+	// (the flag as a literal, so the partial index matches).
+	let stints: { sql: string; binds: number[] } | null = null;
+	if (driver === 'park_history') {
+		const past = 'SELECT pp.id AS sid, pp.in_latest AS slatest FROM attraction_past_parks pp WHERE pp.park = ?';
+		if (include === 'former') {
+			stints = { sql: past, binds: [park!] };
+			where.push('(+park IS NULL OR +park <> ?)');
+			binds.push(park!);
+		} else {
+			stints = {
+				sql: `SELECT x.id AS sid, x.in_latest AS slatest FROM attractions x WHERE x.park = ? AND x.${FLAG[view]} = 1 UNION ${past}`,
+				binds: [park!, park!],
+			};
+		}
+	} else if (park != null) {
+		inList(driver === 'park' ? 'park' : a('park'), [park]);
+	}
+	if (match != null) {
+		const s = searchWhere('attraction', c('id'), c('in_latest'), match);
+		where.push(s.sql);
+		binds.push(...s.binds);
+	}
+	if (box != null) {
+		if (driver === 'bbox') inList('cell', boxCells(box));
+		const w = boxWhere(box, link == null ? '+lat' : a('lat'), link == null ? '+lon' : a('lon'));
+		where.push(w.sql);
+		binds.push(...w.binds);
+	}
+	if (since != null) {
+		where.push(`${driver === 'updated' ? 'updated_at' : link == null ? '+updated_at' : a('updated_at')} >= ?`);
+		binds.push(since);
+	}
 	inList(driver === 'state' ? 'state' : link != null ? a('state') : '+state', states);
 	// The opened bounds: earliest in range drives opened_from, latest opened_to.
 	if (opened.from != null) {
@@ -322,7 +384,7 @@ export function listQuery(url: URL): ListQuery {
 	if (cursor) {
 		const [v, id] = decodeCursor(cursor, sort);
 		const key = c('id');
-		where.push(desc ? `${sortCol} <= ? AND (${sortCol} < ? OR ${key} < ?)` : `${sortCol} >= ? AND (${sortCol} > ? OR ${key} > ?)`);
+		where.push(desc ? `${orderCol} <= ? AND (${orderCol} < ? OR ${key} < ?)` : `${orderCol} >= ? AND (${orderCol} > ? OR ${key} > ?)`);
 		binds.push(v, v, id);
 	}
 
@@ -332,14 +394,18 @@ export function listQuery(url: URL): ListQuery {
 	// the table.
 	const forced = driver === 'opened' ? ` INDEXED BY attractions_${view}_by_opened`
 		: driver === 'opened_latest' ? ` INDEXED BY attractions_${view}_by_opened_latest`
+		: driver === 'bbox' ? ` INDEXED BY attractions_${view}_by_cell`
+		: driver === 'updated' ? ` INDEXED BY attractions_${view}_by_updated`
 		: '';
-	const from = link == null
-		? `attractions${forced}`
-		: `${link.table} m JOIN attractions a ON a.id = m.id AND a.in_latest = m.in_latest`;
+	const from = stints != null
+		? `(${stints.sql}) s CROSS JOIN attractions ON attractions.id = s.sid AND attractions.in_latest = s.slatest`
+		: link == null
+			? `attractions${forced}`
+			: `${link.table} m JOIN attractions a ON a.id = m.id AND a.in_latest = m.in_latest`;
 	const sql = `SELECT ${c('id')} AS id, ${sortCol} AS position, ${link == null ? 'summary' : 'a.summary'} FROM ${from}
 		WHERE ${where.join(' AND ')}
-		ORDER BY ${sortCol} ${dir}, ${c('id')} ${dir} LIMIT ?`;
-	return { sql, binds: [...binds, limit + 1], limit, view, sort, column };
+		ORDER BY ${orderCol} ${dir}, ${c('id')} ${dir} LIMIT ?`;
+	return { sql, binds: [...(stints?.binds ?? []), ...binds, limit + 1], limit, view, sort, column };
 }
 
 export async function listAttractions(url: URL, env: Env): Promise<{ response: Response; rows: number }> {
@@ -442,9 +508,10 @@ export async function getRecord(url: URL, idText: string, env: Env, k: RecordKin
 export async function meta(url: URL, env: Env): Promise<Response> {
 	checkParams(url, META_PARAMS);
 	const view = viewParam(url);
-	// Kept by triggers (migrations 0002, 0006, 0007, 0009); never COUNT(*) here, as this needs no key.
-	const { results: counts } = await env.DATA.prepare(`SELECT key, value FROM state WHERE key IN (?1, ?2, ?3, ?4)`)
-		.bind(`count_${view}`, `count_parks_${view}`, `count_manufacturers_${view}`, `count_products_${view}`)
+	// Kept by triggers (migrations 0002, 0006, 0007, 0009, 0013); never COUNT(*) here, as this needs no key.
+	const { results: counts } = await env.DATA.prepare(`SELECT key, value FROM state WHERE key IN (?1, ?2, ?3, ?4, ?5)`)
+		.bind(`count_${view}`, `count_parks_${view}`, `count_manufacturers_${view}`, `count_products_${view}`,
+			`count_park_companies_${view}`)
 		.all<{ key: string; value: string }>();
 	const count = (key: string) => Number(counts.find((c) => c.key === key)?.value ?? 0);
 	const settleAfter = await env.DATA.prepare(`SELECT value FROM state WHERE key = 'settle_after'`).first<{ value: string }>();
@@ -460,6 +527,7 @@ export async function meta(url: URL, env: Env): Promise<Response> {
 			parks: count(`count_parks_${view}`),
 			manufacturers: count(`count_manufacturers_${view}`),
 			products: count(`count_products_${view}`),
+			park_companies: count(`count_park_companies_${view}`),
 		},
 		licence: LICENCE,
 	});
