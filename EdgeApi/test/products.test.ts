@@ -183,7 +183,7 @@ describe('the Projector product batch', () => {
 	it('counts products in /v1/meta, per view', async () => {
 		const latest = await (await exports.default.fetch(new Request(`${BASE}/v1/meta?view=latest`))).json<any>();
 		expect(latest.counts).toEqual({ attractions: 7, parks: 0, manufacturers: 7, products: 8 });
-		expect(latest.schema_version).toBe('1.0.0-beta.11');
+		expect(latest.schema_version).toBe('1.0.0-beta.12');
 		const settled = await (await exports.default.fetch(new Request(`${BASE}/v1/meta`))).json<any>();
 		expect(settled.counts.products).toBe(7);
 	});
@@ -205,10 +205,11 @@ describe('the Projector product batch', () => {
 		expect(status.cancelled).toContain('product');
 		expect(status.operating).not.toContain('product');
 
-		expect(body.data.restraints[0]).toEqual({ value: 'lap_bars', label: 'Lap-bars', applies_to: ['product'] });
-		expect(body.data.classes.map((c: any) => c.value)).toEqual(['body', 'mat', 'tube', 'sled']);
-		expect(Object.keys(body.data)).toEqual(
-			['type', 'status', 'track_material', 'support_material', 'restraints', 'classes', 'containment', 'slide_material']);
+		expect(body.data.restraints[0]).toEqual({ value: 'lap_bars', label: 'Lap-bars', applies_to: ['coaster', 'ride', 'product'] });
+		// Multi is offered by the slide infobox only.
+		expect(body.data.classes.map((c: any) => c.value)).toEqual(['body', 'mat', 'tube', 'sled', 'multi']);
+		expect(Object.keys(body.data)).toEqual(['type', 'status', 'restraints', 'propulsion', 'track_material', 'support_material',
+			'classes', 'environment', 'containment', 'exit', 'slide_material']);
 	});
 
 	it('promotes a product, and its manufacturer links follow it into the settled view', async () => {
@@ -260,7 +261,7 @@ describe('what /v1/products refuses', () => {
 		['a second manufacturer under a manufacturer', '/v1/manufacturers/548/products?manufacturer=2399', 400, 'parameter-unknown'],
 		['a manufacturer ID that is not a number', '/v1/manufacturers/vekoma/products', 404, 'not-found'],
 		['a second product under a product', '/v1/products/3213/installations?product=68541', 400, 'parameter-unknown'],
-		['an attraction filter whose field is not published', '/v1/products/3213/installations?park=182', 400, 'parameter-unavailable'],
+		['an attraction filter whose field is not published', '/v1/products/3213/installations?bbox=50,-1,51,0', 400, 'parameter-unavailable'],
 		['a product ID that is not a number', '/v1/products/boomerang/installations', 404, 'not-found'],
 		['an empty variant', '/v1/products/3213/installations?variant=', 400, 'parameter-invalid'],
 	])('%s', async (_, path, status, type) => {

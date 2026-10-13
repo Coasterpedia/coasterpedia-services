@@ -14,29 +14,54 @@ namespace CoasterpediaServices.Projector.Vocabulary;
 /// </summary>
 public static class VocabularyDocument
 {
-    /// <summary>Where one vocabulary field's values come from: an infobox param, on the kinds that publish the field (null: every kind).</summary>
-    public sealed record Source(string Param, IReadOnlySet<string>? Kinds = null);
+    /// <summary>
+    /// Where one vocabulary field's values come from: the infobox param on each
+    /// kind that publishes the field. A kind left out doesn't publish it, so
+    /// applies_to never says it does.
+    /// </summary>
+    public sealed record Source(IReadOnlyDictionary<string, string>? ByKind, string? Param = null)
+    {
+        /// <summary>The same param on every kind.</summary>
+        public static Source Everywhere(string param) => new(null, param);
+
+        public string? ParamFor(string kind) => ByKind == null ? Param : ByKind.GetValueOrDefault(kind);
+    }
 
     /// <summary>
-    /// API field → its source, for the vocabulary fields a slice publishes. The
-    /// capability lists are products' only: the attraction infoboxes offer
-    /// restraints too, but no attraction publishes them yet, so applies_to
-    /// must not say they do. A slice that publishes one for attractions adds
-    /// its kinds here (the attraction param can differ: track_material, not
-    /// track_material1).
+    /// API field → its source, for the vocabulary fields a slice publishes.
+    /// The attraction and product infoboxes name some params differently
+    /// (track_material, track_material1).
     /// </summary>
     public static readonly IReadOnlyDictionary<string, Source> Fields = new Dictionary<string, Source>
     {
-        ["status"] = new("status"),
-        ["track_material"] = new(ProductMapper.OfferedParams["track_material"], ProductOnly),
-        ["support_material"] = new(ProductMapper.OfferedParams["support_material"], ProductOnly),
-        ["restraints"] = new(ProductMapper.OfferedParams["restraints"], ProductOnly),
-        ["classes"] = new(ProductMapper.OfferedParams["classes"], ProductOnly),
-        ["containment"] = new(ProductMapper.OfferedParams["containment"], ProductOnly),
-        ["slide_material"] = new(ProductMapper.OfferedParams["slide_material"], ProductOnly),
+        ["status"] = Source.Everywhere("status"),
+        ["restraints"] = new(new Dictionary<string, string>
+        {
+            ["coaster"] = "restraints1", ["ride"] = "restraints1", [Product] = ProductMapper.OfferedParams["restraints"],
+        }),
+        ["propulsion"] = new(new Dictionary<string, string> { ["coaster"] = "class" }),
+        ["track_material"] = new(new Dictionary<string, string>
+        {
+            ["coaster"] = "track_material", [Product] = ProductMapper.OfferedParams["track_material"],
+        }),
+        ["support_material"] = new(new Dictionary<string, string>
+        {
+            ["coaster"] = "support_material", [Product] = ProductMapper.OfferedParams["support_material"],
+        }),
+        ["classes"] = new(new Dictionary<string, string>
+        {
+            ["water_slide"] = "class1", [Product] = ProductMapper.OfferedParams["classes"],
+        }),
+        ["environment"] = new(new Dictionary<string, string> { ["water_slide"] = "environment" }),
+        ["containment"] = new(new Dictionary<string, string>
+        {
+            ["water_slide"] = "containment", [Product] = ProductMapper.OfferedParams["containment"],
+        }),
+        ["exit"] = new(new Dictionary<string, string> { ["water_slide"] = "exit" }),
+        ["slide_material"] = new(new Dictionary<string, string> { [Product] = ProductMapper.OfferedParams["slide_material"] }),
     };
 
-    private static IReadOnlySet<string> ProductOnly => new HashSet<string> { ProductMapper.VocabType };
+    private const string Product = ProductMapper.VocabType;
 
     /// <summary>The type vocabulary is the site's own, not TemplateData's.</summary>
     private static readonly Dictionary<string, string> TypeLabels = new()
@@ -62,9 +87,14 @@ public static class VocabularyDocument
         {
             // Slug → (label, types), in order of first appearance across the types.
             var values = new Dictionary<string, (string Label, List<string> AppliesTo)>();
-            foreach (var type in appliesTo.Where(t => source.Kinds == null || source.Kinds.Contains(t)))
+            foreach (var type in appliesTo)
             {
-                foreach (var wiki in vocab.Ordered(type, source.Param))
+                if (source.ParamFor(type) is not { } param)
+                {
+                    continue;
+                }
+
+                foreach (var wiki in vocab.Ordered(type, param))
                 {
                     var slug = Wikitext.Slug(wiki);
                     if (!values.TryGetValue(slug, out var entry))

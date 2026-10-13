@@ -20,8 +20,8 @@ public static class ParkMapper
     {
         var title = row.PageName;
         var dates = new ParkDates(
-            Edtf(row.PageId, "opened", row.OpenedEdtf, row.OpenedEarliest, row.OpenedLatest, issues),
-            Edtf(row.PageId, "closed", row.ClosedEdtf, row.ClosedEarliest, row.ClosedLatest, issues),
+            FieldMapper.Edtf(row.PageId, "opened", row.OpenedEdtf, row.OpenedEarliest, row.OpenedLatest, issues),
+            FieldMapper.Edtf(row.PageId, "closed", row.ClosedEdtf, row.ClosedEarliest, row.ClosedLatest, issues),
             FieldMapper.Precise(row.PageId, "opening", row.Opening, row.OpeningPrecision, issues));
         var place = Wikitext.Strip(row.Location ?? "");
         return new ParkContent
@@ -82,37 +82,6 @@ public static class ParkMapper
         }
 
         return result;
-    }
-
-    /// <summary>A9's columns: the EDTF as the infobox wrote it, and its bounds. A bound is null at an open end.</summary>
-    internal static DateValue? Edtf(int pageId, string field, string? edtf, string? earliest, string? latest, List<DataIssue> issues)
-    {
-        var first = FieldMapper.Date(pageId, field, earliest, issues);
-        var last = FieldMapper.Date(pageId, field, latest, issues);
-        if (string.IsNullOrWhiteSpace(edtf))
-        {
-            if (first != null || last != null)
-            {
-                issues.Add(new DataIssue(pageId, field, $"{first}..{last}", "bounds stored with no EDTF"));
-            }
-
-            return null;
-        }
-
-        // Every stored EDTF had a bound on 2026-10-12; one with neither would read as "any time".
-        if (first == null && last == null)
-        {
-            issues.Add(new DataIssue(pageId, field, edtf, "EDTF stored with no bounds"));
-            return null;
-        }
-
-        if (first != null && last != null && string.CompareOrdinal(first, last) > 0)
-        {
-            issues.Add(new DataIssue(pageId, field, edtf, "earliest is after latest"));
-            return null;
-        }
-
-        return new DateValue(edtf.Trim(), first, last);
     }
 
     /// <summary>US states and territories, from the infobox's list; a value outside it is null and reported.</summary>

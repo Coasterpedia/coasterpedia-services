@@ -106,7 +106,7 @@ describe('the Projector park batch', () => {
 	it('counts parks in /v1/meta, per view', async () => {
 		const latest = await (await exports.default.fetch(new Request(`${BASE}/v1/meta?view=latest`))).json<any>();
 		expect(latest.counts).toEqual({ attractions: 7, parks: 7, manufacturers: 0, products: 0 });
-		expect(latest.schema_version).toBe('1.0.0-beta.11');
+		expect(latest.schema_version).toBe('1.0.0-beta.12');
 		const settled = await (await exports.default.fetch(new Request(`${BASE}/v1/meta`))).json<any>();
 		expect(settled.counts).toEqual({ attractions: 6, parks: 6, manufacturers: 0, products: 0 });
 	});
@@ -154,7 +154,7 @@ describe('what /v1/parks refuses', () => {
 		['a sort parks do not have', '/v1/parks?sort=height', 400, 'parameter-unavailable'],
 		['a cursor from a stat sort', `/v1/parks?cursor=${encodeCursor('height', 20, 1)}`, 400, 'cursor-invalid'],
 		['a park ID that is not a number', '/v1/parks/cedar-point', 404, 'not-found'],
-		['attractions at a park, until attractions carry their park', '/v1/parks/182/attractions', 404, 'not-available'],
+		['attractions at a park it does not hold', '/v1/parks/99999/attractions', 404, 'not-found'],
 	])('%s', async (_, path, status, type) => {
 		const res = await get(path);
 		expect(res.status).toBe(status);

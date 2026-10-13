@@ -1,5 +1,6 @@
 import {
-	checkParams, dataAsOf, decodeCursor, encodeCursor, FLAG, getRecord, limitParam, list, viewParam, type View,
+	checkParams, dataAsOf, decodeCursor, encodeCursor, FLAG, followMerges, getRecord, limitParam, list, listQuery, runAttractionList,
+	stateParam, viewParam, type View,
 } from './attractions';
 import type { Env } from './env';
 import { badRequest, json, LICENCE, problem } from './http';
@@ -13,6 +14,16 @@ const NOT_YET = new Set(['bbox', 'updated_since', 'q']);
 
 const LIST_PARAMS = new Set(['status', 'country', 'state', 'resort', 'sort', 'view', 'limit', 'cursor']);
 const ONE_PARAMS = new Set(['view']);
+/**
+ * /v1/parks/{id}/attractions: the attractions list for the park in the path,
+ * so it takes that list's filters and sorts, less the park and where a park
+ * already is. include=former needs past stints indexed at the edge: not yet.
+ */
+const ATTRACTION_PARAMS = new Set([
+	'type', 'status', 'location_kind', 'manufacturer', 'product', 'variant', 'opened_from', 'opened_to',
+	'sort', 'view', 'limit', 'cursor',
+]);
+const ATTRACTIONS_NOT_YET = new Set(['include', 'updated_since', 'q']);
 
 interface Row {
 	id: number;
@@ -25,19 +36,6 @@ interface ListQuery {
 	binds: (string | number)[];
 	limit: number;
 	view: View;
-}
-
-/**
- * state as the wiki spells it ("New York"): a name, not a slug. Repeated for
- * several (state=Ohio&state=Tennessee), never comma-separated, because the
- * infobox allows "Washington, D.C.".
- */
-function states(url: URL): string[] {
-	const values = url.searchParams.getAll('state').map((v) => v.trim());
-	if (values.some((v) => v.length === 0) || values.length > 50) {
-		throw badRequest('parameter-invalid', 'state takes 1 to 50 names, each as its own state= parameter');
-	}
-	return values;
 }
 
 /** Resort IDs (the wrapper template's page ID, as in a park's resort.id), comma-separated. */
@@ -69,7 +67,7 @@ export function parkListQuery(url: URL): ListQuery {
 	};
 	inList('status', list(url, 'status'));
 	inList('country', list(url, 'country', (v) => v.toUpperCase()));
-	inList('state', states(url));
+	inList('state', stateParam(url));
 	// IN implies IS NOT NULL to SQLite, so this matches the partial resort index.
 	inList('resort', resorts(url));
 
@@ -111,14 +109,31 @@ export async function getPark(url: URL, idText: string, env: Env): Promise<{ res
 }
 
 /**
- * /v1/parks/{id}/attractions needs each attraction's park, which waits on the
- * attraction tables storing LocationKind (DR-010 §12.1). Refused, so nobody
- * reads an empty list as "this park has no attractions".
+ * /v1/parks/{id}/attractions: /v1/attractions?park={id}, where each attraction
+ * is now (at the park, or stored there). A park the API doesn't hold is a 404
+ * and a merged one redirects, as /v1/manufacturers/{id}/products does: an empty
+ * list would read as "has no attractions". One key read on top.
  */
-export async function parkAttractions(): Promise<{ response: Response; rows: number }> {
-	return {
-		rows: 0,
-		response: problem(404, 'not-available', 'Not available yet',
-			"An attraction's park is published once the attraction tables store where each attraction is. Until then this endpoint has no answer."),
-	};
+export async function parkAttractions(url: URL, idText: string, env: Env): Promise<{ response: Response; rows: number }> {
+	checkParams(url, ATTRACTION_PARAMS, ATTRACTIONS_NOT_YET);
+	const id = Number(idText);
+	if (!/^\d+$/.test(idText) || !Number.isSafeInteger(id) || id < 1) {
+		return { rows: 0, response: problem(404, 'not-found', 'No such park') };
+	}
+
+	const known = await env.DATA.prepare('SELECT 1 AS found FROM parks WHERE id = ? LIMIT 1').bind(id).first();
+	if (!known) {
+		const merged = await env.DATA.prepare(`SELECT new_id FROM merges WHERE kind = 'park' AND old_id = ?`)
+			.bind(id).first<{ new_id: number }>();
+		if (merged) {
+			const location = new URL(`/v1/parks/${merged.new_id}/attractions`, url);
+			location.search = url.search;
+			return { rows: 0, response: new Response(null, { status: 301, headers: { location: location.toString() } }) };
+		}
+		return { rows: 0, response: problem(404, 'not-found', 'No such park') };
+	}
+
+	const asList = new URL(await followMerges(url, env));
+	asList.searchParams.set('park', String(id));
+	return runAttractionList(listQuery(asList), env);
 }

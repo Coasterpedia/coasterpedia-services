@@ -1,4 +1,4 @@
-import { checkParams, FLAG, followMerges, linkFilter, list, viewParam, type View } from './attractions';
+import { checkParams, FLAG, followMerges, linkFilter, list, openedParams, parkParam, stateParam, viewParam, type View } from './attractions';
 import type { Env } from './env';
 import { json, LICENCE } from './http';
 
@@ -8,10 +8,16 @@ import { json, LICENCE } from './http';
  * Attractions Browser's options call, answered from D1.
  */
 
-const FACET_PARAMS = new Set(['type', 'status', 'country', 'manufacturer', 'product', 'variant', 'view']);
+const FACET_PARAMS = new Set([
+	'type', 'status', 'country', 'location_kind', 'park', 'state', 'opened_from', 'opened_to', 'manufacturer', 'product', 'variant', 'view',
+]);
 
-/** The facet dimensions: every filter the beta publishes, each a column of attraction_facets. */
-const DIMENSIONS = ['type', 'status', 'country'] as const;
+/**
+ * The facet dimensions, each a column of attraction_facets. The other filters
+ * (a park, a state, the opened range, a manufacturer or product) narrow every
+ * list without being one.
+ */
+const DIMENSIONS = ['type', 'status', 'country', 'location_kind'] as const;
 type Dimension = (typeof DIMENSIONS)[number];
 
 /** Stats with a histogram: the columns D1 holds (migration 0003), metric. */
@@ -26,6 +32,7 @@ interface Cell {
 	type: string;
 	status: string;
 	country: string;
+	location_kind: string;
 	country_name: string | null;
 	n: number;
 }
@@ -57,6 +64,7 @@ function filtersOf(url: URL): Filters {
 		type: set(list(url, 'type')),
 		status: set(list(url, 'status')),
 		country: set(list(url, 'country', (v) => v.toUpperCase())),
+		location_kind: set(list(url, 'location_kind')),
 	};
 }
 
@@ -70,7 +78,7 @@ export interface FacetQueries {
 	filters: Filters;
 	/** Every non-empty cell in the view; the dimensions are counted from these in the Worker. */
 	cells: Query;
-	/** With a manufacturer or a product, its cells carry no country names, so they come from attraction_facets. */
+	/** When something narrows the set, its cells carry no country names, so they come from attraction_facets. */
 	countryNames: Query | null;
 	/** Per stat: each distinct value in the filtered set, with how many record it. */
 	ranges: Record<string, Query>;
@@ -85,55 +93,111 @@ export function facetQueries(url: URL): FacetQueries {
 	// No stat filter exists yet, so every range is measured under the full
 	// filter. A stat filter, when one comes, leaves out its own range, as the
 	// browser's whereWithout does: bounds measured inside the cut can't be widened.
-	// A manufacturer or a product is a filter but not a dimension, so it
-	// narrows every list and every range. Its links (migrations 0008, 0011)
-	// carry the dimension and stat columns, so its counts are read from its own
-	// range of them: at most its attractions (Zamperla's 1,900), not the table.
+	//
+	// What narrows the set without being a dimension is read from its own index,
+	// as on the list: a manufacturer's or product's links (0008, 0011) joined to
+	// the row for the columns they lack, else a park, a state or the opened
+	// range (0012). Its counts then come from its own rows, never the table.
 	const link = linkFilter(url);
-	const where: string[] = link == null ? [] : [...link.where];
-	const binds: (string | number)[] = link == null ? [] : [...link.binds];
+	const park = parkParam(url);
+	const states = stateParam(url);
+	const opened = openedParams(url);
+	const driver = link != null ? 'link'
+		: park != null ? 'park'
+		: states.length > 0 ? 'state'
+		: opened.from != null ? 'opened'
+		: opened.to != null ? 'opened_latest'
+		: null;
+	// The link table's own columns, and the row's.
+	const m = (col: string) => (link == null ? col : `m.${col}`);
+	const a = (col: string) => (link == null ? col : `a.${col}`);
+	// Unary + keeps every index but the driver's out of the plan (§12.12).
+	const off = (col: string) => (link == null ? `+${col}` : a(col));
+
+	const narrow: string[] = link == null ? [] : [...link.where];
+	const narrowBinds: (string | number)[] = link == null ? [] : [...link.binds];
+	if (park != null) {
+		narrow.push(`${driver === 'park' ? 'park' : off('park')} = ?`);
+		narrowBinds.push(park);
+	}
+	if (states.length > 0) {
+		narrow.push(`${driver === 'state' ? 'state' : off('state')} IN (${states.map(() => '?').join(',')})`);
+		narrowBinds.push(...states);
+	}
+	if (opened.from != null) {
+		const col = driver === 'opened' ? 'opened_earliest' : off('opened_earliest');
+		narrow.push(`${col} >= ?`);
+		narrowBinds.push(opened.from);
+		if (opened.to != null) {
+			narrow.push(`${col} <= ?`);
+			narrowBinds.push(opened.to);
+		}
+	}
+	if (opened.to != null) {
+		narrow.push(`${driver === 'opened_latest' ? 'opened_latest' : off('opened_latest')} <= ?`);
+		narrowBinds.push(opened.to);
+	}
+
+	const where = [...narrow];
+	const binds = [...narrowBinds];
 	for (const d of DIMENSIONS) {
 		const values = filters[d];
 		if (!values) continue;
-		// Not the status index (0010): it would read every row of the status
-		// and group them, where the stat's own index stops at its coverage.
-		const col = d === 'status' && link == null ? '+status' : d;
+		// Not the status or kind index (0010, 0012): either would read every row
+		// of its value and group them, where the stat's own index stops at its coverage.
+		const col = d === 'location_kind' ? (link == null ? '+location_kind' : a(d))
+			: link == null ? (d === 'status' || driver != null ? `+${d}` : d)
+			: m(d);
 		where.push(`${col} IN (${[...values].map(() => '?').join(',')})`);
 		binds.push(...values);
 	}
 
-	const table = link == null ? 'attractions' : `${link.table} m`;
+	const forced = driver === 'opened' ? ` INDEXED BY attractions_${view}_by_opened`
+		: driver === 'opened_latest' ? ` INDEXED BY attractions_${view}_by_opened_latest`
+		: '';
+	const table = link == null
+		? `attractions${forced}`
+		: `${link.table} m JOIN attractions a ON a.id = m.id AND a.in_latest = m.in_latest`;
+	// A link carries every stat and dimension but the kind and the narrowing
+	// columns: without those, the histograms read its index alone, as before.
+	const needsRow = park != null || states.length > 0 || opened.from != null || opened.to != null || filters.location_kind != null;
+	const rangeTable = link != null && !needsRow ? `${link.table} m` : table;
 	const ranges: FacetQueries['ranges'] = {};
 	for (const stat of Object.keys(RANGES)) {
 		// The flag and IS NOT NULL as literals, so SQLite matches the stat's partial index.
 		ranges[stat] = {
-			sql: `SELECT ${stat} AS v, COUNT(*) AS n FROM ${table}
-				WHERE ${[`${FLAG[view]} = 1`, `${stat} IS NOT NULL`, ...where].join(' AND ')}
-				GROUP BY ${stat}`,
+			sql: `SELECT ${m(stat)} AS v, COUNT(*) AS n FROM ${rangeTable}
+				WHERE ${[`${m(FLAG[view])} = 1`, `${m(stat)} IS NOT NULL`, ...where].join(' AND ')}
+				GROUP BY ${m(stat)}`,
 			binds,
 		};
 	}
 
-	if (link == null) {
+	if (driver == null) {
 		return {
 			view,
 			filters,
-			cells: { sql: `SELECT type, status, country, country_name, n FROM attraction_facets WHERE view = ? AND n > 0`, binds: [view] },
+			cells: {
+				sql: `SELECT type, status, country, location_kind, country_name, n FROM attraction_facets WHERE view = ? AND n > 0`,
+				binds: [view],
+			},
 			countryNames: null,
 			ranges,
 		};
 	}
 
-	// The other filters are left to countDimensions, as for the whole table, so
-	// each dimension is still counted with its own filter left out.
+	// The dimension filters are left to countDimensions, as for the whole table,
+	// so each dimension is still counted with its own filter left out.
+	const kind = `IFNULL(${a('location_kind')}, '')`;
 	return {
 		view,
 		filters,
 		cells: {
-			sql: `SELECT type, IFNULL(status, '') AS status, IFNULL(country, '') AS country, NULL AS country_name, COUNT(*) AS n
-				FROM ${link.table} m WHERE ${[...link.where, `${FLAG[view]} = 1`].join(' AND ')}
-				GROUP BY type, IFNULL(status, ''), IFNULL(country, '')`,
-			binds: link.binds,
+			sql: `SELECT ${m('type')} AS type, IFNULL(${m('status')}, '') AS status, IFNULL(${m('country')}, '') AS country,
+					${kind} AS location_kind, NULL AS country_name, COUNT(*) AS n
+				FROM ${table} WHERE ${[...narrow, `${m(FLAG[view])} = 1`].join(' AND ')}
+				GROUP BY ${m('type')}, IFNULL(${m('status')}, ''), IFNULL(${m('country')}, ''), ${kind}`,
+			binds: narrowBinds,
 		},
 		countryNames: {
 			sql: `SELECT country, country_name FROM attraction_facets WHERE view = ? AND n > 0 AND country_name IS NOT NULL`,
@@ -251,7 +315,7 @@ export async function attractionFacets(url: URL, env: Env): Promise<{ response: 
 	const vocabRow = vocab.results[0] as { value: string } | undefined;
 	if (vocabRow) {
 		const data = JSON.parse(vocabRow.value).data as Record<string, { value: string; label: string }[]>;
-		for (const d of ['type', 'status'] as const) {
+		for (const d of ['type', 'status', 'location_kind'] as const) {
 			if (data[d]) labels[d] = new Map(data[d].map((e) => [e.value, e.label]));
 		}
 	}

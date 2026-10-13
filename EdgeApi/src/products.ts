@@ -19,7 +19,10 @@ const ONE_PARAMS = new Set(['view']);
  * /v1/products/{id}/installations: the attractions list for the product in
  * the path, so it takes that list's filters and sorts, less the product.
  */
-const INSTALLATION_PARAMS = new Set(['type', 'status', 'country', 'manufacturer', 'variant', 'sort', 'view', 'limit', 'cursor']);
+const INSTALLATION_PARAMS = new Set([
+	'type', 'status', 'country', 'state', 'park', 'location_kind', 'manufacturer', 'variant', 'opened_from', 'opened_to',
+	'sort', 'view', 'limit', 'cursor',
+]);
 
 /** product_installations' column for each view (migration 0011). */
 const COUNT: Record<View, string> = { latest: 'latest', settled: 'settled' };

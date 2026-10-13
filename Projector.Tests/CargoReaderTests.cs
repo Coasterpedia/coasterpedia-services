@@ -31,6 +31,16 @@ public class CargoReaderTests
     }
 
     [Fact]
+    public void Every_attraction_map_key_is_an_optional_AttractionRow_property()
+    {
+        Assert.Empty(CargoReader.AttractionOptional.Except(Properties(typeof(AttractionRow))));
+        foreach (var columns in CargoReader.AttractionColumns.Values)
+        {
+            Assert.Empty(columns.Keys.Except(CargoReader.AttractionOptional));
+        }
+    }
+
+    [Fact]
     public void Every_capability_list_is_a_ProductRow_property()
     {
         Assert.Empty(CargoReader.ListProperties.Except(Properties(typeof(ProductRow))));

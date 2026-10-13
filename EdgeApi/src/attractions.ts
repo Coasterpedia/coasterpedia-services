@@ -6,20 +6,26 @@ import { badRequest, CHANGES_WINDOW, decodeOpaque, encodeOpaque, json, LICENCE, 
  * parameter whose field is not published yet is refused, never ignored:
  * ignoring ?park= would return every attraction and look like an answer.
  */
-export const NOT_YET = new Set([
-	'state', 'park', 'location_kind', 'opened_from', 'opened_to',
-	'bbox', 'updated_since', 'q',
-]);
+export const NOT_YET = new Set(['bbox', 'updated_since', 'q']);
 
-const LIST_PARAMS = new Set(['type', 'status', 'country', 'manufacturer', 'product', 'variant', 'sort', 'view', 'limit', 'cursor']);
+const LIST_PARAMS = new Set([
+	'type', 'status', 'country', 'state', 'park', 'location_kind', 'manufacturer', 'product', 'variant', 'opened_from', 'opened_to',
+	'sort', 'view', 'limit', 'cursor',
+]);
 const ONE_PARAMS = new Set(['view']);
 const META_PARAMS = new Set(['view']);
 /**
  * Sort → column. A stat sort lists only attractions that record the stat: an
  * unknown height cannot be ranked, and each has a partial index that leaves
- * the nulls out (migration 0003).
+ * the nulls out (migration 0003). opened ranks by the earliest day an opening
+ * can be (0012), so "[..1989]" is left out of it the same way.
  */
-const SORT_COLUMNS: Record<string, string> = { name: 'sort_name', height: 'height', speed: 'speed', length: 'length' };
+const SORT_COLUMNS: Record<string, string> = {
+	name: 'sort_name', height: 'height', speed: 'speed', length: 'length', opened: 'opened_earliest',
+};
+
+/** Sorts whose cursor holds text: a name, or a day. */
+const TEXT_SORTS = new Set(['name', 'opened']);
 
 interface Row {
 	id: number;
@@ -84,7 +90,7 @@ export function productParam(url: URL): number | null {
 	return idParam(url, 'product');
 }
 
-function idParam(url: URL, name: 'manufacturer' | 'product'): number | null {
+function idParam(url: URL, name: 'park' | 'manufacturer' | 'product'): number | null {
 	const raw = url.searchParams.get(name);
 	if (raw == null) return null;
 	const n = Number(raw);
@@ -95,14 +101,14 @@ function idParam(url: URL, name: 'manufacturer' | 'product'): number | null {
 }
 
 /**
- * The request with a merged manufacturer's or product's ID replaced by the one
- * it merged into, as /v1/manufacturers/{old} redirects: a client holding the
- * old ID would otherwise get an empty list that reads as "makes nothing".
- * Attractions link the new page once the sweep re-resolves their links.
+ * The request with a merged park's, manufacturer's or product's ID replaced by
+ * the one it merged into, as /v1/manufacturers/{old} redirects: a client
+ * holding the old ID would otherwise get an empty list that reads as "makes
+ * nothing". Attractions link the new page once the sweep re-resolves their links.
  */
 export async function followMerges(url: URL, env: Env): Promise<URL> {
 	let followed = url;
-	for (const kind of ['manufacturer', 'product'] as const) {
+	for (const kind of ['park', 'manufacturer', 'product'] as const) {
 		const id = idParam(url, kind);
 		if (id == null) continue;
 		const merged = await env.DATA.prepare(`SELECT new_id FROM merges WHERE kind = ? AND old_id = ?`)
@@ -112,6 +118,43 @@ export async function followMerges(url: URL, env: Env): Promise<URL> {
 		followed.searchParams.set(kind, String(merged.new_id));
 	}
 	return followed;
+}
+
+/**
+ * state as the wiki spells it ("New York"): a name, not a slug. Repeated for
+ * several (state=Ohio&state=Tennessee), never comma-separated, because the
+ * infobox allows "Washington, D.C.".
+ */
+export function stateParam(url: URL): string[] {
+	const values = url.searchParams.getAll('state').map((v) => v.trim());
+	if (values.some((v) => v.length === 0) || values.length > 50) {
+		throw badRequest('parameter-invalid', 'state takes 1 to 50 names, each as its own state= parameter');
+	}
+	return values;
+}
+
+/** park: one park's page ID, as in an attraction's location.park.id. Where it is now: at the park, or stored there. */
+export function parkParam(url: URL): number | null {
+	return idParam(url, 'park');
+}
+
+/**
+ * opened_from / opened_to, years, inclusive, as days: an opening matches only
+ * when it certainly falls inside, so its earliest day is on or after the
+ * first and its latest on or before the last.
+ */
+export function openedParams(url: URL): { from: string | null; to: string | null } {
+	const year = (name: string) => {
+		const raw = url.searchParams.get(name);
+		if (raw == null) return null;
+		const n = Number(raw);
+		if (!/^\d{4}$/.test(raw.trim()) || n < 1000) throw badRequest('parameter-invalid', `${name} takes a year, 1994`);
+		return n;
+	};
+	const from = year('opened_from');
+	const to = year('opened_to');
+	if (from != null && to != null && from > to) throw badRequest('parameter-invalid', 'opened_from is after opened_to');
+	return { from: from == null ? null : `${from}-01-01`, to: to == null ? null : `${to}-12-31` };
 }
 
 /**
@@ -174,7 +217,7 @@ export function decodeCursor(cursor: string, sort: string): [string | number, nu
 		const parsed = decodeOpaque(cursor) as any[];
 		// Two-part cursors came from before stat sorts, when name was the only sort.
 		const [field, value, id] = parsed.length === 2 ? ['name', ...parsed] : parsed;
-		const valueOk = field === 'name' ? typeof value === 'string' : typeof value === 'number';
+		const valueOk = TEXT_SORTS.has(field) ? typeof value === 'string' : typeof value === 'number';
 		if (field === sort && valueOk && Number.isInteger(id)) return [value, id];
 	} catch {
 		// fall through
@@ -202,13 +245,29 @@ export function listQuery(url: URL): ListQuery {
 	const column = SORT_COLUMNS[sort];
 	if (!column) {
 		throw badRequest('parameter-unavailable', `sort=${sortParam} is not available yet`,
-			'The beta sorts by name, height, speed or length, each with - for descending.');
+			'The beta sorts by name, height, speed, length or opened, each with - for descending.');
 	}
 
-	// With a manufacturer or a product, the page is read from its links, which
-	// carry every filter and sort column, and joined back for the summary.
+	// One index drives each request, the narrowest the filters allow: a
+	// manufacturer's or product's links, then a park, a state, the opened range.
+	// The links carry every attraction filter and sort column but these four,
+	// which are read from the row joined back (a), bounded by the links.
 	const link = linkFilter(url);
+	const park = parkParam(url);
+	const states = stateParam(url);
+	const opened = openedParams(url);
+	const driver = link != null ? 'link'
+		: park != null ? 'park'
+		: states.length > 0 ? 'state'
+		: opened.from != null ? 'opened'
+		: opened.to != null ? 'opened_latest'
+		: null;
 	const c = (col: string) => (link == null ? col : `m.${col}`);
+	const a = (col: string) => (link == null ? col : `a.${col}`);
+	// Without statistics SQLite takes any equality's index (§12.12), so every
+	// filter but the driver's is kept out of the plan with unary +.
+	const off = (col: string) => (link == null ? `+${col}` : col);
+	const sortCol = column === 'opened_earliest' ? a(column) : c(column);
 
 	const where: string[] = [`${c(FLAG[view])} = 1`];
 	const binds: (string | number)[] = [];
@@ -216,20 +275,45 @@ export function listQuery(url: URL): ListQuery {
 		where.push(...link.where);
 		binds.push(...link.binds);
 	}
-	if (column !== 'sort_name') where.push(`${c(column)} IS NOT NULL`);
-	const inList = (col: string, values: string[]) => {
+	if (column !== 'sort_name') where.push(`${sortCol} IS NOT NULL`);
+	const inList = (col: string, values: (string | number)[]) => {
 		if (values.length === 0) return;
-		where.push(`${c(col)} IN (${values.map(() => '?').join(',')})`);
+		where.push(`${col} IN (${values.map(() => '?').join(',')})`);
 		binds.push(...values);
 	};
-	inList('type', list(url, 'type'));
+	const narrowed = driver != null && driver !== 'link';
+	inList(narrowed ? off('type') : c('type'), list(url, 'type'));
 	// The status index (0010) serves one status in name order. Anywhere else
 	// SQLite, which has no statistics, would still take it, read every row of
 	// the status (15,000 operating) and sort them: unary + keeps it out, so a
 	// stat sort walks its stat's index and several statuses the name index.
 	const statuses = list(url, 'status');
-	inList(link == null && (column !== 'sort_name' || statuses.length > 1) ? '+status' : 'status', statuses);
-	inList('country', list(url, 'country', (v) => v.toUpperCase()));
+	const statusIndexed = driver == null && column === 'sort_name' && statuses.length === 1;
+	inList(link != null ? c('status') : statusIndexed ? 'status' : '+status', statuses);
+	inList(narrowed ? off('country') : c('country'), list(url, 'country', (v) => v.toUpperCase()));
+	// Location kind is skewed as status is (14,800 at parks): its index (0012)
+	// serves one kind in name order when nothing narrower drives.
+	const kinds = list(url, 'location_kind');
+	const kindIndexed = driver == null && column === 'sort_name' && kinds.length === 1 && !statusIndexed;
+	inList(link != null ? a('location_kind') : kindIndexed ? 'location_kind' : '+location_kind', kinds);
+	if (park != null) inList(driver === 'park' ? 'park' : a('park'), [park]);
+	inList(driver === 'state' ? 'state' : link != null ? a('state') : '+state', states);
+	// The opened bounds: earliest in range drives opened_from, latest opened_to.
+	if (opened.from != null) {
+		const col = driver === 'opened' ? 'opened_earliest' : link != null ? a('opened_earliest') : '+opened_earliest';
+		where.push(`${col} >= ?`);
+		binds.push(opened.from);
+		if (opened.to != null) {
+			// Earliest ≤ latest, so this bounds the seek at the other end too.
+			where.push(`${col} <= ?`);
+			binds.push(opened.to);
+		}
+	}
+	if (opened.to != null) {
+		const col = driver === 'opened_latest' ? 'opened_latest' : link != null ? a('opened_latest') : '+opened_latest';
+		where.push(`${col} <= ?`);
+		binds.push(opened.to);
+	}
 
 	// A plain range on the sort column first, so D1 seeks the index to the
 	// cursor. The OR form alone scanned from the top of the table on every
@@ -237,18 +321,24 @@ export function listQuery(url: URL): ListQuery {
 	const cursor = url.searchParams.get('cursor');
 	if (cursor) {
 		const [v, id] = decodeCursor(cursor, sort);
-		const [col, key] = [c(column), c('id')];
-		where.push(desc ? `${col} <= ? AND (${col} < ? OR ${key} < ?)` : `${col} >= ? AND (${col} > ? OR ${key} > ?)`);
+		const key = c('id');
+		where.push(desc ? `${sortCol} <= ? AND (${sortCol} < ? OR ${key} < ?)` : `${sortCol} >= ? AND (${sortCol} > ? OR ${key} > ?)`);
 		binds.push(v, v, id);
 	}
 
 	const dir = desc ? 'DESC' : 'ASC';
+	// The opened range is forced onto its index: SQLite can't tell a narrow
+	// range from a wide one, and walking the name index for a rare decade reads
+	// the table.
+	const forced = driver === 'opened' ? ` INDEXED BY attractions_${view}_by_opened`
+		: driver === 'opened_latest' ? ` INDEXED BY attractions_${view}_by_opened_latest`
+		: '';
 	const from = link == null
-		? 'attractions'
+		? `attractions${forced}`
 		: `${link.table} m JOIN attractions a ON a.id = m.id AND a.in_latest = m.in_latest`;
-	const sql = `SELECT ${c('id')} AS id, ${c(column)} AS position, ${link == null ? 'summary' : 'a.summary'} FROM ${from}
+	const sql = `SELECT ${c('id')} AS id, ${sortCol} AS position, ${link == null ? 'summary' : 'a.summary'} FROM ${from}
 		WHERE ${where.join(' AND ')}
-		ORDER BY ${c(column)} ${dir}, ${c('id')} ${dir} LIMIT ?`;
+		ORDER BY ${sortCol} ${dir}, ${c('id')} ${dir} LIMIT ?`;
 	return { sql, binds: [...binds, limit + 1], limit, view, sort, column };
 }
 

@@ -27,6 +27,10 @@ public class GoldenBatchTests
             Name = "Gold Rusher", Status = "operating", Country = "USA",
             Manufacturer = "[[Arrow Dynamics|Arrow Development]]",
             Product = "[[Runaway Train (Arrow Dynamics product)|Runaway Train]]", Lat = 34.4234906, Lon = -118.598881,
+            // "Valenica" as stored on 2026-10-12: published as written.
+            LocationKind = "park", OnLoan = false, Park = "[[Six Flags Magic Mountain]]", Location = "Valenica", State = "California",
+            Section = "The Boardwalk", OpenedEdtf = "1971-05-29", OpenedEarliest = "1971-05-29", OpenedLatest = "1971-05-29",
+            Propulsion = "roller", TrackMaterial = "Steel", MinHeight = 48, Elements = ["Chain lift"],
             Stats = new StatsRow
             {
                 Units = "imperial", Height = 70, HeightMetric = 21.335999317248, Length = 2590, LengthMetric = 789.43197473818,
@@ -40,6 +44,10 @@ public class GoldenBatchTests
             Name = "Batman The Ride", Status = "operating", Country = "USA", Manufacturer = "[[Bolliger & Mabillard]]",
             Product = "[[Inverted Coaster (Bolliger & Mabillard product)|Inverted Coaster]]", ProductVariant = "Batman",
             Lat = 34.425775, Lon = -118.600895,
+            LocationKind = "park", OnLoan = false, Park = "[[Six Flags Magic Mountain]]", Location = "Valencia", State = "California",
+            Section = "DC Universe", OpenedEdtf = "1994-03-26", OpenedEarliest = "1994-03-26", OpenedLatest = "1994-03-26",
+            Restraints = "Over-the-shoulder", Propulsion = "roller", TrackMaterial = "Steel", MinHeight = 54,
+            Elements = ["Chain lift", "Pre-Drop", "Vertical loop", "Zero-g roll", "Helix", "Corkscrew (element)"],
             Stats = new StatsRow
             {
                 Units = "imperial", Height = 105, HeightMetric = 32.003998975872, Drop = 84.5, DropMetric = 25.755599175821,
@@ -52,6 +60,11 @@ public class GoldenBatchTests
             Type = "coaster", PageId = 169, PageName = "Colossus (Six Flags Magic Mountain)", Revision = 403,
             Name = "Colossus", Status = "defunct", Country = "USA", Manufacturer = "[[International Amusement Devices]]",
             Lat = 34.427553, Lon = -118.59786,
+            LocationKind = "park", OnLoan = false, Park = "[[Six Flags Magic Mountain]]", Location = "Valencia", State = "California",
+            Section = "Colossus County Fair", OpenedEdtf = "1978-06-29", OpenedEarliest = "1978-06-29", OpenedLatest = "1978-06-29",
+            ClosedEdtf = "2014-08-16", ClosedEarliest = "2014-08-16", ClosedLatest = "2014-08-16",
+            Restraints = "Shared lap-bars", Propulsion = "roller", TrackMaterial = "Wooden", MinHeight = 48,
+            Elements = ["Chain lift", "Hill", "Double-up", "Block brake"],
             // A racing coaster: two tracks.
             Stats = new StatsRow
             {
@@ -67,12 +80,37 @@ public class GoldenBatchTests
             Manufacturer = "[[Zierer]] <br> [[BHS]]",
             // A product in projector-product-batch.json, so the edge counts an installation pending.
             Product = "[[Boomerang (Vekoma product)|Boomerang]]",
+            // Travelling with its showman as Owner; two restraints on one car; two past stints, newest first.
+            LocationKind = "travelling", OnLoan = false, Park = "Travelling", Owner = "Hans Meier", Location = "Travelling",
+            Restraints = "Lap-bars#Hip", Propulsion = "roller", TrackMaterial = "Steel", SupportMaterial = "Steel",
+            OpenedEdtf = "[..2011]", OpenedLatest = "2011-12-31",
+            PastLocations =
+            [
+                new PastLocationRow
+                {
+                    PageId = 9101, Ordering = 1, LocationKind = "travelling", OnLoan = false, Park = "[[Oscar Bruch]]",
+                    Location = "Travelling", Country = "Germany", OpenedEdtf = "2001", OpenedEarliest = "2001-01-01",
+                    OpenedLatest = "2001-12-31", ClosedEdtf = "2010~", ClosedEarliest = "2010-01-01", ClosedLatest = "2010-12-31",
+                },
+                new PastLocationRow
+                {
+                    PageId = 9101, Ordering = 2, LocationKind = "park", OnLoan = false, Park = "[[Cedar Point]]",
+                    Location = "Sandusky", State = "Ohio", Country = "USA", Lat = 41.48, Lon = -82.6825,
+                    OpenedEdtf = "1990", OpenedEarliest = "1990-01-01", OpenedLatest = "1990-12-31",
+                    ClosedEdtf = "[2000..2001]", ClosedEarliest = "2000-01-01", ClosedLatest = "2001-12-31",
+                },
+            ],
         },
         new()
         {
             Type = "ride", PageId = 19643, PageName = "Over the Hill 2: Spooksville", Revision = 405,
             Name = "Over the Hill 2: Spooksville", Status = "operating", Country = "UK", Manufacturer = "Self-built",
             Product = "[[Star Flyer (Funtime product)|Star Flyer]]", Lat = 51.532395, Lon = 0.717849,
+            // On loan: the park runs it, someone else owns it.
+            LocationKind = "park", OnLoan = true, Park = "[[Pleasurewood Hills]]", Owner = "Darran Church", Location = "Lowestoft",
+            OpenedEdtf = "2019-05", OpenedEarliest = "2019-05-01", OpenedLatest = "2019-05-31",
+            Indoor = true, Cabins = "16", NumberOfRides = 2, Coord2Lat = 51.5331, Coord2Lon = 0.7181, MinHeight = 44,
+            ChildrenOnly = false,
             // Values from SkyScreamer (20166).
             Stats = new StatsRow
             {
@@ -84,6 +122,8 @@ public class GoldenBatchTests
         {
             Type = "ride", PageId = 66486, PageName = "SkyRide (Carnival Horizon)", Revision = 406, Name = "SkyRide",
             Status = "operating", Country = "ship", Manufacturer = "[[SkyRide Technology]]",
+            LocationKind = "park", OnLoan = false, Park = "[[Carnival Horizon]]", Section = "SportSquare",
+            OpenedEdtf = "2018-04-02", OpenedEarliest = "2018-04-02", OpenedLatest = "2018-04-02", Cabins = "36 horses, 2 chariots",
             // A red link, as on the wiki.
             Product = "[[SkyRide Human Powered (SkyRide Technology product)|SkyRide Human Powered]]",
         },
@@ -93,6 +133,17 @@ public class GoldenBatchTests
             Status = "Operating", Country = "Kosovo", Manufacturer = "", Lat = 42.6, Lon = 21.1,
             // A complex of two products, one of them in projector-product-batch.json.
             Product = "[[AquaPlay (WhiteWater West product)|AquaPlay]]#[[TWISTER (ProSlide product)|TWISTER]]",
+            // Standalone: a place, no park. The components pair each product with its variant.
+            LocationKind = "standalone", OnLoan = false, Location = "Pristina",
+            OpenedEdtf = "199X", OpenedEarliest = "1990-01-01", OpenedLatest = "1999-12-31",
+            Opening = "2027-06-01", OpeningPrecision = 2,
+            SlideClasses = "Body#Tube", Environment = "Outdoors", Containment = "Partially enclosed", ExitType = "Pool",
+            NumberOfSlides = 2, MaxWeightPerTube = 180,
+            Components =
+            [
+                new ComponentRow { PageId = 9102, Ordering = 1, Product = "[[AquaPlay (WhiteWater West product)|AquaPlay]]", Variant = "AP 50" },
+                new ComponentRow { PageId = 9102, Ordering = 2, Product = "[[TWISTER (ProSlide product)|TWISTER]]" },
+            ],
             // Values from Summit Plummet (55725).
             Stats = new StatsRow { Units = "imperial", Height = 120, HeightMetric = 36.575998829568, Length = 360, LengthMetric = 109.7279964887 },
         },
@@ -111,6 +162,20 @@ public class GoldenBatchTests
         ["AquaPlay (WhiteWater West product)"] = 82994,
         ["TWISTER (ProSlide product)"] = 58307,
         ["Boomerang (Vekoma product)"] = 3213,
+        ["Six Flags Magic Mountain"] = 163,
+        ["Pleasurewood Hills"] = 9136,
+        ["Carnival Horizon"] = 67009,
+        ["Oscar Bruch"] = 10298,
+        ["Cedar Point"] = 182,
+        ["Chain lift"] = 2915,
+        ["Pre-Drop"] = 2768,
+        ["Vertical loop"] = 1942,
+        ["Zero-g roll"] = 3688,
+        ["Helix"] = 7038,
+        ["Corkscrew (element)"] = 6745,
+        ["Hill"] = 14980,
+        ["Double-up"] = 49301,
+        ["Block brake"] = 9282,
     };
 
     private static readonly HashSet<int> ProductIds = [53318, 1498, 44361, 82994, 58307, 3213];

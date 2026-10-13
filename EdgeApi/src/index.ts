@@ -120,8 +120,9 @@ function route(path: string, url: URL, env: Env, caller: Caller): Route | null {
 		return { name: '/v1/parks', view: true, run: () => listParks(url, env) };
 	}
 
-	if (/^\/v1\/parks\/[^/]+\/attractions$/.test(path)) {
-		return { name: '/v1/parks/{id}/attractions', view: true, run: () => parkAttractions() };
+	const at = /^\/v1\/parks\/([^/]+)\/attractions$/.exec(path);
+	if (at) {
+		return { name: '/v1/parks/{id}/attractions', view: true, run: () => parkAttractions(url, at[1], env) };
 	}
 
 	const park = /^\/v1\/parks\/([^/]+)$/.exec(path);

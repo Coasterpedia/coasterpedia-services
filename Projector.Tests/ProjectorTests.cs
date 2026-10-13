@@ -27,6 +27,7 @@ public class ProjectorTests
         ["SkyBOX (ProSlide product)"] = 58664,
         ["TWISTER (ProSlide product)"] = 58307,
         ["Wild mouse"] = 4100,
+        ["Carnival Horizon"] = 67009,
     };
 
     private static readonly HashSet<int> ProductIds = [3213, 58664, 58307];
@@ -34,11 +35,12 @@ public class ProjectorTests
     private static AttractionRow Row(string type = "coaster", int id = 171, string page = "Gold Rusher (Six Flags Magic Mountain)",
         string? name = "Gold Rusher", string? status = "operating", string? country = "USA",
         string? manufacturer = "[[Arrow Dynamics|Arrow Development]]", double? lat = 34.4234906, double? lon = -118.598881,
-        string? product = null, string? variant = null) =>
+        string? product = null, string? variant = null, string? kind = "park", string? park = "[[Six Flags Magic Mountain]]") =>
         new()
         {
             Type = type, PageId = id, PageName = page, Revision = 123456, Name = name, Status = status, Country = country,
             Manufacturer = manufacturer, Product = product, ProductVariant = variant, Lat = lat, Lon = lon,
+            LocationKind = kind, OnLoan = kind == null ? null : false, Park = park,
         };
 
     private static AttractionContent Map(AttractionRow row, List<DataIssue>? issues = null) =>
@@ -76,7 +78,9 @@ public class ProjectorTests
     {
         var doc = VocabularyDocument.Build(Vocab, new ProjectorConfig().AttractionTemplates);
 
-        Assert.Equal(["type", "status"], doc.Select(f => f.Key));
+        // A field only products offer (slide_material) is left out when no product is listed.
+        Assert.Equal(["type", "status", "restraints", "propulsion", "track_material", "support_material", "classes", "environment",
+            "containment", "exit"], doc.Select(f => f.Key));
         Assert.Equal(["coaster", "ride", "water_slide"], doc["type"]!.AsArray().Select(t => t!["value"]!.GetValue<string>()));
         Assert.Equal("Roller coaster", doc["type"]![0]!["label"]!.GetValue<string>());
 
@@ -194,6 +198,81 @@ public class ProjectorTests
         Assert.Equal(new Ref(3213, "Boomerang"), Assert.Single(c.Products).Product);
     }
 
+    // DR-006 §3's rows, by the kind the infobox stored: which column names the park, the owner and the place.
+    [Theory]
+    [InlineData("park", false, "[[Six Flags Magic Mountain]]", "Arrow Dynamics", "Valencia", "Six Flags Magic Mountain", null, "Valencia")]
+    [InlineData("park", true, "[[Six Flags Magic Mountain]]", "[[Zierer]]", "Valencia", "Six Flags Magic Mountain", "Zierer", "Valencia")]
+    [InlineData("travelling", false, "Travelling", "Billy Irvin", "", null, "Billy Irvin", null)]
+    // A linked company beside a travel marker is the showman, not a park.
+    [InlineData("travelling", false, "[[Zierer]]", "", "Travelling UK", null, "Zierer", null)]
+    [InlineData("travelling", false, "Malcolm Dixon", "", "", null, "Malcolm Dixon", null)]
+    [InlineData("storage", false, "[[Six Flags Magic Mountain]]", "", "In storage", "Six Flags Magic Mountain", null, null)]
+    [InlineData("storage", false, "Billy Irvin", "", "In storage, Middle East", null, "Billy Irvin", "Middle East")]
+    [InlineData("standalone", false, "Standalone", "Blackpool Council", "Blackpool", null, "Blackpool Council", "Blackpool")]
+    // Placeholders name nobody: "Owner unknown", a bare country.
+    [InlineData("travelling", false, "Owner unknown", "USA", "", null, null, null)]
+    [InlineData("unknown", false, "", "", "", null, null, null)]
+    public void Each_kind_names_its_park_owner_and_place_from_the_columns_classify_read(string kind, bool onLoan, string park,
+        string owner, string location, string? expectPark, string? expectOwner, string? expectPlace)
+    {
+        var where = LocationMapper.Project(kind, onLoan, park, owner, location, "coaster", Vocab, Resolved);
+        Assert.Equal(expectPark, where.Park?.Name);
+        Assert.Equal(expectOwner, where.Owner?.Name);
+        Assert.Equal(expectPlace, where.Place);
+    }
+
+    [Fact]
+    public void A_park_link_resolves_to_its_page()
+    {
+        var c = Map(Row(park: "[[Carnival Horizon|the ship]]"));
+        Assert.Equal(new Ref(67009, "the ship"), c.Location.Park);
+        Assert.Equal("park", c.Location.Kind);
+    }
+
+    [Fact]
+    public void Past_stints_list_oldest_first_keeping_the_pages_numbers()
+    {
+        var row = Row() with
+        {
+            PastLocations =
+            [
+                new PastLocationRow { PageId = 171, Ordering = 1, LocationKind = "travelling", Park = "Billy Irvin" },
+                new PastLocationRow { PageId = 171, Ordering = 2, LocationKind = "park", Park = "[[Carnival Horizon]]" },
+            ],
+        };
+        var history = Map(row).History!;
+        Assert.Equal([2, 1], history.Locations.Select(l => l.Index));
+        Assert.Equal(67009, history.Locations[0].Park!.Id);
+        Assert.Equal("Billy Irvin", history.Locations[1].Owner!.Name);
+    }
+
+    [Fact]
+    public void A_blank_kind_is_reported_and_names_nothing()
+    {
+        var issues = new List<DataIssue>();
+        var c = Map(Row(kind: null), issues);
+        Assert.Null(c.Location.Kind);
+        Assert.Null(c.Location.Park);
+        Assert.Equal(new DataIssue(171, "location.kind", "", "missing"), Assert.Single(issues));
+    }
+
+    [Fact]
+    public void Elements_keep_layout_order_and_repeats()
+    {
+        var c = Map(Row() with { Elements = ["Vertical loop", "Vertical loop", "corkscrew"] });
+        Assert.Equal(["Vertical loop", "Vertical loop", "Corkscrew"], c.Coaster!.Elements!.Select(e => e.Name));
+    }
+
+    [Fact]
+    public void Rider_heights_convert_by_the_pages_units_and_text_counts_stay_text()
+    {
+        var imperial = Map(Row(type: "ride") with { Stats = new StatsRow { Units = "imperial" }, MinHeight = 48, Cabins = "36 horses, 2 chariots" });
+        Assert.Equal(new Measurement(121.9, "cm", new Entered(48, "in")), imperial.Restrictions!.MinHeight);
+        // A4 kept Cabins text: a note is not a count, and not an issue.
+        Assert.Null(imperial.Ride);
+        Assert.Equal(new Measurement(137, "cm", new Entered(137, "cm")), Map(Row(type: "ride") with { MinHeight = 137 }).Restrictions!.MinHeight);
+    }
+
     [Fact]
     public void Link_targets_normalise_like_MediaWiki_titles()
     {
@@ -286,11 +365,11 @@ public class ProjectorTests
     {
         var at = DateTimeOffset.Parse("2026-10-11T12:00:00Z");
         var item = Wire.Upsert(Map(Row(type: "ride", id: 66486, page: "SkyRide (Carnival Horizon)", name: "SkyRide",
-            country: "ship", manufacturer: "[[SkyRide Technology]]", lat: null, lon: null)), 42, at);
+            country: "ship", manufacturer: "[[SkyRide Technology]]", lat: null, lon: null, park: "[[Carnival Horizon]]")), 42, at);
 
         var json = JsonSerializer.Serialize(item);
         Assert.Equal(
-            """{"kind":"attraction","id":66486,"revision":42,"updated_at":"2026-10-11T12:00:00Z","settled":true,"settles_at":null,"sort_name":"skyride","sort_values":{"height":null,"speed":null,"length":null},"filters":{"type":"ride","status":"operating","country":null},"summary":{"id":66486,"type":"ride","name":"SkyRide","status":"operating","manufacturers":[{"id":9001,"name":"SkyRide Technology"}],"products":[],"updated_at":"2026-10-11T12:00:00Z"},"record":{"id":66486,"type":"ride","name":"SkyRide","title":"SkyRide (Carnival Horizon)","url":"https://coasterpedia.net/wiki/SkyRide_(Carnival_Horizon)","status":"operating","location":{},"manufacturers":[{"id":9001,"name":"SkyRide Technology"}],"products":[],"revision":42,"updated_at":"2026-10-11T12:00:00Z"}}""",
+            """{"kind":"attraction","id":66486,"revision":42,"updated_at":"2026-10-11T12:00:00Z","settled":true,"settles_at":null,"sort_name":"skyride","sort_values":{"height":null,"speed":null,"length":null},"filters":{"type":"ride","status":"operating","country":null,"park":67009,"location_kind":"park","state":null,"opened_earliest":null,"opened_latest":null},"summary":{"id":66486,"type":"ride","name":"SkyRide","status":"operating","park":{"id":67009,"name":"Carnival Horizon"},"location_kind":"park","manufacturers":[{"id":9001,"name":"SkyRide Technology"}],"products":[],"updated_at":"2026-10-11T12:00:00Z"},"record":{"id":66486,"type":"ride","name":"SkyRide","title":"SkyRide (Carnival Horizon)","url":"https://coasterpedia.net/wiki/SkyRide_(Carnival_Horizon)","status":"operating","location":{"kind":"park","on_loan":false,"park":{"id":67009,"name":"Carnival Horizon"}},"manufacturers":[{"id":9001,"name":"SkyRide Technology"}],"products":[],"revision":42,"updated_at":"2026-10-11T12:00:00Z"}}""",
             json);
     }
 }

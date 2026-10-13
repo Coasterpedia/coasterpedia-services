@@ -148,39 +148,16 @@ public static class ProductMapper
     }
 
     /// <summary>A Cargo list as stored: '#'-separated, trimmed, empties dropped, each value once, in the page's order.</summary>
-    internal static IEnumerable<string> Split(string? full) =>
-        string.IsNullOrWhiteSpace(full)
-            ? []
-            : full.Split('#').Select(v => v.Trim()).Where(v => v.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Each value checked against the product infoboxes' list and published as its slug; one outside it is dropped and reported.</summary>
-    private static IReadOnlyList<string>? Offered(int pageId, string field, string? full, Vocabularies vocab, List<DataIssue> issues)
-    {
-        var result = new List<string>();
-        foreach (var value in Split(full))
-        {
-            var wiki = vocab.Match(VocabType, OfferedParams[field], value);
-            if (wiki == null)
-            {
-                issues.Add(new DataIssue(pageId, $"offered.{field}", value, "not in the infobox's allowed list"));
-                continue;
-            }
-
-            var slug = Wikitext.Slug(wiki);
-            if (!result.Contains(slug))
-            {
-                result.Add(slug);
-            }
-        }
-
-        return result.Count == 0 ? null : result;
-    }
+    private static IReadOnlyList<string>? Offered(int pageId, string field, string? full, Vocabularies vocab, List<DataIssue> issues) =>
+        FieldMapper.Choices(pageId, $"offered.{field}", VocabType, OfferedParams[field], full, vocab, issues);
 
     /// <summary>Riders_Tube is a list of Integer, so each value is a whole number already; anything else is reported.</summary>
     private static IReadOnlyList<int>? RidersPerTube(int pageId, string? full, List<DataIssue> issues)
     {
         var result = new List<int>();
-        foreach (var value in Split(full))
+        foreach (var value in FieldMapper.Split(full))
         {
             if (int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var n) && n > 0)
             {

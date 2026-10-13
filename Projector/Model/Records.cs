@@ -14,7 +14,119 @@ public sealed record Country(string Code, string Name);
 
 public sealed record Coordinates(double Lat, double Lon);
 
-public sealed record AttractionLocation(Country? Country, Coordinates? Coordinates);
+/// <summary>Where in the park (openapi Location.area).</summary>
+public sealed record Area(string Section, string? Subsection);
+
+/// <summary>
+/// Where an attraction is (openapi Location). Kind and OnLoan are
+/// Travelling.classify's stored answer (DR-006); Park and Owner are the
+/// columns that answer names, by kind (LocationMapper).
+/// </summary>
+public sealed record AttractionLocation
+{
+    public string? Kind { get; init; }
+    public bool? OnLoan { get; init; }
+    public Ref? Park { get; init; }
+    public Ref? Owner { get; init; }
+    public string? Place { get; init; }
+    public string? State { get; init; }
+    public Country? Country { get; init; }
+    public Coordinates? Coordinates { get; init; }
+    public Area? Area { get; init; }
+}
+
+/// <summary>One past stint (openapi AttractionHistory.locations): a location, numbered as the page numbers it, with its dates.</summary>
+public sealed record PastLocation
+{
+    public required int Index { get; init; }
+    public string? Kind { get; init; }
+    public bool? OnLoan { get; init; }
+    public Ref? Park { get; init; }
+    public Ref? Owner { get; init; }
+    public string? Place { get; init; }
+    public string? State { get; init; }
+    public Country? Country { get; init; }
+    public Coordinates? Coordinates { get; init; }
+    public DateValue? Opened { get; init; }
+    public DateValue? Closed { get; init; }
+}
+
+/// <summary>Past stints, oldest first. Names wait for their own slice.</summary>
+public sealed record AttractionHistory(IReadOnlyList<PastLocation> Locations);
+
+public sealed record AttractionDates(DateValue? Opened, DateValue? Closed, DateValue? Opening, DateValue? Closing)
+{
+    [JsonIgnore]
+    public bool IsEmpty => Opened == null && Closed == null && Opening == null && Closing == null;
+}
+
+/// <summary>Rider requirements, as recorded (openapi Restrictions). Heights in cm, weights in kg.</summary>
+public sealed record Restrictions
+{
+    public Measurement? MinHeight { get; init; }
+    public Measurement? MinHeightDriver { get; init; }
+    public Measurement? MinHeightStanding { get; init; }
+    public Measurement? MinHeightUpsideDown { get; init; }
+    public Measurement? MinHeightUnaccompanied { get; init; }
+    public Measurement? MaxHeightWithoutChild { get; init; }
+    public Measurement? MaxHeight { get; init; }
+    public int? MinAge { get; init; }
+    public int? MinAgeDriver { get; init; }
+    public int? MinAgeUnaccompanied { get; init; }
+    public int? MaxAgeWithoutChild { get; init; }
+    public int? MaxAge { get; init; }
+    public bool? ChildrenOnly { get; init; }
+    public bool? AdultOnlyWithChild { get; init; }
+    public Measurement? MinWeight { get; init; }
+    public Measurement? MaxWeight { get; init; }
+    public Measurement? MaxWeightPerTube { get; init; }
+
+    [JsonIgnore]
+    public bool IsEmpty => this == new Restrictions();
+}
+
+/// <summary>What only a coaster records (openapi CoasterDetail). Train manufacturer waits on the one-or-many question.</summary>
+public sealed record CoasterDetail
+{
+    public string? Propulsion { get; init; }
+    public string? TrackMaterial { get; init; }
+    public string? SupportMaterial { get; init; }
+    public IReadOnlyList<Ref>? Elements { get; init; }
+
+    [JsonIgnore]
+    public bool IsEmpty => Propulsion == null && TrackMaterial == null && SupportMaterial == null && Elements == null;
+}
+
+/// <summary>What only a ride records (openapi RideDetail). The flags are stored only when set, so false is rare and absent is usual.</summary>
+public sealed record RideDetail
+{
+    public bool? Indoor { get; init; }
+    public bool? Enclosed { get; init; }
+    public bool? DarkRide { get; init; }
+    public bool? Water { get; init; }
+    public int? Cabins { get; init; }
+    public int? Units { get; init; }
+    public IReadOnlyList<Coordinates>? ExtraCoordinates { get; init; }
+
+    [JsonIgnore]
+    public bool IsEmpty => Indoor == null && Enclosed == null && DarkRide == null && Water == null && Cabins == null
+        && Units == null && ExtraCoordinates == null;
+}
+
+/// <summary>What only a water slide records (openapi WaterSlideDetail).</summary>
+public sealed record WaterSlideDetail
+{
+    public IReadOnlyList<string>? Classes { get; init; }
+    public string? Environment { get; init; }
+    public string? Containment { get; init; }
+    public string? Exit { get; init; }
+    public int? Lanes { get; init; }
+    public IReadOnlyList<AttractionProduct>? Components { get; init; }
+
+    [JsonIgnore]
+    public bool IsEmpty => Classes == null && Environment == null && Containment == null && Exit == null && Lanes == null
+        && Components == null;
+}
 
 /// <summary>The figure as the editor typed it, in the unit the page uses.</summary>
 public sealed record Entered(double Value, string Unit);
@@ -95,10 +207,17 @@ public sealed record AttractionContent
     public required string Title { get; init; }
     public required string Url { get; init; }
     public string? Status { get; init; }
+    public AttractionDates? Dates { get; init; }
     public required AttractionLocation Location { get; init; }
     public required IReadOnlyList<Ref> Manufacturers { get; init; }
     public required IReadOnlyList<AttractionProduct> Products { get; init; }
+    public IReadOnlyList<string>? Restraints { get; init; }
     public AttractionStats? Stats { get; init; }
+    public Restrictions? Restrictions { get; init; }
+    public CoasterDetail? Coaster { get; init; }
+    public RideDetail? Ride { get; init; }
+    public WaterSlideDetail? WaterSlide { get; init; }
+    public AttractionHistory? History { get; init; }
 }
 
 /// <summary>

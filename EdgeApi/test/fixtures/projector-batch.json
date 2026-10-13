@@ -18,16 +18,31 @@
       "filters": {
         "type": "coaster",
         "status": "operating",
-        "country": "US"
+        "country": "US",
+        "park": 163,
+        "location_kind": "park",
+        "state": "California",
+        "opened_earliest": "1971-05-29",
+        "opened_latest": "1971-05-29"
       },
       "summary": {
         "id": 171,
         "type": "coaster",
         "name": "Gold Rusher",
         "status": "operating",
+        "park": {
+          "id": 163,
+          "name": "Six Flags Magic Mountain"
+        },
+        "location_kind": "park",
         "country": {
           "code": "US",
           "name": "USA"
+        },
+        "opened": {
+          "edtf": "1971-05-29",
+          "earliest": "1971-05-29",
+          "latest": "1971-05-29"
         },
         "manufacturers": [
           {
@@ -79,7 +94,22 @@
         "title": "Gold Rusher (Six Flags Magic Mountain)",
         "url": "https://coasterpedia.net/wiki/Gold_Rusher_(Six_Flags_Magic_Mountain)",
         "status": "operating",
+        "dates": {
+          "opened": {
+            "edtf": "1971-05-29",
+            "earliest": "1971-05-29",
+            "latest": "1971-05-29"
+          }
+        },
         "location": {
+          "kind": "park",
+          "on_loan": false,
+          "park": {
+            "id": 163,
+            "name": "Six Flags Magic Mountain"
+          },
+          "place": "Valenica",
+          "state": "California",
           "country": {
             "code": "US",
             "name": "USA"
@@ -87,6 +117,9 @@
           "coordinates": {
             "lat": 34.4234906,
             "lon": -118.598881
+          },
+          "area": {
+            "section": "The Boardwalk"
           }
         },
         "manufacturers": [
@@ -141,6 +174,26 @@
           "riders_per_train": 30,
           "tracks": 1
         },
+        "restrictions": {
+          "min_height": {
+            "value": 121.9,
+            "unit": "cm",
+            "entered": {
+              "value": 48,
+              "unit": "in"
+            }
+          }
+        },
+        "coaster": {
+          "propulsion": "roller",
+          "track_material": "steel",
+          "elements": [
+            {
+              "id": 2915,
+              "name": "Chain lift"
+            }
+          ]
+        },
         "revision": 401,
         "updated_at": "2026-10-11T12:00:00Z"
       }
@@ -161,16 +214,31 @@
       "filters": {
         "type": "coaster",
         "status": "operating",
-        "country": "US"
+        "country": "US",
+        "park": 163,
+        "location_kind": "park",
+        "state": "California",
+        "opened_earliest": "1994-03-26",
+        "opened_latest": "1994-03-26"
       },
       "summary": {
         "id": 165,
         "type": "coaster",
         "name": "Batman The Ride",
         "status": "operating",
+        "park": {
+          "id": 163,
+          "name": "Six Flags Magic Mountain"
+        },
+        "location_kind": "park",
         "country": {
           "code": "US",
           "name": "USA"
+        },
+        "opened": {
+          "edtf": "1994-03-26",
+          "earliest": "1994-03-26",
+          "latest": "1994-03-26"
         },
         "manufacturers": [
           {
@@ -222,7 +290,22 @@
         "title": "Batman The Ride (Six Flags Magic Mountain)",
         "url": "https://coasterpedia.net/wiki/Batman_The_Ride_(Six_Flags_Magic_Mountain)",
         "status": "operating",
+        "dates": {
+          "opened": {
+            "edtf": "1994-03-26",
+            "earliest": "1994-03-26",
+            "latest": "1994-03-26"
+          }
+        },
         "location": {
+          "kind": "park",
+          "on_loan": false,
+          "park": {
+            "id": 163,
+            "name": "Six Flags Magic Mountain"
+          },
+          "place": "Valencia",
+          "state": "California",
           "country": {
             "code": "US",
             "name": "USA"
@@ -230,6 +313,9 @@
           "coordinates": {
             "lat": 34.425775,
             "lon": -118.600895
+          },
+          "area": {
+            "section": "DC Universe"
           }
         },
         "manufacturers": [
@@ -246,6 +332,9 @@
             },
             "variant": "Batman"
           }
+        ],
+        "restraints": [
+          "over_the_shoulder"
         ],
         "stats": {
           "height": {
@@ -293,6 +382,46 @@
           "riders_per_train": 32,
           "tracks": 1
         },
+        "restrictions": {
+          "min_height": {
+            "value": 137.2,
+            "unit": "cm",
+            "entered": {
+              "value": 54,
+              "unit": "in"
+            }
+          }
+        },
+        "coaster": {
+          "propulsion": "roller",
+          "track_material": "steel",
+          "elements": [
+            {
+              "id": 2915,
+              "name": "Chain lift"
+            },
+            {
+              "id": 2768,
+              "name": "Pre-Drop"
+            },
+            {
+              "id": 1942,
+              "name": "Vertical loop"
+            },
+            {
+              "id": 3688,
+              "name": "Zero-g roll"
+            },
+            {
+              "id": 7038,
+              "name": "Helix"
+            },
+            {
+              "id": 6745,
+              "name": "Corkscrew (element)"
+            }
+          ]
+        },
         "revision": 402,
         "updated_at": "2026-10-11T12:00:00Z"
       }
@@ -313,16 +442,36 @@
       "filters": {
         "type": "coaster",
         "status": "defunct",
-        "country": "US"
+        "country": "US",
+        "park": 163,
+        "location_kind": "park",
+        "state": "California",
+        "opened_earliest": "1978-06-29",
+        "opened_latest": "1978-06-29"
       },
       "summary": {
         "id": 169,
         "type": "coaster",
         "name": "Colossus",
         "status": "defunct",
+        "park": {
+          "id": 163,
+          "name": "Six Flags Magic Mountain"
+        },
+        "location_kind": "park",
         "country": {
           "code": "US",
           "name": "USA"
+        },
+        "opened": {
+          "edtf": "1978-06-29",
+          "earliest": "1978-06-29",
+          "latest": "1978-06-29"
+        },
+        "closed": {
+          "edtf": "2014-08-16",
+          "earliest": "2014-08-16",
+          "latest": "2014-08-16"
         },
         "manufacturers": [
           {
@@ -366,7 +515,27 @@
         "title": "Colossus (Six Flags Magic Mountain)",
         "url": "https://coasterpedia.net/wiki/Colossus_(Six_Flags_Magic_Mountain)",
         "status": "defunct",
+        "dates": {
+          "opened": {
+            "edtf": "1978-06-29",
+            "earliest": "1978-06-29",
+            "latest": "1978-06-29"
+          },
+          "closed": {
+            "edtf": "2014-08-16",
+            "earliest": "2014-08-16",
+            "latest": "2014-08-16"
+          }
+        },
         "location": {
+          "kind": "park",
+          "on_loan": false,
+          "park": {
+            "id": 163,
+            "name": "Six Flags Magic Mountain"
+          },
+          "place": "Valencia",
+          "state": "California",
           "country": {
             "code": "US",
             "name": "USA"
@@ -374,6 +543,9 @@
           "coordinates": {
             "lat": 34.427553,
             "lon": -118.59786
+          },
+          "area": {
+            "section": "Colossus County Fair"
           }
         },
         "manufacturers": [
@@ -383,6 +555,9 @@
           }
         ],
         "products": [],
+        "restraints": [
+          "shared_lap_bars"
+        ],
         "stats": {
           "height": {
             "value": 38.1,
@@ -428,6 +603,38 @@
           "riders_per_train": 24,
           "tracks": 2
         },
+        "restrictions": {
+          "min_height": {
+            "value": 121.9,
+            "unit": "cm",
+            "entered": {
+              "value": 48,
+              "unit": "in"
+            }
+          }
+        },
+        "coaster": {
+          "propulsion": "roller",
+          "track_material": "wooden",
+          "elements": [
+            {
+              "id": 2915,
+              "name": "Chain lift"
+            },
+            {
+              "id": 14980,
+              "name": "Hill"
+            },
+            {
+              "id": 49301,
+              "name": "Double-up"
+            },
+            {
+              "id": 9282,
+              "name": "Block brake"
+            }
+          ]
+        },
         "revision": 403,
         "updated_at": "2026-10-11T12:00:00Z"
       }
@@ -448,16 +655,27 @@
       "filters": {
         "type": "coaster",
         "status": "standing_but_not_operating",
-        "country": "DE"
+        "country": "DE",
+        "park": null,
+        "location_kind": "travelling",
+        "state": null,
+        "opened_earliest": null,
+        "opened_latest": "2011-12-31"
       },
       "summary": {
         "id": 9101,
         "type": "coaster",
         "name": "Example Twin",
         "status": "standing_but_not_operating",
+        "location_kind": "travelling",
         "country": {
           "code": "DE",
           "name": "Germany"
+        },
+        "opened": {
+          "edtf": "[..2011]",
+          "earliest": null,
+          "latest": "2011-12-31"
         },
         "manufacturers": [
           {
@@ -486,7 +704,19 @@
         "title": "Example Twin (Example Park)",
         "url": "https://coasterpedia.net/wiki/Example_Twin_(Example_Park)",
         "status": "standing_but_not_operating",
+        "dates": {
+          "opened": {
+            "edtf": "[..2011]",
+            "earliest": null,
+            "latest": "2011-12-31"
+          }
+        },
         "location": {
+          "kind": "travelling",
+          "on_loan": false,
+          "owner": {
+            "name": "Hans Meier"
+          },
           "country": {
             "code": "DE",
             "name": "Germany"
@@ -510,6 +740,71 @@
             "variant": null
           }
         ],
+        "restraints": [
+          "lap_bars",
+          "hip"
+        ],
+        "coaster": {
+          "propulsion": "roller",
+          "track_material": "steel",
+          "support_material": "steel"
+        },
+        "history": {
+          "locations": [
+            {
+              "index": 2,
+              "kind": "park",
+              "on_loan": false,
+              "park": {
+                "id": 182,
+                "name": "Cedar Point"
+              },
+              "place": "Sandusky",
+              "state": "Ohio",
+              "country": {
+                "code": "US",
+                "name": "USA"
+              },
+              "coordinates": {
+                "lat": 41.48,
+                "lon": -82.6825
+              },
+              "opened": {
+                "edtf": "1990",
+                "earliest": "1990-01-01",
+                "latest": "1990-12-31"
+              },
+              "closed": {
+                "edtf": "[2000..2001]",
+                "earliest": "2000-01-01",
+                "latest": "2001-12-31"
+              }
+            },
+            {
+              "index": 1,
+              "kind": "travelling",
+              "on_loan": false,
+              "owner": {
+                "id": 10298,
+                "name": "Oscar Bruch"
+              },
+              "country": {
+                "code": "DE",
+                "name": "Germany"
+              },
+              "opened": {
+                "edtf": "2001",
+                "earliest": "2001-01-01",
+                "latest": "2001-12-31"
+              },
+              "closed": {
+                "edtf": "2010~",
+                "earliest": "2010-01-01",
+                "latest": "2010-12-31"
+              }
+            }
+          ]
+        },
         "revision": 404,
         "updated_at": "2026-10-11T12:00:00Z"
       }
@@ -530,16 +825,31 @@
       "filters": {
         "type": "ride",
         "status": "operating",
-        "country": "GB"
+        "country": "GB",
+        "park": 9136,
+        "location_kind": "park",
+        "state": null,
+        "opened_earliest": "2019-05-01",
+        "opened_latest": "2019-05-31"
       },
       "summary": {
         "id": 19643,
         "type": "ride",
         "name": "Over the Hill 2: Spooksville",
         "status": "operating",
+        "park": {
+          "id": 9136,
+          "name": "Pleasurewood Hills"
+        },
+        "location_kind": "park",
         "country": {
           "code": "GB",
           "name": "UK"
+        },
+        "opened": {
+          "edtf": "2019-05",
+          "earliest": "2019-05-01",
+          "latest": "2019-05-31"
         },
         "manufacturers": [
           {
@@ -582,7 +892,24 @@
         "title": "Over the Hill 2: Spooksville",
         "url": "https://coasterpedia.net/wiki/Over_the_Hill_2:_Spooksville",
         "status": "operating",
+        "dates": {
+          "opened": {
+            "edtf": "2019-05",
+            "earliest": "2019-05-01",
+            "latest": "2019-05-31"
+          }
+        },
         "location": {
+          "kind": "park",
+          "on_loan": true,
+          "park": {
+            "id": 9136,
+            "name": "Pleasurewood Hills"
+          },
+          "owner": {
+            "name": "Darran Church"
+          },
+          "place": "Lowestoft",
           "country": {
             "code": "GB",
             "name": "UK"
@@ -633,6 +960,28 @@
           },
           "riders_per_hour": 1200
         },
+        "restrictions": {
+          "min_height": {
+            "value": 111.8,
+            "unit": "cm",
+            "entered": {
+              "value": 44,
+              "unit": "in"
+            }
+          },
+          "children_only": false
+        },
+        "ride": {
+          "indoor": true,
+          "cabins": 16,
+          "units": 2,
+          "extra_coordinates": [
+            {
+              "lat": 51.5331,
+              "lon": 0.7181
+            }
+          ]
+        },
         "revision": 405,
         "updated_at": "2026-10-11T12:00:00Z"
       }
@@ -653,13 +1002,28 @@
       "filters": {
         "type": "ride",
         "status": "operating",
-        "country": null
+        "country": null,
+        "park": 67009,
+        "location_kind": "park",
+        "state": null,
+        "opened_earliest": "2018-04-02",
+        "opened_latest": "2018-04-02"
       },
       "summary": {
         "id": 66486,
         "type": "ride",
         "name": "SkyRide",
         "status": "operating",
+        "park": {
+          "id": 67009,
+          "name": "Carnival Horizon"
+        },
+        "location_kind": "park",
+        "opened": {
+          "edtf": "2018-04-02",
+          "earliest": "2018-04-02",
+          "latest": "2018-04-02"
+        },
         "manufacturers": [
           {
             "id": 66480,
@@ -683,7 +1047,24 @@
         "title": "SkyRide (Carnival Horizon)",
         "url": "https://coasterpedia.net/wiki/SkyRide_(Carnival_Horizon)",
         "status": "operating",
-        "location": {},
+        "dates": {
+          "opened": {
+            "edtf": "2018-04-02",
+            "earliest": "2018-04-02",
+            "latest": "2018-04-02"
+          }
+        },
+        "location": {
+          "kind": "park",
+          "on_loan": false,
+          "park": {
+            "id": 67009,
+            "name": "Carnival Horizon"
+          },
+          "area": {
+            "section": "SportSquare"
+          }
+        },
         "manufacturers": [
           {
             "id": 66480,
@@ -718,16 +1099,27 @@
       "filters": {
         "type": "water_slide",
         "status": "operating",
-        "country": "XK"
+        "country": "XK",
+        "park": null,
+        "location_kind": "standalone",
+        "state": null,
+        "opened_earliest": "1990-01-01",
+        "opened_latest": "1999-12-31"
       },
       "summary": {
         "id": 9102,
         "type": "water_slide",
         "name": "\u00C9lan",
         "status": "operating",
+        "location_kind": "standalone",
         "country": {
           "code": "XK",
           "name": "Kosovo"
+        },
+        "opened": {
+          "edtf": "199X",
+          "earliest": "1990-01-01",
+          "latest": "1999-12-31"
         },
         "manufacturers": [],
         "products": [
@@ -773,7 +1165,22 @@
         "title": "\u00C9lan (Example Waterpark)",
         "url": "https://coasterpedia.net/wiki/%C3%89lan_(Example_Waterpark)",
         "status": "operating",
+        "dates": {
+          "opened": {
+            "edtf": "199X",
+            "earliest": "1990-01-01",
+            "latest": "1999-12-31"
+          },
+          "opening": {
+            "edtf": "2027-06",
+            "earliest": "2027-06-01",
+            "latest": "2027-06-30"
+          }
+        },
         "location": {
+          "kind": "standalone",
+          "on_loan": false,
+          "place": "Pristina",
           "country": {
             "code": "XK",
             "name": "Kosovo"
@@ -817,6 +1224,42 @@
               "unit": "ft"
             }
           }
+        },
+        "restrictions": {
+          "max_weight_per_tube": {
+            "value": 81.6,
+            "unit": "kg",
+            "entered": {
+              "value": 180,
+              "unit": "lb"
+            }
+          }
+        },
+        "water_slide": {
+          "classes": [
+            "body",
+            "tube"
+          ],
+          "environment": "outdoors",
+          "containment": "partially_enclosed",
+          "exit": "pool",
+          "lanes": 2,
+          "components": [
+            {
+              "product": {
+                "id": 82994,
+                "name": "AquaPlay"
+              },
+              "variant": "AP 50"
+            },
+            {
+              "product": {
+                "id": 58307,
+                "name": "TWISTER"
+              },
+              "variant": null
+            }
+          ]
         },
         "revision": 407,
         "updated_at": "2026-10-11T12:00:00Z"
@@ -972,11 +1415,118 @@
         ]
       }
     ],
+    "restraints": [
+      {
+        "value": "lap_bars",
+        "label": "Lap-bars",
+        "applies_to": [
+          "coaster",
+          "ride",
+          "product"
+        ]
+      },
+      {
+        "value": "shared_lap_bars",
+        "label": "Shared lap-bars",
+        "applies_to": [
+          "coaster",
+          "ride",
+          "product"
+        ]
+      },
+      {
+        "value": "over_the_shoulder",
+        "label": "Over-the-shoulder",
+        "applies_to": [
+          "coaster",
+          "ride",
+          "product"
+        ]
+      },
+      {
+        "value": "buzz_bars",
+        "label": "Buzz bars",
+        "applies_to": [
+          "coaster",
+          "ride",
+          "product"
+        ]
+      },
+      {
+        "value": "vest_harness",
+        "label": "Vest harness",
+        "applies_to": [
+          "coaster",
+          "ride",
+          "product"
+        ]
+      },
+      {
+        "value": "seatbelt_only",
+        "label": "Seatbelt only",
+        "applies_to": [
+          "coaster",
+          "ride",
+          "product"
+        ]
+      },
+      {
+        "value": "back",
+        "label": "Back",
+        "applies_to": [
+          "coaster",
+          "ride",
+          "product"
+        ]
+      },
+      {
+        "value": "hip",
+        "label": "Hip",
+        "applies_to": [
+          "coaster",
+          "ride",
+          "product"
+        ]
+      },
+      {
+        "value": "none",
+        "label": "None",
+        "applies_to": [
+          "coaster",
+          "ride",
+          "product"
+        ]
+      }
+    ],
+    "propulsion": [
+      {
+        "value": "roller",
+        "label": "Roller",
+        "applies_to": [
+          "coaster"
+        ]
+      },
+      {
+        "value": "powered",
+        "label": "Powered",
+        "applies_to": [
+          "coaster"
+        ]
+      },
+      {
+        "value": "alpine",
+        "label": "Alpine",
+        "applies_to": [
+          "coaster"
+        ]
+      }
+    ],
     "track_material": [
       {
         "value": "steel",
         "label": "Steel",
         "applies_to": [
+          "coaster",
           "product"
         ]
       },
@@ -984,7 +1534,22 @@
         "value": "wooden",
         "label": "Wooden",
         "applies_to": [
+          "coaster",
           "product"
+        ]
+      },
+      {
+        "value": "mixed",
+        "label": "Mixed",
+        "applies_to": [
+          "coaster"
+        ]
+      },
+      {
+        "value": "other",
+        "label": "Other",
+        "applies_to": [
+          "coaster"
         ]
       }
     ],
@@ -993,6 +1558,7 @@
         "value": "steel",
         "label": "Steel",
         "applies_to": [
+          "coaster",
           "product"
         ]
       },
@@ -1000,72 +1566,22 @@
         "value": "wooden",
         "label": "Wooden",
         "applies_to": [
-          "product"
-        ]
-      }
-    ],
-    "restraints": [
-      {
-        "value": "lap_bars",
-        "label": "Lap-bars",
-        "applies_to": [
+          "coaster",
           "product"
         ]
       },
       {
-        "value": "shared_lap_bars",
-        "label": "Shared lap-bars",
+        "value": "mixed",
+        "label": "Mixed",
         "applies_to": [
-          "product"
+          "coaster"
         ]
       },
       {
-        "value": "over_the_shoulder",
-        "label": "Over-the-shoulder",
+        "value": "other",
+        "label": "Other",
         "applies_to": [
-          "product"
-        ]
-      },
-      {
-        "value": "buzz_bars",
-        "label": "Buzz bars",
-        "applies_to": [
-          "product"
-        ]
-      },
-      {
-        "value": "vest_harness",
-        "label": "Vest harness",
-        "applies_to": [
-          "product"
-        ]
-      },
-      {
-        "value": "seatbelt_only",
-        "label": "Seatbelt only",
-        "applies_to": [
-          "product"
-        ]
-      },
-      {
-        "value": "back",
-        "label": "Back",
-        "applies_to": [
-          "product"
-        ]
-      },
-      {
-        "value": "hip",
-        "label": "Hip",
-        "applies_to": [
-          "product"
-        ]
-      },
-      {
-        "value": "none",
-        "label": "None",
-        "applies_to": [
-          "product"
+          "coaster"
         ]
       }
     ],
@@ -1074,6 +1590,7 @@
         "value": "body",
         "label": "Body",
         "applies_to": [
+          "water_slide",
           "product"
         ]
       },
@@ -1081,6 +1598,7 @@
         "value": "mat",
         "label": "Mat",
         "applies_to": [
+          "water_slide",
           "product"
         ]
       },
@@ -1088,6 +1606,7 @@
         "value": "tube",
         "label": "Tube",
         "applies_to": [
+          "water_slide",
           "product"
         ]
       },
@@ -1095,7 +1614,38 @@
         "value": "sled",
         "label": "Sled",
         "applies_to": [
+          "water_slide",
           "product"
+        ]
+      },
+      {
+        "value": "multi",
+        "label": "Multi",
+        "applies_to": [
+          "water_slide"
+        ]
+      }
+    ],
+    "environment": [
+      {
+        "value": "indoors",
+        "label": "Indoors",
+        "applies_to": [
+          "water_slide"
+        ]
+      },
+      {
+        "value": "outdoors",
+        "label": "Outdoors",
+        "applies_to": [
+          "water_slide"
+        ]
+      },
+      {
+        "value": "mixed",
+        "label": "Mixed",
+        "applies_to": [
+          "water_slide"
         ]
       }
     ],
@@ -1104,6 +1654,7 @@
         "value": "enclosed",
         "label": "Enclosed",
         "applies_to": [
+          "water_slide",
           "product"
         ]
       },
@@ -1111,6 +1662,7 @@
         "value": "open",
         "label": "Open",
         "applies_to": [
+          "water_slide",
           "product"
         ]
       },
@@ -1118,7 +1670,24 @@
         "value": "partially_enclosed",
         "label": "Partially enclosed",
         "applies_to": [
+          "water_slide",
           "product"
+        ]
+      }
+    ],
+    "exit": [
+      {
+        "value": "pool",
+        "label": "Pool",
+        "applies_to": [
+          "water_slide"
+        ]
+      },
+      {
+        "value": "runout",
+        "label": "Runout",
+        "applies_to": [
+          "water_slide"
         ]
       }
     ],

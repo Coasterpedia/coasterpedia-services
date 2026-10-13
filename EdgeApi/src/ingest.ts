@@ -61,18 +61,26 @@ interface KindTable {
 }
 
 const STATS = ['height', 'speed', 'length'] as const;
+/** Where an attraction is and when it opened (0012): filters the Projector sends since beta.12; absent before. */
+const LOCATION = ['park', 'location_kind', 'state', 'opened_earliest', 'opened_latest'] as const;
+const DAY = /^\d{4}-\d\d-\d\d$/;
 
 export const KINDS: Record<string, KindTable> = {
 	attraction: {
 		table: 'attractions',
-		columns: ['type', 'status', 'country', ...STATS],
+		columns: ['type', 'status', 'country', ...STATS, ...LOCATION],
 		values: (u) => [u.filters.type ?? null, u.filters.status ?? null, u.filters.country ?? null,
-			...STATS.map((k) => u.sort_values?.[k] ?? null)],
+			...STATS.map((k) => u.sort_values?.[k] ?? null), ...LOCATION.map((k) => u.filters[k] ?? null)],
 		check: (u) => {
 			if (typeof u.filters?.type !== 'string') return 'missing type';
 			for (const key of STATS) {
 				const v = u.sort_values?.[key];
 				if (v != null && !(typeof v === 'number' && Number.isFinite(v))) return `sort_values.${key} must be a number or null`;
+			}
+			if (u.filters.park != null && !Number.isSafeInteger(u.filters.park)) return 'filters.park must be an integer or null';
+			for (const key of ['opened_earliest', 'opened_latest'] as const) {
+				const v = u.filters[key];
+				if (v != null && !(typeof v === 'string' && DAY.test(v))) return `filters.${key} must be a day, 2026-10-12, or null`;
 			}
 			return null;
 		},

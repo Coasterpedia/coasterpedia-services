@@ -48,7 +48,11 @@ public static class Wire
             ["name"] = c.Name,
         };
         if (c.Status != null) summary["status"] = c.Status;
+        if (c.Location.Park != null) summary["park"] = JsonSerializer.SerializeToNode(c.Location.Park, Json);
+        if (c.Location.Kind != null) summary["location_kind"] = c.Location.Kind;
         if (c.Location.Country != null) summary["country"] = JsonSerializer.SerializeToNode(c.Location.Country, Json);
+        if (c.Dates?.Opened != null) summary["opened"] = JsonSerializer.SerializeToNode(c.Dates.Opened, Json);
+        if (c.Dates?.Closed != null) summary["closed"] = JsonSerializer.SerializeToNode(c.Dates.Closed, Json);
         summary["manufacturers"] = JsonSerializer.SerializeToNode(c.Manufacturers, Json);
         // The edge links products[].product.id for /v1/products/{id}/installations and the product filter.
         summary["products"] = JsonSerializer.SerializeToNode(c.Products, Json);
@@ -78,6 +82,13 @@ public static class Wire
                 ["type"] = c.Type,
                 ["status"] = c.Status,
                 ["country"] = c.Location.Country?.Code,
+                // park= lists where it is now: a park, or stored at one.
+                ["park"] = c.Location.Park?.Id,
+                ["location_kind"] = c.Location.Kind,
+                ["state"] = c.Location.State,
+                // opened_from/opened_to and sort=opened read the bounds, so "[..1989]" still filters.
+                ["opened_earliest"] = c.Dates?.Opened?.Earliest,
+                ["opened_latest"] = c.Dates?.Opened?.Latest,
             },
             ["summary"] = summary,
             ["record"] = record,

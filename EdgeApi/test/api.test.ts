@@ -140,11 +140,11 @@ describe('GET /v1/attractions', () => {
 	});
 
 	it('refuses a filter whose field is not published yet rather than ignoring it', async () => {
-		const res = await get('/v1/attractions?view=latest&park=123');
+		const res = await get('/v1/attractions?view=latest&bbox=50,-1,51,0');
 		expect(res.status).toBe(400);
 		expect((await res.json<any>()).type).toContain('parameter-unavailable');
 		expect((await get('/v1/attractions?view=latest&colour=red')).status).toBe(400);
-		expect((await get('/v1/attractions?view=latest&sort=opened')).status).toBe(400);
+		expect((await get('/v1/attractions?view=latest&sort=updated')).status).toBe(400);
 		expect((await get('/v1/attractions?view=latest&limit=101')).status).toBe(400);
 		expect((await get('/v1/attractions?view=latest&cursor=garbage')).status).toBe(400);
 	});
@@ -162,6 +162,8 @@ describe('GET /v1/attractions/facets', () => {
 			status: [{ value: 'operating', count: 4 }, { value: 'defunct', count: 1 }],
 			// SkyRide has no country: counted in the total, not listed.
 			country: [{ value: 'US', label: 'USA', count: 3 }, { value: 'GB', label: 'UK', count: 1 }],
+			// These upserts predate location: counted in the total, not listed.
+			location_kind: [],
 		});
 		// No stats in these upserts, so no histograms.
 		expect(body.data.ranges).toEqual({});
@@ -196,7 +198,7 @@ describe('GET /v1/attractions/facets', () => {
 	});
 
 	it('refuses what the list would refuse, and the list-only parameters', async () => {
-		const res = await get('/v1/attractions/facets?park=123');
+		const res = await get('/v1/attractions/facets?q=batman');
 		expect(res.status).toBe(400);
 		expect((await res.json<any>()).type).toContain('parameter-unavailable');
 		expect((await get('/v1/attractions/facets?sort=name')).status).toBe(400);

@@ -19,6 +19,7 @@ public static partial class StatsMapper
     private static readonly Dimension LengthUnit = new("m", "ft", 3.28084);
     private static readonly Dimension SpeedUnit = new("km/h", "mph", 0.621371);
     private static readonly Dimension MassUnit = new("kg", "lb", 2.20462);
+    private static readonly Dimension RiderUnit = new("cm", "in", 0.393701);
 
     [GeneratedRegex(@"^(\d+):([0-5]\d)$")]
     private static partial Regex DurationPattern();
@@ -72,6 +73,10 @@ public static partial class StatsMapper
     /// </summary>
     public static Measurement? Weight(int pageId, double? entered, string? units, string field, List<DataIssue> issues) =>
         Imperial(units) is { } imperial ? Measure(pageId, entered, null, MassUnit, imperial, field, issues) : null;
+
+    /// <summary>A rider height (cm or in by the page's Units): no Min_/Max_ height column has a _Metric twin.</summary>
+    public static Measurement? RiderHeight(int pageId, double? entered, string? units, string field, List<DataIssue> issues) =>
+        Imperial(units) is { } imperial ? Measure(pageId, entered, null, RiderUnit, imperial, field, issues) : null;
 
     /// <summary>Null and blank are metric, as the infoboxes default; anything but the two is unknown.</summary>
     private static bool? Imperial(string? units) => units?.ToLowerInvariant() switch

@@ -137,6 +137,83 @@ public static partial class FieldMapper
         return null;
     }
 
+    /// <summary>A9's columns: the EDTF as the infobox wrote it, and its bounds. A bound is null at an open end.</summary>
+    public static DateValue? Edtf(int pageId, string field, string? edtf, string? earliest, string? latest, List<DataIssue> issues)
+    {
+        var first = Date(pageId, field, earliest, issues);
+        var last = Date(pageId, field, latest, issues);
+        if (string.IsNullOrWhiteSpace(edtf))
+        {
+            if (first != null || last != null)
+            {
+                issues.Add(new DataIssue(pageId, field, $"{first}..{last}", "bounds stored with no EDTF"));
+            }
+
+            return null;
+        }
+
+        // Every stored EDTF had a bound on 2026-10-12; one with neither would read as "any time".
+        if (first == null && last == null)
+        {
+            issues.Add(new DataIssue(pageId, field, edtf, "EDTF stored with no bounds"));
+            return null;
+        }
+
+        if (first != null && last != null && string.CompareOrdinal(first, last) > 0)
+        {
+            issues.Add(new DataIssue(pageId, field, edtf, "earliest is after latest"));
+            return null;
+        }
+
+        return new DateValue(edtf.Trim(), first, last);
+    }
+
+    /// <summary>One value from an infobox's allowed list, as its slug; outside the list it is null and reported.</summary>
+    public static string? Choice(int pageId, string field, string vocabType, string param, string? value, Vocabularies vocab,
+        List<DataIssue> issues)
+    {
+        var text = value == null ? "" : Wikitext.Strip(value);
+        if (text.Length == 0)
+        {
+            return null;
+        }
+
+        var wiki = vocab.Match(vocabType, param, text);
+        if (wiki == null)
+        {
+            issues.Add(new DataIssue(pageId, field, text, "not in the infobox's allowed list"));
+            return null;
+        }
+
+        return Wikitext.Slug(wiki);
+    }
+
+    /// <summary>
+    /// A Cargo list field ('#'-separated) checked value by value against one
+    /// allowed list, as slugs in page order: a value outside it is dropped and
+    /// reported. Null when nothing is left.
+    /// </summary>
+    public static IReadOnlyList<string>? Choices(int pageId, string field, string vocabType, string param, string? full,
+        Vocabularies vocab, List<DataIssue> issues)
+    {
+        var result = new List<string>();
+        foreach (var value in Split(full))
+        {
+            if (Choice(pageId, field, vocabType, param, value, vocab, issues) is { } slug && !result.Contains(slug))
+            {
+                result.Add(slug);
+            }
+        }
+
+        return result.Count == 0 ? null : result;
+    }
+
+    /// <summary>A Cargo list field's members, as stored ('#'-separated), trimmed and each once.</summary>
+    public static IEnumerable<string> Split(string? full) =>
+        string.IsNullOrWhiteSpace(full)
+            ? []
+            : full.Split('#').Select(v => v.Trim()).Where(v => v.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// One http(s) URL, bare or as the single external link the infobox asks
     /// for. Anything else (two links, a note after the link, no scheme) is

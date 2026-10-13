@@ -305,7 +305,7 @@ public class ProductTests
     }
 
     [Fact]
-    public void The_capability_vocabularies_apply_to_products_only()
+    public void A_shared_vocabulary_applies_to_each_kind_that_offers_it()
     {
         var doc = VocabularyDocument.Build(Vocab, new ProjectorConfig().AttractionTemplates, [Wire.Park, Wire.Manufacturer, Wire.Product]);
 
@@ -317,14 +317,25 @@ public class ProductTests
         Assert.Contains("product", status.Of("cancelled"));
         Assert.DoesNotContain("product", status.Of("operating"));
 
-        // The attraction infoboxes offer restraints too, but no attraction publishes them yet.
+        // Attractions and products share restraints, under the same param.
         var restraints = AppliesToOf("restraints");
-        Assert.All(restraints.Values.Values, a => Assert.Equal(["product"], a));
+        Assert.All(restraints.Values.Values, a => Assert.Equal(["coaster", "ride", "product"], a));
         Assert.Equal("Lap-bars", doc["restraints"]![0]!["label"]!.GetValue<string>());
         Assert.Equal("lap_bars", doc["restraints"]![0]!["value"]!.GetValue<string>());
-        Assert.Equal(["steel", "wooden"], AppliesToOf("track_material").Values.Keys);
-        Assert.Equal(["body", "mat", "tube", "sled"], AppliesToOf("classes").Values.Keys);
+
+        // Under different params (track_material, track_material1); coasters alone offer mixed and other.
+        var track = AppliesToOf("track_material");
+        Assert.Equal(["steel", "wooden", "mixed", "other"], track.Values.Keys);
+        Assert.Equal(["coaster", "product"], track.Of("steel"));
+        Assert.Equal(["coaster"], track.Of("mixed"));
+
+        // Multi is a slide's class only: no product offers it.
+        var classes = AppliesToOf("classes");
+        Assert.Equal(["body", "mat", "tube", "sled", "multi"], classes.Values.Keys);
+        Assert.Equal(["water_slide"], classes.Of("multi"));
         Assert.Equal(["enclosed", "open", "partially_enclosed"], AppliesToOf("containment").Values.Keys);
+        Assert.Equal(["product"], AppliesToOf("slide_material").Of("plastic"));
+        Assert.Equal(["water_slide"], AppliesToOf("exit").Of("runout"));
     }
 
     [Fact]

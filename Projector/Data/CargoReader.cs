@@ -9,7 +9,11 @@ using MySqlConnector;
 
 namespace CoasterpediaServices.Projector.Data;
 
-/// <summary>One attraction's stored row, as the slice reads it.</summary>
+/// <summary>
+/// One attraction's stored row, as the slice reads it. Columns only some
+/// tables have (AttractionColumns) read NULL elsewhere. List fields are read
+/// as stored ('#'-separated); dates as text, as for parks.
+/// </summary>
 public sealed record AttractionRow
 {
     public required string Type { get; init; }
@@ -27,7 +31,120 @@ public sealed record AttractionRow
 
     public double? Lat { get; init; }
     public double? Lon { get; init; }
+
+    // Where it is (DR-006): the stored answer of Travelling.classify, and the columns it read.
+    public string? LocationKind { get; init; }
+    public bool? OnLoan { get; init; }
+    public string? Park { get; init; }
+    public string? Owner { get; init; }
+    public string? Location { get; init; }
+    public string? State { get; init; }
+    public string? Section { get; init; }
+    public string? Subsection { get; init; }
+
+    public string? OpenedEdtf { get; init; }
+    public string? OpenedEarliest { get; init; }
+    public string? OpenedLatest { get; init; }
+    public string? ClosedEdtf { get; init; }
+    public string? ClosedEarliest { get; init; }
+    public string? ClosedLatest { get; init; }
+    public string? Opening { get; init; }
+    public int? OpeningPrecision { get; init; }
+    public string? Closing { get; init; }
+    public int? ClosingPrecision { get; init; }
+
+    public string? Restraints { get; init; }
+
+    // Coasters.
+    public string? Propulsion { get; init; }
+    public string? TrackMaterial { get; init; }
+    public string? SupportMaterial { get; init; }
+
+    // Rides.
+    public bool? Indoor { get; init; }
+    public bool? Enclosed { get; init; }
+    public bool? DarkRide { get; init; }
+    public bool? Water { get; init; }
+    public string? Cabins { get; init; }
+    public int? NumberOfRides { get; init; }
+    public double? Coord2Lat { get; init; }
+    public double? Coord2Lon { get; init; }
+    public double? Coord3Lat { get; init; }
+    public double? Coord3Lon { get; init; }
+    public double? Coord4Lat { get; init; }
+    public double? Coord4Lon { get; init; }
+    public double? Coord5Lat { get; init; }
+    public double? Coord5Lon { get; init; }
+    public double? Coord6Lat { get; init; }
+    public double? Coord6Lon { get; init; }
+
+    // Water slides.
+    public string? SlideClasses { get; init; }
+    public string? Environment { get; init; }
+    public string? Containment { get; init; }
+    public string? ExitType { get; init; }
+    public int? NumberOfSlides { get; init; }
+
+    // Rider requirements, in the page's Units.
+    public double? MinHeight { get; init; }
+    public double? MinHeightDriver { get; init; }
+    public double? MinHeightStanding { get; init; }
+    public double? MinHeightUpsideDown { get; init; }
+    public double? MinHeightUnaccompanied { get; init; }
+    public double? MaxHeightWithoutChild { get; init; }
+    public double? MaxHeight { get; init; }
+    public int? MinAge { get; init; }
+    public int? MinAgeDriver { get; init; }
+    public int? MinAgeUnaccompanied { get; init; }
+    public int? MaxAgeWithoutChild { get; init; }
+    public int? MaxAge { get; init; }
+    public bool? ChildrenOnly { get; init; }
+    public bool? AdultOnlyWithChild { get; init; }
+    public double? MinWeight { get; init; }
+    public double? MaxWeight { get; init; }
+    public double? MaxWeightPerTube { get; init; }
+
     public StatsRow Stats { get; init; } = StatsRow.Empty;
+
+    /// <summary>Roller_Coaster_Past_Locations rows on the page, newest stint first (Ordering 1).</summary>
+    public IReadOnlyList<PastLocationRow> PastLocations { get; init; } = [];
+
+    /// <summary>Coaster_Elements.Element: page titles in layout order, repeats kept (two vertical loops are two).</summary>
+    public IReadOnlyList<string> Elements { get; init; } = [];
+
+    /// <summary>Water_Slide_Components rows on the page, by Ordering.</summary>
+    public IReadOnlyList<ComponentRow> Components { get; init; } = [];
+}
+
+/// <summary>One past stint. Every attraction type stores here, despite the table's name.</summary>
+public sealed record PastLocationRow
+{
+    public required int PageId { get; init; }
+    public int? Ordering { get; init; }
+    public string? LocationKind { get; init; }
+    public bool? OnLoan { get; init; }
+    public string? Park { get; init; }
+    public string? Owner { get; init; }
+    public string? Location { get; init; }
+    public string? State { get; init; }
+    public string? Country { get; init; }
+    public double? Lat { get; init; }
+    public double? Lon { get; init; }
+    public string? OpenedEdtf { get; init; }
+    public string? OpenedEarliest { get; init; }
+    public string? OpenedLatest { get; init; }
+    public string? ClosedEdtf { get; init; }
+    public string? ClosedEarliest { get; init; }
+    public string? ClosedLatest { get; init; }
+}
+
+/// <summary>One Water_Slide_Components row: a slot's product (wikitext) and variant.</summary>
+public sealed record ComponentRow
+{
+    public required int PageId { get; init; }
+    public int? Ordering { get; init; }
+    public string? Product { get; init; }
+    public string? Variant { get; init; }
 }
 
 /// <summary>
@@ -241,6 +358,43 @@ public sealed partial class CargoReader
     };
 
     /// <summary>
+    /// AttractionRow property → column, for the columns only some tables have.
+    /// The rest of the row reads the same column on every table.
+    /// </summary>
+    internal static readonly Dictionary<string, Dictionary<string, string>> AttractionColumns = new()
+    {
+        ["Roller_Coasters"] = new()
+        {
+            ["Owner"] = "Owner", ["Restraints"] = "Restraints__full",
+            ["Propulsion"] = "Class", ["TrackMaterial"] = "Track_Material", ["SupportMaterial"] = "Support_Material",
+        },
+        ["Rides"] = new()
+        {
+            ["Owner"] = "Owner", ["Restraints"] = "Restraints__full",
+            ["Indoor"] = "Indoor", ["Enclosed"] = "Enclosed_Ride", ["DarkRide"] = "Dark_Ride",
+            ["Cabins"] = "Cabins", ["NumberOfRides"] = "Number_Of_Rides",
+            ["Coord2Lat"] = "Coord2__lat", ["Coord2Lon"] = "Coord2__lon", ["Coord3Lat"] = "Coord3__lat", ["Coord3Lon"] = "Coord3__lon",
+            ["Coord4Lat"] = "Coord4__lat", ["Coord4Lon"] = "Coord4__lon", ["Coord5Lat"] = "Coord5__lat", ["Coord5Lon"] = "Coord5__lon",
+            ["Coord6Lat"] = "Coord6__lat", ["Coord6Lon"] = "Coord6__lon",
+        },
+        // No Owner: water slides never travel (DR-006).
+        ["Water_Slides"] = new()
+        {
+            ["SlideClasses"] = "Class__full", ["Environment"] = "Environment", ["Containment"] = "Containment",
+            ["ExitType"] = "Exit_Type", ["NumberOfSlides"] = "Number_Of_Slides", ["MaxWeightPerTube"] = "Max_Weight_Per_Tube",
+        },
+    };
+
+    /// <summary>The AttractionRow properties AttractionColumns can supply, in SELECT order.</summary>
+    internal static readonly string[] AttractionOptional =
+    [
+        "Owner", "Restraints", "Propulsion", "TrackMaterial", "SupportMaterial",
+        "Indoor", "Enclosed", "DarkRide", "Cabins", "NumberOfRides",
+        "Coord2Lat", "Coord2Lon", "Coord3Lat", "Coord3Lon", "Coord4Lat", "Coord4Lon", "Coord5Lat", "Coord5Lon", "Coord6Lat", "Coord6Lon",
+        "SlideClasses", "Environment", "Containment", "ExitType", "NumberOfSlides", "MaxWeightPerTube",
+    ];
+
+    /// <summary>
     /// Product type → its product table, its variant table, and the capability
     /// list fields it declares (ProductRow property → column). One row per page in
     /// each, and no page in two (checked 2026-10-12: 257 + 713 + 122).
@@ -348,25 +502,89 @@ public sealed partial class CargoReader
     {
         var rows = new List<AttractionRow>();
         await using var tx = await conn.BeginTransactionAsync(IsolationLevel.RepeatableRead, ct);
+
+        // The child tables first, attached by page as a product's variants are.
+        var past = new List<PastLocationRow>();
+        var elements = new List<ElementRow>();
+        var components = new List<ComponentRow>();
+        foreach (var ids in Chunks(pageIds))
+        {
+            past.AddRange(await QueryAsync<PastLocationRow>(conn, tx, $"""
+                SELECT t._pageID AS PageId, t.Ordering, t.LocationKind, t.OnLoan, t.Park, t.Owner, t.Location, t.State, t.Country,
+                       t.PastCoord__lat AS Lat, t.PastCoord__lon AS Lon,
+                       t.Opened_EDTF AS OpenedEdtf,
+                       CAST(t.Opened_Earliest AS CHAR) AS OpenedEarliest, CAST(t.Opened_Latest AS CHAR) AS OpenedLatest,
+                       t.Closed_EDTF AS ClosedEdtf,
+                       CAST(t.Closed_Earliest AS CHAR) AS ClosedEarliest, CAST(t.Closed_Latest AS CHAR) AS ClosedLatest
+                FROM {Cargo("Roller_Coaster_Past_Locations")} t
+                WHERE t._pageNamespace = 0 {PageFilter("t._pageID", ids)}
+                ORDER BY t._pageID, t.Ordering, t._ID
+                """, new { ids }, ct));
+            elements.AddRange(await QueryAsync<ElementRow>(conn, tx, $"""
+                SELECT t._pageID AS PageId, CAST(t.Element__full AS CHAR) AS Elements
+                FROM {Cargo("Coaster_Elements")} t
+                WHERE t._pageNamespace = 0 {PageFilter("t._pageID", ids)}
+                ORDER BY t._pageID, t._ID
+                """, new { ids }, ct));
+            components.AddRange(await QueryAsync<ComponentRow>(conn, tx, $"""
+                SELECT t._pageID AS PageId, t.Ordering, t.Product, t.Product_Variant AS Variant
+                FROM {Cargo("Water_Slide_Components")} t
+                WHERE t._pageNamespace = 0 {PageFilter("t._pageID", ids)}
+                ORDER BY t._pageID, t.Ordering, t._ID
+                """, new { ids }, ct));
+        }
+
+        var pastByPage = past.ToLookup(r => r.PageId);
+        // One Coaster_Elements row per page on 2026-10-12 (1,722); a second would be a second infobox's.
+        var elementsByPage = elements.GroupBy(r => r.PageId).ToDictionary(g => g.Key, g => g.First().Elements);
+        var componentsByPage = components.ToLookup(r => r.PageId);
+
         foreach (var (type, table) in AttractionTables)
         {
             foreach (var ids in Chunks(pageIds))
             {
-                rows.AddRange(await QueryAsync<AttractionRow>(conn, tx, $"""
+                var found = await QueryAsync<AttractionRow>(conn, tx, $"""
                     SELECT @type AS Type, t._pageID AS PageId, t._pageName AS PageName, {Revision},
                            t.Name, t.Status, t.Country, t.Manufacturer,
                            CAST(t.Product__full AS CHAR) AS Product, CAST(t.Product_Variant__full AS CHAR) AS ProductVariant,
                            t.Coord__lat AS Lat, t.Coord__lon AS Lon,
+                           t.LocationKind, t.OnLoan, t.Park, t.Location, t.State, t.Section, t.Subsection,
+                           t.Opened_EDTF AS OpenedEdtf,
+                           CAST(t.Opened_Earliest AS CHAR) AS OpenedEarliest, CAST(t.Opened_Latest AS CHAR) AS OpenedLatest,
+                           t.Closed_EDTF AS ClosedEdtf,
+                           CAST(t.Closed_Earliest AS CHAR) AS ClosedEarliest, CAST(t.Closed_Latest AS CHAR) AS ClosedLatest,
+                           CAST(t.Opening AS CHAR) AS Opening, t.Opening__precision AS OpeningPrecision,
+                           CAST(t.Closing AS CHAR) AS Closing, t.Closing__precision AS ClosingPrecision,
+                           t.Min_Height AS MinHeight, t.Min_Height_Driver AS MinHeightDriver,
+                           t.Min_Height_Standing AS MinHeightStanding, t.Min_Height_Upside_Down AS MinHeightUpsideDown,
+                           t.Min_Unaccompanied_Height AS MinHeightUnaccompanied, t.Max_Height_Without_Child AS MaxHeightWithoutChild,
+                           t.Max_Height AS MaxHeight, t.Min_Age AS MinAge, t.Min_Age_Driver AS MinAgeDriver,
+                           t.Min_Unaccompanied_Age AS MinAgeUnaccompanied, t.Max_Age_Without_Child AS MaxAgeWithoutChild,
+                           t.Max_Age AS MaxAge, t.Children_Only AS ChildrenOnly, t.Adult_Only_With_Child AS AdultOnlyWithChild,
+                           t.Min_Weight AS MinWeight, t.Max_Weight AS MaxWeight,
+                           {Select(ColumnProperties(typeof(AttractionRow), AttractionOptional), AttractionColumns[table])},
                            {Select(StatProperties, StatColumns[table])}
                     FROM {Cargo(table)} t
                     JOIN {Page} p ON p.page_id = t._pageID
                     WHERE t._pageNamespace = 0 {PageFilter("t._pageID", ids)}
-                    """, new { type, ids }, ct, (row, stats) => row with { Stats = stats }));
+                    """, new { type, ids }, ct, (row, stats) => row with { Stats = stats });
+                rows.AddRange(found.Select(r => r with
+                {
+                    PastLocations = [.. pastByPage[r.PageId]],
+                    Elements = elementsByPage.GetValueOrDefault(r.PageId)?.Split('#').Select(e => e.Trim()).Where(e => e.Length > 0).ToList() ?? [],
+                    Components = [.. componentsByPage[r.PageId]],
+                }));
             }
         }
 
         await tx.CommitAsync(ct);
         return rows;
+    }
+
+    private sealed record ElementRow
+    {
+        public required int PageId { get; init; }
+        public string? Elements { get; init; }
     }
 
     /// <summary>

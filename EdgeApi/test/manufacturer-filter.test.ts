@@ -236,9 +236,10 @@ describe('a manufacturer-filtered read is bounded by the manufacturer, not the t
 		const q = facetQueries(new URL(`/v1/attractions/facets?view=latest&manufacturer=${BIG}`, BASE));
 		const cells = await env.DATA.prepare(q.cells.sql).bind(...q.cells.binds).all<{ n: number }>();
 		expect(cells.results.reduce((sum, c) => sum + c.n, 0)).toBe(2000);
-		// Twice its links: the covering index, then the GROUP BY's temp b-tree,
-		// which D1 counts too. Bounded by the manufacturer either way.
-		expect(cells.meta.rows_read).toBeLessThan(4100);
+		// Three times its links: the covering index, the row joined back for its
+		// location kind (0012), then the GROUP BY's temp b-tree, which D1 counts
+		// too. Bounded by the manufacturer either way.
+		expect(cells.meta.rows_read).toBeLessThan(6100);
 		const height = await env.DATA.prepare(q.ranges.height.sql).bind(...q.ranges.height.binds).all();
 		expect(height.meta.rows_read).toBeLessThan(1300);
 	});
