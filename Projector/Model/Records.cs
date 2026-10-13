@@ -277,6 +277,14 @@ public sealed record ParkDates(DateValue? Opened, DateValue? Closed, DateValue? 
 /// </summary>
 public sealed record Resort(int Id, string Name);
 
+/// <summary>
+/// A park's place in its resort: the resort, and where the wrapper lists the
+/// park. Ordering never enters the record; it rides on the wire as
+/// filters.resort_order, so the edge can list a resort's parks in the
+/// wrapper's order (DR-010 §12.20).
+/// </summary>
+public sealed record ResortMembership(Resort Resort, int? Ordering);
+
 /// <summary>Everything in a park record that comes from the wiki's content; hashed like AttractionContent.</summary>
 public sealed record ParkContent
 {

@@ -118,9 +118,35 @@ export async function listParks(url: URL, env: Env): Promise<{ response: Respons
 	};
 }
 
+/** Six at most on 2026-10-13. A bound on the read, since anyone can edit a wrapper. */
+const MAX_RESORT_PARKS = 50;
+
+/**
+ * Most resorts have no article and there is no /v1/resorts, so the record's
+ * resort lists its parks: this one included, in the wrapper's order, from the
+ * same view. Read here rather than sent with the record, so a sibling's edit
+ * shows at once and no other park's record changes (DR-010 §12.20).
+ */
+export const resortParksSql = (view: View) => `SELECT summary FROM parks
+	WHERE ${FLAG[view]} = 1 AND resort = ?
+	ORDER BY resort_order IS NULL, resort_order, sort_name, id LIMIT ${MAX_RESORT_PARKS}`;
+
+async function withResortParks(record: Record<string, unknown>, _id: number, view: View, env: Env): Promise<void> {
+	const resort = record.resort as { id: number } | undefined;
+	if (resort == null) return;
+	const { results } = await env.DATA.prepare(resortParksSql(view)).bind(resort.id).all<{ summary: string }>();
+	record.resort = {
+		...resort,
+		parks: results.map((r) => {
+			const { id, name, status } = JSON.parse(r.summary);
+			return status == null ? { id, name } : { id, name, status };
+		}),
+	};
+}
+
 export async function getPark(url: URL, idText: string, env: Env): Promise<{ response: Response; rows: number }> {
 	checkParams(url, ONE_PARAMS, NOT_YET);
-	return getRecord(url, idText, env, { kind: 'park', table: 'parks', path: '/v1/parks', noun: 'park' });
+	return getRecord(url, idText, env, { kind: 'park', table: 'parks', path: '/v1/parks', noun: 'park', decorate: withResortParks });
 }
 
 /**

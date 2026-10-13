@@ -187,7 +187,7 @@ public class ParkTests
         var item = Wire.UpsertPark(Map(Row()), 42, at);
 
         Assert.Equal(
-            """{"kind":"park","id":182,"revision":42,"updated_at":"2026-10-12T12:00:00Z","settled":true,"settles_at":null,"sort_name":"cedar point","filters":{"status":"operating","country":"US","state":"Ohio","resort":null},"summary":{"id":182,"name":"Cedar Point","status":"operating","country":{"code":"US","name":"USA"},"state":"Ohio","coordinates":{"lat":41.48,"lon":-82.6825},"opened":{"edtf":"1870","earliest":"1870-01-01","latest":"1870-12-31"},"updated_at":"2026-10-12T12:00:00Z"},"record":{"id":182,"name":"Cedar Point","title":"Cedar Point","url":"https://coasterpedia.net/wiki/Cedar_Point","status":"operating","dates":{"opened":{"edtf":"1870","earliest":"1870-01-01","latest":"1870-12-31"}},"place":"Sandusky","state":"Ohio","country":{"code":"US","name":"USA"},"coordinates":{"lat":41.48,"lon":-82.6825},"website":"http://cedarpoint.com/","revision":42,"updated_at":"2026-10-12T12:00:00Z"}}""",
+            """{"kind":"park","id":182,"revision":42,"updated_at":"2026-10-12T12:00:00Z","settled":true,"settles_at":null,"sort_name":"cedar point","filters":{"status":"operating","country":"US","state":"Ohio","resort":null,"resort_order":null},"summary":{"id":182,"name":"Cedar Point","status":"operating","country":{"code":"US","name":"USA"},"state":"Ohio","coordinates":{"lat":41.48,"lon":-82.6825},"opened":{"edtf":"1870","earliest":"1870-01-01","latest":"1870-12-31"},"updated_at":"2026-10-12T12:00:00Z"},"record":{"id":182,"name":"Cedar Point","title":"Cedar Point","url":"https://coasterpedia.net/wiki/Cedar_Point","status":"operating","dates":{"opened":{"edtf":"1870","earliest":"1870-01-01","latest":"1870-12-31"}},"place":"Sandusky","state":"Ohio","country":{"code":"US","name":"USA"},"coordinates":{"lat":41.48,"lon":-82.6825},"website":"http://cedarpoint.com/","revision":42,"updated_at":"2026-10-12T12:00:00Z"}}""",
             JsonSerializer.Serialize(item));
     }
 
@@ -199,11 +199,11 @@ public class ParkTests
         // Template:Walt Disney World Resort links its resort name.
         ResortMemberRow[] members = [new() { ResortId = 56391, Resort = "[[Walt Disney World]]", Park = "Magic Kingdom", Ordering = 5 }];
         var resorts = ParkMapper.Resorts(members, new Dictionary<string, int> { ["Magic Kingdom"] = 182 }, Parks, []);
-        Assert.Equal(new Resort(56391, "Walt Disney World"), resorts[182]);
+        Assert.Equal(new ResortMembership(new Resort(56391, "Walt Disney World"), 5), resorts[182]);
 
         Assert.Null(Map(Row()).Resort);
         Assert.Equal(new Resort(56391, "Walt Disney World"),
-            ParkMapper.Map(Row(), Vocab, "https://coasterpedia.net", [], resort: resorts[182]).Resort);
+            ParkMapper.Map(Row(), Vocab, "https://coasterpedia.net", [], resort: resorts[182].Resort).Resort);
     }
 
     [Fact]
@@ -225,7 +225,7 @@ public class ParkTests
         var resorts = ParkMapper.Resorts(members, resolved, Parks, []);
 
         Assert.Equal([182, 61001], resorts.Keys.Order());
-        Assert.Equal(58420, resorts[61001].Id);
+        Assert.Equal(58420, resorts[61001].Resort.Id);
     }
 
     [Fact]
@@ -239,7 +239,7 @@ public class ParkTests
         var issues = new List<DataIssue>();
         var resorts = ParkMapper.Resorts(members, new Dictionary<string, int> { ["Cedar Point"] = 182 }, Parks, issues);
 
-        Assert.Equal(new Resort(10, "Alpha Resort"), resorts[182]);
+        Assert.Equal(new ResortMembership(new Resort(10, "Alpha Resort"), 3), resorts[182]);
         Assert.Equal(new DataIssue(182, "resort", "Zeta Resort", "also a member of Alpha Resort; only that one is published"),
             Assert.Single(issues));
     }
@@ -248,8 +248,11 @@ public class ParkTests
     public void The_park_upsert_filters_and_lists_by_resort()
     {
         var item = Wire.UpsertPark(ParkMapper.Map(Row(), Vocab, "https://coasterpedia.net", [], resort: new Resort(58420, "Cedar Point Resort")),
-            42, DateTimeOffset.Parse("2026-10-12T12:00:00Z"));
+            42, DateTimeOffset.Parse("2026-10-12T12:00:00Z"), resortOrder: 1);
         Assert.Equal(58420, item["filters"]!["resort"]!.GetValue<int>());
+        // The wrapper's order sorts the resort's parks at the edge; it is never in the record.
+        Assert.Equal(1, item["filters"]!["resort_order"]!.GetValue<int>());
+        Assert.Null(item["record"]!["resort_order"]);
         Assert.Equal("""{"id":58420,"name":"Cedar Point Resort"}""", item["summary"]!["resort"]!.ToJsonString());
         Assert.Equal("""{"id":58420,"name":"Cedar Point Resort"}""", item["record"]!["resort"]!.ToJsonString());
     }

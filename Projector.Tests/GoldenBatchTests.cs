@@ -568,8 +568,9 @@ public class GoldenBatchTests
         var resorts = ParkMapper.Resorts(ResortMembers, ParkLinks, ParkRows.Select(r => r.PageId).ToHashSet(), issues);
         // Acushnet Park waits to settle; 99001 was merged into Cedar Point. The
         // promote and discard name parks the edge has never seen.
-        var upserts = ParkRows.Select(r => Wire.UpsertPark(ParkMapper.Map(r, vocab, "https://coasterpedia.net", issues, ParkLinks, resorts.GetValueOrDefault(r.PageId)),
-            r.Revision, at, r.PageId == 65834 ? at + TimeSpan.FromDays(7) : null));
+        var upserts = ParkRows.Select(r => Wire.UpsertPark(
+            ParkMapper.Map(r, vocab, "https://coasterpedia.net", issues, ParkLinks, resorts.GetValueOrDefault(r.PageId)?.Resort),
+            r.Revision, at, r.PageId == 65834 ? at + TimeSpan.FromDays(7) : null, resorts.GetValueOrDefault(r.PageId)?.Ordering));
         var batch = Wire.Batch(at, TimeSpan.FromDays(7), upserts, [Wire.Delete(99001, 182, Wire.Park)],
             [Wire.Promote(99998, Wire.Park)], [Wire.Discard(99999, Wire.Park)]);
 

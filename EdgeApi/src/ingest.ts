@@ -87,9 +87,16 @@ export const KINDS: Record<string, KindTable> = {
 	},
 	park: {
 		table: 'parks',
-		columns: ['status', 'country', 'state', 'resort'],
-		values: (u) => [u.filters.status ?? null, u.filters.country ?? null, u.filters.state ?? null, u.filters.resort ?? null],
-		check: (u) => (u.filters.resort == null || Number.isSafeInteger(u.filters.resort) ? null : 'filters.resort must be an integer or null'),
+		// resort_order (0015) sorts a park's resort.parks; absent from batches queued before beta.18.
+		columns: ['status', 'country', 'state', 'resort', 'resort_order'],
+		values: (u) => [u.filters.status ?? null, u.filters.country ?? null, u.filters.state ?? null, u.filters.resort ?? null,
+			u.filters.resort_order ?? null],
+		check: (u) => {
+			for (const key of ['resort', 'resort_order'] as const) {
+				if (u.filters[key] != null && !Number.isSafeInteger(u.filters[key])) return `filters.${key} must be an integer or null`;
+			}
+			return null;
+		},
 	},
 	manufacturer: {
 		table: 'manufacturers',

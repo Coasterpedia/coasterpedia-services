@@ -12,9 +12,18 @@ import { getParkCompany, listParkCompanies, parkCompanyParks } from './park-comp
 import { getProduct, listProducts, manufacturerProducts, productInstallations } from './products';
 import { search } from './search';
 import { LIMITED_HEADERS, withPolicy } from './ratelimit';
+import { createSession, sessionScope } from './session';
 import { vocabularies } from './vocabularies';
 
 export type { Env } from './env';
+
+/**
+ * The browser's same-origin door (DR-010 §7.4): coasterpedia.net/api/* is
+ * routed here, so the gadget needs no CORS. The prefix is stripped and the
+ * request read as the API host's, so both hosts share one cache entry.
+ */
+const SAME_ORIGIN_PREFIX = '/api';
+const API_ORIGIN = 'https://api.coasterpedia.net';
 
 /** A matched endpoint: its template, whether it takes view=, and how to answer it. */
 interface Route {
@@ -27,13 +36,25 @@ interface Route {
 
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-		const url = new URL(request.url);
+		let url = new URL(request.url);
+		// Only /v1: /internal stays on the API host, behind Access.
+		if (url.pathname.startsWith(`${SAME_ORIGIN_PREFIX}/v1/`)) {
+			url = new URL(url.pathname.slice(SAME_ORIGIN_PREFIX.length) + url.search, API_ORIGIN);
+		}
 		const path = url.pathname.replace(/\/+$/, '') || '/';
 
 		try {
 			if (path === '/internal/ingest') {
 				if (request.method !== 'POST') return problem(405, 'method', 'Method not allowed');
 				return (await authenticateInternal(request, env)) ?? (await ingest(request, env));
+			}
+
+			// No key and no limit: each session costs a Turnstile solve, which is the limit.
+			if (path === '/v1/session') {
+				if (request.method !== 'POST') return problem(405, 'method', 'Method not allowed');
+				const res = await createSession(request, env);
+				record(env, { account: 'browser', tier: 'browser', keyPrefix: '' }, '/v1/session', res.status, 0, false);
+				return res;
 			}
 
 			if (request.method !== 'GET' && request.method !== 'HEAD') {
@@ -57,8 +78,9 @@ export default {
 			if (caller instanceof Response) return caller;
 
 			// Before the cache: a hit is still a request, and counts against the limit.
+			// Every session is the one account, so a session is limited on its own.
 			if (env.RATE_LIMITER) {
-				const { success } = await env.RATE_LIMITER.limit({ key: caller.account });
+				const { success } = await env.RATE_LIMITER.limit({ key: caller.session ? `session:${caller.session}` : caller.account });
 				if (!success) {
 					record(env, caller, 'rate-limited', 429, 0, false);
 					return problem(429, 'rate-limited', 'Too many requests', undefined, LIMITED_HEADERS);
@@ -69,6 +91,13 @@ export default {
 			if (!matched) {
 				record(env, caller, 'unknown', 404, 0, false);
 				return withPolicy(problem(404, 'not-found', 'Not found'));
+			}
+
+			// Before the cache too: a session must not read a keyed answer someone cached.
+			const outOfScope = caller.session ? sessionScope(matched.name, url) : null;
+			if (outOfScope) {
+				record(env, caller, matched.name, outOfScope.status, 0, false);
+				return withPolicy(outOfScope);
 			}
 
 			let served: Served & { hit: boolean };

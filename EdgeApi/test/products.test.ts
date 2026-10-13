@@ -183,7 +183,7 @@ describe('the Projector product batch', () => {
 	it('counts products in /v1/meta, per view', async () => {
 		const latest = await (await exports.default.fetch(new Request(`${BASE}/v1/meta?view=latest`))).json<any>();
 		expect(latest.counts).toEqual({ attractions: 7, parks: 0, manufacturers: 7, products: 8, park_companies: 0 });
-		expect(latest.schema_version).toBe('1.0.0-beta.17');
+		expect(latest.schema_version).toBe('1.0.0-beta.19');
 		const settled = await (await exports.default.fetch(new Request(`${BASE}/v1/meta`))).json<any>();
 		expect(settled.counts.products).toBe(7);
 	});

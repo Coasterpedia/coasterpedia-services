@@ -2,7 +2,7 @@ import { env, exports } from 'cloudflare:workers';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { encodeCursor } from '../src/attractions';
 import { sha256Hex } from '../src/auth';
-import { parkListQuery } from '../src/parks';
+import { parkListQuery, resortParksSql } from '../src/parks';
 import { resetData } from './reset';
 // Written by the Projector's GoldenBatchTests: the real wire shape, not a hand copy.
 import batch from './fixtures/projector-park-batch.json';
@@ -106,7 +106,7 @@ describe('the Projector park batch', () => {
 	it('counts parks in /v1/meta, per view', async () => {
 		const latest = await (await exports.default.fetch(new Request(`${BASE}/v1/meta?view=latest`))).json<any>();
 		expect(latest.counts).toEqual({ attractions: 7, parks: 7, manufacturers: 0, products: 0, park_companies: 0 });
-		expect(latest.schema_version).toBe('1.0.0-beta.17');
+		expect(latest.schema_version).toBe('1.0.0-beta.19');
 		const settled = await (await exports.default.fetch(new Request(`${BASE}/v1/meta`))).json<any>();
 		expect(settled.counts).toEqual({ attractions: 6, parks: 6, manufacturers: 0, products: 0, park_companies: 0 });
 	});
@@ -142,6 +142,61 @@ describe('the Projector park batch', () => {
 		const back = await (await get('/v1/parks/182?view=latest')).json<any>();
 		expect(back.data.name).toBe('Cedar Point');
 		expect(back.data.settlement).toEqual({ settled_revision: 501, pending_revision: null, settles_at: null });
+	});
+});
+
+describe("a park's resort lists its parks", () => {
+	const cedar = batch.upsert.find((u) => u.id === 182)!;
+	/** Another member of Cedar Point Resort, as the Projector would send it. */
+	const member = (id: number, name: string, order: number | null, settled = true) => ({
+		...cedar, id, revision: id, sort_name: name.toLowerCase(), settled, settles_at: settled ? null : '2026-10-26T12:00:00Z',
+		filters: { ...cedar.filters, resort_order: order },
+		summary: { ...cedar.summary, id, name },
+		record: { ...cedar.record, id, name, revision: id },
+	});
+
+	beforeAll(async () => {
+		await resetData();
+		await env.KEYS.put(`key:${await sha256Hex(KEY)}`, JSON.stringify({ account: 'parks', tier: 'beta', status: 'active' }));
+		expect((await ingest(batch)).status).toBe(200);
+		const { status: _, ...noStatus } = member(61003, 'Aardvark Lagoon', null).summary;
+		expect((await ingest({
+			as_of: '2026-10-19T12:00:00Z', delete: [],
+			upsert: [
+				member(61001, 'Cedar Point Shores', 2),
+				// Pending, and first by name: the wrapper's order wins, and the settled view leaves it out.
+				member(61002, 'Castaway Bay', 3, false),
+				// From a batch queued before beta.18: no order, so after the ordered ones.
+				{ ...member(61003, 'Aardvark Lagoon', null), summary: noStatus },
+			],
+		})).status).toBe(200);
+	});
+
+	it("lists the resort's parks in the wrapper's order, this one included, from the same view", async () => {
+		const latest = (await (await get('/v1/parks/61001?view=latest')).json<any>()).data.resort;
+		expect(latest).toEqual({
+			id: 58420, name: 'Cedar Point Resort',
+			parks: [
+				{ id: 182, name: 'Cedar Point', status: 'operating' },
+				{ id: 61001, name: 'Cedar Point Shores', status: 'operating' },
+				{ id: 61002, name: 'Castaway Bay', status: 'operating' },
+				{ id: 61003, name: 'Aardvark Lagoon' },
+			],
+		});
+		const settled = (await (await get('/v1/parks/182')).json<any>()).data.resort;
+		expect(settled.parks.map((p: any) => p.id)).toEqual([182, 61001, 61003]);
+		expect((await (await get('/v1/parks/2156')).json<any>()).data.resort.parks).toEqual([{ id: 2156, name: 'Dollywood', status: 'operating' }]);
+	});
+
+	it('leaves a park in no resort, and every list, as they were', async () => {
+		expect((await (await get('/v1/parks/26438')).json<any>()).data.resort).toBeUndefined();
+		const list = (await (await get('/v1/parks?view=latest&resort=58420')).json<any>()).data;
+		expect(list.every((p: any) => p.resort.parks === undefined)).toBe(true);
+	});
+
+	it('refuses an order that is not an integer', async () => {
+		const res = await ingest({ as_of: '2026-10-19T12:00:00Z', delete: [], upsert: [member(61004, 'Bad Order', 1.5 as number)] });
+		expect(res.status).toBe(400);
 	});
 });
 
@@ -204,6 +259,13 @@ describe('a page deep in the park list reads its page, not the table before it',
 		const result = await env.DATA.prepare(sql).bind(...binds).all();
 		expect(result.results.length).toBe(101);
 		expect(result.meta.rows_read).toBeLessThan(bound);
+	});
+
+	it("reads only a resort's parks for a park's resort.parks", async () => {
+		// Resort 10000 holds ids 1000 and 2000.
+		const result = await env.DATA.prepare(resortParksSql('latest')).bind(10000).all();
+		expect(result.results).toHaveLength(2);
+		expect(result.meta.rows_read).toBeLessThan(10);
 	});
 
 	it('reads only a resort\'s parks, not the table', async () => {

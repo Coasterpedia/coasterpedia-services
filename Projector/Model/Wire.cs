@@ -98,7 +98,9 @@ public static class Wire
     }
 
     /// <param name="settlesAt">As for an attraction.</param>
-    public static JsonObject UpsertPark(ParkContent c, long revision, DateTimeOffset updatedAt, DateTimeOffset? settlesAt = null)
+    /// <param name="resortOrder">Where the resort's wrapper lists the park; sorts /v1/parks/{id}'s resort.parks.</param>
+    public static JsonObject UpsertPark(ParkContent c, long revision, DateTimeOffset updatedAt, DateTimeOffset? settlesAt = null,
+        int? resortOrder = null)
     {
         var record = JsonSerializer.SerializeToNode(c, Json)!.AsObject();
         record["revision"] = revision;
@@ -134,6 +136,7 @@ public static class Wire
                 ["country"] = c.Country?.Code,
                 ["state"] = c.State,
                 ["resort"] = c.Resort?.Id,
+                ["resort_order"] = c.Resort == null ? null : resortOrder,
             },
             ["summary"] = summary,
             ["record"] = record,

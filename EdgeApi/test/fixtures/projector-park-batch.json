@@ -14,7 +14,8 @@
         "status": "operating",
         "country": "US",
         "state": "Ohio",
-        "resort": 58420
+        "resort": 58420,
+        "resort_order": 1
       },
       "summary": {
         "id": 182,
@@ -140,7 +141,8 @@
         "status": "operating",
         "country": "US",
         "state": "Tennessee",
-        "resort": 57454
+        "resort": 57454,
+        "resort_order": 1
       },
       "summary": {
         "id": 2156,
@@ -240,7 +242,8 @@
         "status": "defunct",
         "country": "NL",
         "state": null,
-        "resort": null
+        "resort": null,
+        "resort_order": null
       },
       "summary": {
         "id": 26438,
@@ -301,7 +304,8 @@
         "status": "defunct",
         "country": "US",
         "state": "Massachusetts",
-        "resort": null
+        "resort": null,
+        "resort_order": null
       },
       "summary": {
         "id": 65834,
@@ -364,7 +368,8 @@
         "status": "under_construction",
         "country": "BR",
         "state": null,
-        "resort": null
+        "resort": null,
+        "resort_order": null
       },
       "summary": {
         "id": 66765,
@@ -419,7 +424,8 @@
         "status": "operating",
         "country": null,
         "state": null,
-        "resort": null
+        "resort": null,
+        "resort_order": null
       },
       "summary": {
         "id": 67009,
@@ -481,7 +487,8 @@
         "status": "under_construction",
         "country": "DE",
         "state": null,
-        "resort": null
+        "resort": null,
+        "resort_order": null
       },
       "summary": {
         "id": 76098,

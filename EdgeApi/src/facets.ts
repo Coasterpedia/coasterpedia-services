@@ -1,4 +1,4 @@
-import { checkParams, FLAG, followMerges, linkFilter, list, openedParams, parkParam, stateParam, viewParam, type View } from './attractions';
+import { checkParams, FLAG, followMerges, linkFilter, list, openedParams, parkParam, productParam, stateParam, viewParam, type Link, type View } from './attractions';
 import type { Env } from './env';
 import { bboxParam, boxCells, boxWhere, searchMatch, searchWhere, updatedSinceParam } from './filters';
 import { json, LICENCE } from './http';
@@ -16,8 +16,9 @@ const FACET_PARAMS = new Set([
 
 /**
  * The facet dimensions, each a column of attraction_facets. The other filters
- * (a park, a state, the opened range, a manufacturer or product) narrow every
- * list without being one.
+ * (a park, a state, the opened range, q, a box) narrow every list without
+ * being one. Manufacturer, product and variant are dimensions too, counted
+ * from their link tables (LINK_DIMENSIONS).
  */
 const DIMENSIONS = ['type', 'status', 'country', 'location_kind'] as const;
 type Dimension = (typeof DIMENSIONS)[number];
@@ -84,18 +85,30 @@ export interface FacetQueries {
 	countryNames: Query | null;
 	/** Per stat: each distinct value in the filtered set, with how many record it. */
 	ranges: Record<string, Query>;
+	/** Per link dimension: value, n and its label source, each with its own filter left out. */
+	links: Partial<Record<LinkDimension, Query>>;
 }
 
-/** The queries for a request, apart from running them, so tests can measure what they read. */
-export function facetQueries(url: URL): FacetQueries {
-	checkParams(url, FACET_PARAMS);
-	const view = viewParam(url);
-	const filters = filtersOf(url);
+/** The set a request's filters select, as the pieces each facet query is built from. */
+interface FilterSet {
+	link: Link | null;
+	driver: string | null;
+	/** What narrows without being a dimension: the link, a park, a state, the opened range, q, a box, updated_since. */
+	narrow: string[];
+	narrowBinds: (string | number)[];
+	/** narrow and the dimension filters. */
+	where: string[];
+	binds: (string | number)[];
+	/** The FROM: attractions, on the driver's index, or the link joined to its rows (m, a). */
+	table: string;
+	/** The link alone when its rows aren't needed, else table. */
+	rangeTable: string;
+	/** A link column, or the table's. */
+	m: (col: string) => string;
+	a: (col: string) => string;
+}
 
-	// No stat filter exists yet, so every range is measured under the full
-	// filter. A stat filter, when one comes, leaves out its own range, as the
-	// browser's whereWithout does: bounds measured inside the cut can't be widened.
-	//
+function filterSet(url: URL, view: View, filters: Filters): FilterSet {
 	// What narrows the set without being a dimension is read from its own index,
 	// as on the list: a manufacturer's or product's links (0008, 0011) joined to
 	// the row for the columns they lack, else a park, a state or the opened
@@ -194,6 +207,112 @@ export function facetQueries(url: URL): FacetQueries {
 	const needsRow = park != null || states.length > 0 || opened.from != null || opened.to != null || filters.location_kind != null
 		|| box != null || since != null;
 	const rangeTable = link != null && !needsRow ? `${link.table} m` : table;
+	return { link, driver, narrow, narrowBinds, where, binds, table, rangeTable, m, a };
+}
+
+/**
+ * The link dimensions (DR-010 §7.4): the browser's Manufacturer → Product →
+ * Variant cascade. Not cells of attraction_facets: an attraction links several
+ * of each, and there are about 1,350 of them. Each is counted live from its
+ * link table, with its own filters left out: choosing a manufacturer narrows
+ * the products but not the manufacturers. A product leaves out its variant too,
+ * which means nothing under another product. Variant is listed only under one
+ * product, as the browser shows it: across products No. 1, 48 and Medium mean nothing.
+ */
+const LINK_DIMENSIONS = ['manufacturer', 'product', 'variant'] as const;
+type LinkDimension = (typeof LINK_DIMENSIONS)[number];
+
+const LINKS: Record<LinkDimension, { table: string; col: string; drop: string[]; names: string | null }> = {
+	manufacturer: { table: 'attraction_manufacturers', col: 'manufacturer', drop: ['manufacturer'], names: 'manufacturers' },
+	product: { table: 'attraction_products', col: 'product', drop: ['product', 'variant'], names: 'products' },
+	variant: { table: 'attraction_products', col: 'variant', drop: ['variant'], names: null },
+};
+
+/**
+ * One link dimension's counts for the set without its own filters. Whatever
+ * drives that set drives this, and the dimension's links are read per row by
+ * key: another link's range (a product's ≤ 135 rows, a manufacturer's ≤ 1,900),
+ * else the narrowing index's rows, else the dimension's own link table, in
+ * its value order. CROSS JOIN keeps the link inner: SQLite would otherwise
+ * walk it for the GROUP BY's order and look every row up in the driver.
+ */
+function linkQuery(dim: LinkDimension, url: URL, view: View, filters: Filters): Query {
+	const L = LINKS[dim];
+	const flag = FLAG[view];
+	const set = filterSet(url, view, filters);
+	// A blank variant counts toward the total, as any blank does, but no filter selects it.
+	const listed = (col: string) => (dim === 'variant' ? [`${col} IS NOT NULL`, `${col} <> ''`] : []);
+
+	let grouped: Query;
+	if (set.link?.table === L.table) {
+		grouped = {
+			sql: `SELECT m.${L.col} AS value, COUNT(*) AS n FROM ${set.rangeTable}
+				WHERE ${[`m.${flag} = 1`, ...listed(`m.${L.col}`), ...set.where].join(' AND ')} GROUP BY m.${L.col}`,
+			binds: set.binds,
+		};
+	} else if (set.link) {
+		grouped = {
+			sql: `SELECT l.${L.col} AS value, COUNT(*) AS n FROM ${set.rangeTable}
+				CROSS JOIN ${L.table} l ON l.id = m.id AND l.in_latest = m.in_latest
+				WHERE ${[`m.${flag} = 1`, ...listed(`l.${L.col}`), ...set.where].join(' AND ')} GROUP BY l.${L.col}`,
+			binds: set.binds,
+		};
+	} else if (set.driver) {
+		// The set's own columns are unqualified, so it is a subquery, which also
+		// keeps them from clashing with the link's.
+		grouped = {
+			sql: `SELECT l.${L.col} AS value, COUNT(*) AS n
+				FROM (SELECT id, in_latest FROM ${set.table} WHERE ${[`${flag} = 1`, ...set.where].join(' AND ')}) s
+				CROSS JOIN ${L.table} l ON l.id = s.id AND l.in_latest = s.in_latest
+				${listed(`l.${L.col}`).length ? `WHERE ${listed(`l.${L.col}`).join(' AND ')}` : ''} GROUP BY l.${L.col}`,
+			binds: set.binds,
+		};
+	} else {
+		// Only dimension filters, which the link carries but for the kind.
+		const where = [`l.${flag} = 1`, ...listed(`l.${L.col}`)];
+		const binds: string[] = [];
+		for (const d of DIMENSIONS) {
+			const values = filters[d];
+			if (!values) continue;
+			where.push(`${d === 'location_kind' ? 'a' : 'l'}.${d} IN (${[...values].map(() => '?').join(',')})`);
+			binds.push(...values);
+		}
+		const row = filters.location_kind ? ' JOIN attractions a ON a.id = l.id AND a.in_latest = l.in_latest' : '';
+		grouped = {
+			sql: `SELECT l.${L.col} AS value, COUNT(*) AS n FROM ${L.table} l${row} WHERE ${where.join(' AND ')} GROUP BY l.${L.col}`,
+			binds,
+		};
+	}
+
+	if (!L.names) return { sql: `SELECT value, n, NULL AS label FROM (${grouped.sql})`, binds: grouped.binds };
+	// The name, and the makers to tell two products' names apart: from the
+	// view's row, else the other one (a page not in this view yet). One key read per value.
+	return {
+		sql: `SELECT g.value, g.n, (SELECT json_extract(k.summary, '$.name', '$.manufacturers') FROM ${L.names} k
+				WHERE k.id = g.value ORDER BY k.${flag} DESC LIMIT 1) AS label
+			FROM (${grouped.sql}) g`,
+		binds: grouped.binds,
+	};
+}
+
+/** The request without some parameters: a dimension's own filters, left out to count it. */
+function without(url: URL, names: string[]): URL {
+	const copy = new URL(url);
+	for (const name of names) copy.searchParams.delete(name);
+	return copy;
+}
+
+/** The queries for a request, apart from running them, so tests can measure what they read. */
+export function facetQueries(url: URL): FacetQueries {
+	checkParams(url, FACET_PARAMS);
+	const view = viewParam(url);
+	const filters = filtersOf(url);
+	const set = filterSet(url, view, filters);
+	const { m, driver, where, binds, narrow, narrowBinds, table, rangeTable, a } = set;
+
+	// No stat filter exists yet, so every range is measured under the full
+	// filter. A stat filter, when one comes, leaves out its own range, as the
+	// browser's whereWithout does: bounds measured inside the cut can't be widened.
 	const ranges: FacetQueries['ranges'] = {};
 	for (const stat of Object.keys(RANGES)) {
 		// The flag and IS NOT NULL as literals, so SQLite matches the stat's partial index.
@@ -203,6 +322,12 @@ export function facetQueries(url: URL): FacetQueries {
 				GROUP BY ${m(stat)}`,
 			binds,
 		};
+	}
+
+	const links: FacetQueries['links'] = {};
+	for (const dim of LINK_DIMENSIONS) {
+		if (dim === 'variant' && productParam(url) == null) continue;
+		links[dim] = linkQuery(dim, without(url, LINKS[dim].drop), view, filters);
 	}
 
 	if (driver == null) {
@@ -215,6 +340,7 @@ export function facetQueries(url: URL): FacetQueries {
 			},
 			countryNames: null,
 			ranges,
+			links,
 		};
 	}
 
@@ -236,6 +362,7 @@ export function facetQueries(url: URL): FacetQueries {
 			binds: [view],
 		},
 		ranges,
+		links,
 	};
 }
 
@@ -272,6 +399,34 @@ export function countDimensions(cells: Cell[], filters: Filters, labels: Partial
 			.sort((a, b) => b.count - a.count || (a.value < b.value ? -1 : a.value > b.value ? 1 : 0));
 	}
 	return { total, dimensions };
+}
+
+interface LinkRow {
+	value: number | string;
+	n: number;
+	/** json_extract's [name, manufacturers] for a page, null for a variant. */
+	label: string | null;
+}
+
+/**
+ * A link dimension's items. value is what the filter takes: the page ID as
+ * text, or the variant as written. Two products sharing a name (each maker's
+ * "Boomerang") gain their makers, as the browser's labels do; labels still
+ * alike stay so.
+ */
+export function linkItems(rows: LinkRow[]): Item[] {
+	const items = rows.map((r) => {
+		const [name, makers] = r.label ? (JSON.parse(r.label) as [string | null, { name?: string }[] | null]) : [null, null];
+		return { value: String(r.value), label: name ?? undefined, makers: (makers ?? []).map((x) => x.name).filter(Boolean), count: r.n };
+	});
+	const seen = new Map<string, number>();
+	for (const i of items) if (i.label) seen.set(i.label.toLowerCase(), (seen.get(i.label.toLowerCase()) ?? 0) + 1);
+	return items
+		.map(({ value, label, makers, count }) => {
+			if (label && seen.get(label.toLowerCase())! > 1 && makers.length) label = `${label} (${makers.join(', ')})`;
+			return label ? { value, label, count } : { value, count };
+		})
+		.sort((a, b) => b.count - a.count || ((a.label ?? a.value) < (b.label ?? b.value) ? -1 : (a.label ?? a.value) > (b.label ?? b.value) ? 1 : 0));
 }
 
 // Bucket index and edges. The epsilon keeps 0.3 / 0.1 (2.9999…) in bucket 3.
@@ -332,15 +487,18 @@ export function histogram(unit: string, values: { v: number; n: number }[]): Ran
 export async function attractionFacets(url: URL, env: Env): Promise<{ response: Response; rows: number }> {
 	const q = facetQueries(await followMerges(url, env));
 	const stats = Object.keys(q.ranges);
+	const linked = LINK_DIMENSIONS.filter((d) => q.links[d]);
 	const db = env.DATA;
-	const [cells, vocab, asOf, names, ...rangeResults] = await db.batch<any>([
+	const [cells, vocab, asOf, names, ...rest] = await db.batch<any>([
 		db.prepare(q.cells.sql).bind(...q.cells.binds),
 		db.prepare(`SELECT value FROM state WHERE key = 'vocabularies'`),
 		db.prepare(`SELECT value FROM state WHERE key = 'data_as_of'`),
 		// A placeholder keeps the batch's positions when there is nothing to read.
 		q.countryNames ? db.prepare(q.countryNames.sql).bind(...q.countryNames.binds) : db.prepare('SELECT NULL WHERE 0'),
 		...stats.map((s) => db.prepare(q.ranges[s].sql).bind(...q.ranges[s].binds)),
+		...linked.map((d) => db.prepare(q.links[d]!.sql).bind(...q.links[d]!.binds)),
 	]);
+	const rangeResults = rest.slice(0, stats.length);
 
 	// Labels are the wiki's, from /v1/vocabularies' source; absent until it is published.
 	const labels: Partial<Record<Dimension, Map<string, string>>> = {};
@@ -354,6 +512,10 @@ export async function attractionFacets(url: URL, env: Env): Promise<{ response: 
 
 	const countryNames = new Map((names.results as { country: string; country_name: string }[]).map((r) => [r.country, r.country_name]));
 	const { total, dimensions } = countDimensions(cells.results as Cell[], q.filters, labels, countryNames);
+	const all: Record<string, Item[]> = dimensions;
+	linked.forEach((d, i) => {
+		all[d] = linkItems(rest[stats.length + i].results as LinkRow[]);
+	});
 	const ranges: Record<string, Range> = {};
 	stats.forEach((stat, i) => {
 		const range = histogram(RANGES[stat], rangeResults[i].results as { v: number; n: number }[]);
@@ -363,7 +525,7 @@ export async function attractionFacets(url: URL, env: Env): Promise<{ response: 
 	return {
 		rows: 0,
 		response: json({
-			data: { total, dimensions, ranges },
+			data: { total, dimensions: all, ranges },
 			meta: { data_as_of: (asOf.results[0] as { value: string } | undefined)?.value ?? null, view: q.view, licence: LICENCE },
 		}),
 	};

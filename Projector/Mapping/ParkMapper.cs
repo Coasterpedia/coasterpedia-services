@@ -97,17 +97,17 @@ public static class ParkMapper
         members.Select(m => Wikitext.NormaliseTitle(m.Park ?? "")).OfType<string>();
 
     /// <summary>
-    /// Park page ID → its resort. A member is matched by its title, resolved
+    /// Park page ID → its resort and place in it. A member is matched by its title, resolved
     /// through redirects, so a park moved since the wrapper was saved still
     /// finds its resort. A member that is no page, or not a park, attaches to
     /// nothing. A park two wrappers claim keeps the first by resort name and is
     /// reported; none did on 2026-10-12.
     /// </summary>
     /// <param name="parkIds">The page IDs that are parks, so a member resolving to anything else is ignored.</param>
-    public static Dictionary<int, Resort> Resorts(IEnumerable<ResortMemberRow> members, IReadOnlyDictionary<string, int> resolved,
+    public static Dictionary<int, ResortMembership> Resorts(IEnumerable<ResortMemberRow> members, IReadOnlyDictionary<string, int> resolved,
         IReadOnlySet<int> parkIds, List<DataIssue> issues)
     {
-        var result = new Dictionary<int, Resort>();
+        var result = new Dictionary<int, ResortMembership>();
         var ordered = members
             .Select(m => (Row: m, Name: Wikitext.Strip(m.Resort ?? ""), Title: Wikitext.NormaliseTitle(m.Park ?? "")))
             .Where(m => m.Name.Length > 0 && m.Title != null)
@@ -121,15 +121,15 @@ public static class ParkMapper
 
             if (result.TryGetValue(parkId, out var first))
             {
-                if (first.Id != row.ResortId)
+                if (first.Resort.Id != row.ResortId)
                 {
-                    issues.Add(new DataIssue(parkId, "resort", name, $"also a member of {first.Name}; only that one is published"));
+                    issues.Add(new DataIssue(parkId, "resort", name, $"also a member of {first.Resort.Name}; only that one is published"));
                 }
 
                 continue;
             }
 
-            result[parkId] = new Resort(row.ResortId, name);
+            result[parkId] = new ResortMembership(new Resort(row.ResortId, name), row.Ordering);
         }
 
         return result;

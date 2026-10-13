@@ -1,11 +1,14 @@
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import type { Env, KeyEntry } from './env';
 import { problem } from './http';
+import { verifySession } from './session';
 
 export interface Caller {
 	account: string;
 	tier: string;
 	keyPrefix: string;
+	/** A browser session's ID (DR-010 §7.4); absent for a key. */
+	session?: string;
 }
 
 export async function sha256Hex(text: string): Promise<string> {
@@ -17,9 +20,15 @@ export async function sha256Hex(text: string): Promise<string> {
  * Bearer cpk_… → the account behind it (DR-010 §7.3). KV holds only the
  * key's hash, so a leaked KV dump leaks no keys. Revocation reaches every
  * location within KV's propagation, about a minute.
+ *
+ * Bearer cps_… is a browser session (§7.4), checked by its signature alone.
+ * Anything else is a 401: nothing falls back to anonymous.
  */
 export async function authenticate(request: Request, env: Env): Promise<Caller | Response> {
 	const header = request.headers.get('authorization') ?? '';
+	const session = /^Bearer\s+(cps_\S*)$/.exec(header);
+	if (session) return verifySession(session[1], env);
+
 	const match = /^Bearer\s+(cpk_[A-Za-z0-9]+)$/.exec(header);
 	if (!match) {
 		return problem(401, 'key-required', 'An API key is required',

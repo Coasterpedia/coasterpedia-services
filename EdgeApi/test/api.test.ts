@@ -164,6 +164,9 @@ describe('GET /v1/attractions/facets', () => {
 			country: [{ value: 'US', label: 'USA', count: 3 }, { value: 'GB', label: 'UK', count: 1 }],
 			// These upserts predate location: counted in the total, not listed.
 			location_kind: [],
+			// Nor manufacturers or products; variant only under one product.
+			manufacturer: [],
+			product: [],
 		});
 		// No stats in these upserts, so no histograms.
 		expect(body.data.ranges).toEqual({});

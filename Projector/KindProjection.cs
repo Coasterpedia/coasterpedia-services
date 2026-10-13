@@ -90,9 +90,13 @@ public sealed class ParkProjection : IKindProjection
                 continue;
             }
 
-            var content = ParkMapper.Map(r, vocab, _config.PublicBaseUrl, issues, resolved, resorts.GetValueOrDefault(r.PageId));
-            result.Add(new Projected(r.PageId, r.Revision, Wire.Hash(content),
-                (at, settlesAt) => Wire.UpsertPark(content, r.Revision, at, settlesAt)));
+            var membership = resorts.GetValueOrDefault(r.PageId);
+            var content = ParkMapper.Map(r, vocab, _config.PublicBaseUrl, issues, resolved, membership?.Resort);
+            // The order is wire-only, but a reorder must still re-push; a park in no resort keeps its hash.
+            var order = membership?.Ordering;
+            var hash = order == null ? Wire.Hash(content) : Wire.Hash(new { content, order });
+            result.Add(new Projected(r.PageId, r.Revision, hash,
+                (at, settlesAt) => Wire.UpsertPark(content, r.Revision, at, settlesAt, order)));
         }
 
         return result;
