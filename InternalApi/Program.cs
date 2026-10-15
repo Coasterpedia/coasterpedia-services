@@ -2,14 +2,13 @@ using CoasterpediaServices.ArchiveBot;
 using CoasterpediaServices.ArchiveBot.Options;
 using CoasterpediaServices.Common;
 using CoasterpediaServices.ImageFetch;
+using CoasterpediaServices.InternalApi;
 using CoasterpediaServices.InternalApi.Auth;
 using CoasterpediaServices.InternalApi.Options;
 using CoasterpediaServices.Projector;
 using CoasterpediaServices.Projector.Jobs;
-using CoasterpediaServices.Projector.Options;
 using Hangfire;
 using Hangfire.Redis.StackExchange;
-using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -36,10 +35,11 @@ var redisOptions = builder.Configuration.GetRequiredSection(nameof(RedisOptions)
 builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
     ConnectionMultiplexer.Connect($"{redisOptions.ConnectionString},defaultDatabase={redisOptions.Db},abortConnect=false"));
 
-builder.Services.AddHangfire(config => config
+// Hangfire shares that connection, so it too tolerates a Redis that isn't up yet (abortConnect=false).
+builder.Services.AddHangfire((services, config) => config
     .UseSimpleAssemblyNameTypeSerializer()
     .UseRecommendedSerializerSettings()
-    .UseRedisStorage(redisOptions.ConnectionString, new RedisStorageOptions { Db = redisOptions.Db }));
+    .UseRedisStorage(services.GetRequiredService<IConnectionMultiplexer>(), new RedisStorageOptions { Db = redisOptions.Db }));
 builder.Services.AddHangfireServer();
 // Wayback saves run one at a time on their own server so a bulk upload doesn't trip archive.org's rate limiter.
 builder.Services.AddHangfireServer(o =>
@@ -55,6 +55,7 @@ builder.Services.AddHangfireServer(o =>
     o.Queues = [ProjectorJobs.Queue];
     o.WorkerCount = 1;
 });
+builder.Services.AddHostedService<RecurringJobsRegistration>();
 
 var app = builder.Build();
 
@@ -62,9 +63,6 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
 {
     Authorization = [new CloudflareAccessAuthorizationFilter()]
 });
-
-app.Services.GetRequiredService<IRecurringJobManager>()
-    .UseProjectorJobs(app.Services.GetRequiredService<IOptions<ProjectorConfig>>().Value);
 
 app.MapControllers();
 
