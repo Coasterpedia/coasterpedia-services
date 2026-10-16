@@ -1,0 +1,209 @@
+/* Coasterpedia colour system.
+ *
+ * Coasterpedia runs the Citizen skin, whose palette is generated in OKLCH from
+ * a handful of channel tokens: a hue, a chroma and a lightness per role. Nothing
+ * is a hand-picked hex — change `--color-progressive-oklch__h` and the whole
+ * wiki re-tints, surfaces and body text included.
+ *
+ * Coasterpedia's overrides live in MediaWiki:Citizen.css (vendored at
+ * sources/Citizen.css) and MediaWiki:Common.css (sources/Common.css). They are
+ * short, and they make exactly four decisions:
+ *
+ *   1. --color-progressive is the brand green, oklch(68.11% 0.1827 135.19).
+ *      ONE value for both themes — light mode does NOT darken it.
+ *   2. Links are BLUE. Citizen.css sets `a { --color-link: #36c }` and
+ *      --color-visited: #36c, so visited links do not change colour.
+ *   3. Light surface-0 and surface-1 are pure white (L 100%, surface-1 at
+ *      chroma 0). Dark surface-0 is L 16%.
+ *   4. .citizen-header is filled with --color-progressive — the green in the
+ *      interface is CHROME, not link colour.
+ *
+ * So: green is the frame, blue is the text you click. Getting these two the
+ * wrong way round is the single easiest way to make a mock look un-Coasterpedia.
+ *
+ * Surfaces 2–4 keep Citizen's default 0.01 chroma at the brand hue, which is why
+ * cards read very faintly green (#fdfffa) against a pure-white page.
+ *
+ * Light is the base theme; dark is applied by `.theme-dark`, mirroring
+ * Citizen's :root.skin-theme-clientpref-night.
+ */
+
+:root {
+	color-scheme: light;
+
+	/* ---- brand (MediaWiki:Common.css) -------------------------------- */
+	--primary: #60ae26;
+	--primary-highlight: #69be2a;
+	--secondary: #006cb0;
+	--tiltawiki: #870d4e;
+
+	--color-brand-green: #60ae26;
+	--color-brand-green-oklch__l: 68.11%;
+	--color-brand-green-oklch__c: 0.1827;
+	--color-brand-green-oklch__h: 135.19;
+
+	/* ---- generator channels ------------------------------------------ */
+	--color-hue: var(--color-brand-green-oklch__h);
+
+	/* Citizen.css sets these three explicitly — the brand green, unchanged
+	 * between light and dark. */
+	--color-progressive-oklch__l: var(--color-brand-green-oklch__l);
+	--color-progressive-oklch__c: var(--color-brand-green-oklch__c);
+	--color-progressive-oklch__h: var(--color-hue);
+
+	/* Light: pure white page and pure white surface-1. Surfaces 2+ keep
+	 * Citizen's 0.01 tint at the brand hue. */
+	--color-surface-0-oklch__l: 100%;
+	--color-surface-0-oklch__c: 0.01;
+	--color-surface-1-oklch__l: 100%;
+	--color-surface-1-oklch__c: 0;
+
+	--color-emphasized-oklch__l: 5%;
+	--color-emphasized-oklch__c: 0.07;
+	--color-base-oklch__l: 20%;
+	--color-base-oklch__c: 0.09;
+	--color-subtle-oklch__l: 35%;
+	--color-subtle-oklch__c: 0.11;
+	--color-placeholder-oklch__l: 40%;
+	--color-disabled-oklch__l: 60%;
+
+	/* Surface levels step by this much per level. Negative in light (elevated
+	 * chrome sits slightly darker than the page), positive in dark. */
+	--delta-lightness-surface-base: -2%; /* @kind other */
+	--delta-lightness-hover-state: 4%; /* @kind other */
+	--delta-lightness-active-state: -4%; /* @kind other */
+
+	/* ---- progressive (primary accent) -------------------------------- */
+	--color-progressive: oklch(var(--color-progressive-oklch__l) var(--color-progressive-oklch__c) var(--color-progressive-oklch__h));
+	--color-progressive--hover: oklch(calc(var(--color-progressive-oklch__l) + var(--delta-lightness-hover-state)) var(--color-progressive-oklch__c) var(--color-progressive-oklch__h));
+	--color-progressive--active: oklch(calc(var(--color-progressive-oklch__l) + var(--delta-lightness-active-state)) var(--color-progressive-oklch__c) var(--color-progressive-oklch__h));
+
+	/* ---- surfaces ---------------------------------------------------- */
+	--color-surface-0: oklch(var(--color-surface-0-oklch__l) var(--color-surface-0-oklch__c) var(--color-hue));
+	--color-surface-1: oklch(var(--color-surface-1-oklch__l) var(--color-surface-1-oklch__c) var(--color-hue));
+	--color-surface-2: oklch(calc(var(--color-surface-0-oklch__l) + 2 * var(--delta-lightness-surface-base)) var(--color-surface-0-oklch__c) var(--color-hue));
+	--color-surface-3: oklch(calc(var(--color-surface-0-oklch__l) + 3 * var(--delta-lightness-surface-base)) var(--color-surface-0-oklch__c) var(--color-hue));
+	--color-surface-4: oklch(calc(var(--color-surface-0-oklch__l) + 4 * var(--delta-lightness-surface-base)) var(--color-surface-0-oklch__c) var(--color-hue));
+
+	--color-surface-1--hover: oklch(calc(var(--color-surface-0-oklch__l) + var(--delta-lightness-surface-base) - var(--delta-lightness-hover-state)) var(--color-surface-0-oklch__c) var(--color-hue));
+	--color-surface-1--active: oklch(calc(var(--color-surface-0-oklch__l) + var(--delta-lightness-surface-base) - var(--delta-lightness-active-state)) var(--color-surface-0-oklch__c) var(--color-hue));
+	--color-surface-2--hover: oklch(calc(var(--color-surface-0-oklch__l) + 2 * var(--delta-lightness-surface-base) - var(--delta-lightness-hover-state)) var(--color-surface-0-oklch__c) var(--color-hue));
+	--color-surface-2--active: oklch(calc(var(--color-surface-0-oklch__l) + 2 * var(--delta-lightness-surface-base) - var(--delta-lightness-active-state)) var(--color-surface-0-oklch__c) var(--color-hue));
+
+	/* ---- text -------------------------------------------------------- */
+	--color-emphasized: oklch(var(--color-emphasized-oklch__l) var(--color-emphasized-oklch__c) var(--color-hue));
+	--color-base: oklch(var(--color-base-oklch__l) var(--color-base-oklch__c) var(--color-hue));
+	--color-subtle: oklch(var(--color-subtle-oklch__l) var(--color-subtle-oklch__c) var(--color-hue));
+	--color-placeholder: oklch(var(--color-placeholder-oklch__l) var(--color-subtle-oklch__c) var(--color-hue));
+	--color-disabled: oklch(var(--color-disabled-oklch__l) 0.02 var(--color-hue));
+	--color-inverted-primary: #fff;
+	--color-inverted-fixed: #fff;
+
+	/* ---- links ------------------------------------------------------- */
+	/* Citizen.css: `a { --color-link: #36c }`. Links are BLUE, not green, and
+	 * --color-visited is the same blue — visited links do not change colour.
+	 * Only red links differ. */
+	--color-link: #36c;
+	--color-link--hover: #447ff5;
+	--color-link--active: #2a4b8d;
+	--color-link-red: #d73333;
+	--color-visited: #36c;
+	--color-visited--hover: #447ff5;
+	--color-visited--active: #2a4b8d;
+
+	/* ---- semantic state ---------------------------------------------- */
+	--color-destructive__h: 340;
+	--color-destructive__l: 40%;
+	--color-success__h: 170;
+	--color-success__l: 17%;
+	--color-warning__h: 48;
+	--color-warning__l: 40%;
+	--color-destructive: oklch(var(--color-destructive__l) 0.17 var(--color-destructive__h));
+	--color-destructive--hover: oklch(calc(var(--color-destructive__l) + 4%) 0.17 var(--color-destructive__h));
+	--color-destructive--active: oklch(calc(var(--color-destructive__l) - 4%) 0.17 var(--color-destructive__h));
+	--color-success: oklch(var(--color-success__l) 0.11 var(--color-success__h));
+	--color-warning: oklch(var(--color-warning__l) 0.13 var(--color-warning__h));
+
+	/* Status colours are literal CSS keywords in Common.css — not tokens, not
+	 * tuned. Module:Status emits .status-pill--<slug> against these three. */
+	--color-status-active: green;
+	--color-status-transitional: orange;
+	--color-status-ended: red;
+
+	/* Rankings table row tints (Common.css) */
+	--background-color-rankings-current: #ffe6bd;
+	--background-color-rankings-notoperating: #dddddd;
+	--background-color-rankings-underconstruction: #d0e7ff;
+
+	/* Header chrome. Citizen.css fills .citizen-header with the green and
+	 * forces its icons to full opacity in --color-surface-0. */
+	--background-color-header: var(--color-progressive);
+	--color-header-icon: var(--color-surface-0);
+
+	/* ---- component backgrounds --------------------------------------- */
+	--background-color-progressive: var(--color-progressive);
+	--background-color-progressive--hover: var(--color-progressive--hover);
+	--background-color-progressive--active: var(--color-progressive--active);
+	--background-color-destructive: var(--color-destructive);
+	--background-color-destructive--hover: var(--color-destructive--hover);
+	--background-color-destructive--active: var(--color-destructive--active);
+	--background-color-icon: transparent;
+	--background-color-icon--hover: var(--color-surface-2);
+	--background-color-icon--active: var(--color-surface-3);
+	--background-color-button-quiet--hover: var(--color-surface-2);
+	--background-color-button-quiet--active: var(--color-surface-3);
+	--background-color-interactive-subtle: var(--color-surface-2);
+
+	/* ---- syntax (SyntaxHighlight, Material palette) ------------------- */
+	--color-syntax-red: #e53935;
+	--color-syntax-orange: #f76d47;
+	--color-syntax-yellow: #e2931d;
+	--color-syntax-green: #91b859;
+	--color-syntax-cyan: #39adb5;
+	--color-syntax-blue: #6182b8;
+	--color-syntax-purple: #9c3eda;
+	--color-syntax-pink: #ff5370;
+
+	/* ---- filters / opacity ------------------------------------------- */
+	--filter-invert: none; /* @kind other */
+	--filter-invert-fixed: invert(1) hue-rotate(180deg); /* @kind other */
+	--filter-image-brightness: none; /* @kind other */
+	--backdrop-filter-frosted-glass: blur(16px) saturate(140%); /* @kind other */
+	--opacity-glass: 0.9; /* @kind other */
+	--opacity-icon-base: 0.66; /* @kind other */
+	--opacity-icon-base--hover: 0.87; /* @kind other */
+	--opacity-icon-base--active: 1; /* @kind other */
+	--backdrop-opacity: 0.65; /* @kind other */
+	--shadow-opacity: 0.03; /* @kind other */
+}
+
+.theme-dark {
+	color-scheme: dark;
+
+	/* --color-progressive is NOT re-declared: the green is identical in both
+	 * themes. Citizen.css only moves the surfaces. */
+	--color-surface-0-oklch__l: 16%;
+	--color-surface-0-oklch__c: 0.01;
+	--color-surface-1-oklch__l: calc(var(--color-surface-0-oklch__l) + var(--delta-lightness-surface-base));
+	--color-surface-1-oklch__c: 0.01;
+	--color-emphasized-oklch__l: 93%;
+	--color-emphasized-oklch__c: 0.03;
+	--color-base-oklch__l: 80%;
+	--color-base-oklch__c: 0.05;
+	--color-subtle-oklch__l: 70%;
+	--color-subtle-oklch__c: 0.07;
+	--color-placeholder-oklch__l: 60%;
+	--color-disabled-oklch__l: 50%;
+	--delta-lightness-surface-base: 2%; /* @kind other */
+
+	--color-destructive__l: 50%;
+	--color-success__l: 35%;
+	--color-warning__l: 60%;
+
+	--color-link-red: #ff6e6e;
+
+	--filter-invert: invert(1) hue-rotate(180deg); /* @kind other */
+	--filter-invert-fixed: none; /* @kind other */
+	--opacity-glass: 0.8; /* @kind other */
+	--shadow-opacity: 0.44; /* @kind other */
+}

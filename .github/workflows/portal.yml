@@ -1,0 +1,75 @@
+name: Developer portal
+
+# The Worker in DeveloperPortal/ (DR-010 §13.9). Runs when the portal
+# changes, and nightly, so the static pages' counts and showcase strip are at
+# most a day old.
+on:
+  push:
+    branches: [ "main" ]
+    paths: [ "DeveloperPortal/**", ".github/workflows/portal.yml" ]
+  pull_request:
+    branches: [ "main" ]
+    paths: [ "DeveloperPortal/**", ".github/workflows/portal.yml" ]
+  schedule:
+    # After the 04:45 rollup, so the home page reads the day's showcase.
+    - cron: "15 5 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: developer-portal-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: DeveloperPortal
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: DeveloperPortal/package-lock.json
+
+      - run: npm ci
+      # The build first: wrangler.toml's [assets] directory must exist.
+      - run: npm run build
+      - run: npm run typecheck
+      - run: npm test
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [ test ]
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: DeveloperPortal/package-lock.json
+
+      - run: npm ci
+
+      # Additive only, as for the API: the running code must suit the new schema.
+      - name: Apply D1 migrations
+        run: npx wrangler d1 migrations apply ACCOUNTS --remote
+
+      - name: Build and deploy
+        run: npm run deploy

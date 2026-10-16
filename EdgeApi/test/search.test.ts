@@ -58,6 +58,14 @@ describe('GET /v1/search', () => {
 		expect(await found('batman racer')).toEqual([]);
 	});
 
+	it('finds a park by a past name', async () => {
+		expect(await found('silver dollar')).toEqual([{
+			kind: 'park', id: 2156, name: 'Dollywood', matched: 'Silver Dollar City',
+			url: 'https://coasterpedia.net/wiki/Dollywood',
+		}]);
+		expect(await ids('/v1/parks?view=latest&q=goldrush')).toEqual([2156]);
+	});
+
 	it('answers in the view asked for, and by kind', async () => {
 		// Example Twin waits to settle, so the settled view doesn't know it.
 		expect((await (await get('/v1/search?q=twin+racer')).json<any>()).data).toEqual([]);
@@ -82,7 +90,7 @@ describe('GET /v1/search', () => {
 });
 
 describe('q on the lists', () => {
-	it('filters every list by name, past names included for attractions', async () => {
+	it('filters every list by name, past names included for attractions and parks', async () => {
 		expect(await ids('/v1/attractions?view=latest&q=colossus')).toEqual([169]);
 		expect(await ids('/v1/attractions?view=latest&q=racer')).toEqual([9101]);
 		// "the" is a word in Batman The Ride and Over the Hill 2; by height, both record one.

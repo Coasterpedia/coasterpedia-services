@@ -247,10 +247,43 @@ public class ProjectorTests
         Assert.Equal([new AttractionProduct(new Ref(3213, "Boomerang"), "Standard")], one.Products);
 
         // A complex: one member per link, as the infobox stores it.
-        var two = Map(Row(type: "water_slide", product: "[[SkyBOX (ProSlide product)|SkyBOX]]#[[TWISTER (ProSlide product)|TWISTER]]"), issues);
+        var two = Map(Row(product: "[[SkyBOX (ProSlide product)|SkyBOX]]#[[TWISTER (ProSlide product)|TWISTER]]"), issues);
         Assert.Equal([new AttractionProduct(new Ref(58664, "SkyBOX"), null), new AttractionProduct(new Ref(58307, "TWISTER"), null)],
             two.Products);
         Assert.Empty(issues);
+    }
+
+    private static ComponentRow Slot(int ordering, string product, string? variant = null) =>
+        new() { PageId = 1, Ordering = ordering, Product = product, Variant = variant };
+
+    [Fact]
+    public void A_water_slide_pairs_each_product_with_its_own_variant()
+    {
+        // Singha (Siam Park), 2026-10-16: two products, the second's variant only. The list rule would drop it.
+        var issues = new List<DataIssue>();
+        var c = Map(Row(type: "water_slide",
+            product: "[[SkyBOX (ProSlide product)|SkyBOX]]#[[TWISTER (ProSlide product)|TWISTER]]", variant: "TWISTER 45") with
+        {
+            Components = [Slot(2, "[[TWISTER (ProSlide product)|TWISTER]]", "TWISTER 45"), Slot(1, "[[SkyBOX (ProSlide product)|SkyBOX]]")],
+        }, issues);
+
+        Assert.Equal([new AttractionProduct(new Ref(58664, "SkyBOX"), null), new AttractionProduct(new Ref(58307, "TWISTER"), "TWISTER 45")],
+            c.Products);
+        Assert.Empty(issues);
+    }
+
+    [Fact]
+    public void A_water_slide_reads_only_its_components_and_a_repeated_product_is_published_once()
+    {
+        var issues = new List<DataIssue>();
+        Assert.Empty(Map(Row(type: "water_slide", product: "[[TWISTER (ProSlide product)|TWISTER]]"), issues).Products);
+
+        var c = Map(Row(type: "water_slide") with
+        {
+            Components = [Slot(1, "[[TWISTER (ProSlide product)|TWISTER]]", "TWISTER 45"), Slot(2, "[[TWISTER (ProSlide product)|TWISTER]]", "TWISTER 60")],
+        }, issues);
+        Assert.Equal([new AttractionProduct(new Ref(58307, "TWISTER"), "TWISTER 45")], c.Products);
+        Assert.Equal("named in two slots; only the first is published", Assert.Single(issues).Problem);
     }
 
     [Fact]

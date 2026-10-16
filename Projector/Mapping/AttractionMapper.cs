@@ -365,14 +365,20 @@ public static class AttractionMapper
     }
 
     /// <summary>
-    /// The infobox has one variant slot for the whole field, so a variant
-    /// belongs to a product only when the page names exactly one of each. Any
-    /// other shape is published without variants and reported: on 2026-10-12
-    /// that was two coasters, each with two products and one variant.
+    /// The coaster and ride infoboxes have one variant slot for the whole
+    /// field, so a variant belongs to a product only when the page names
+    /// exactly one of each. Any other shape is published without variants and
+    /// reported: on 2026-10-12 that was two coasters, each with two products
+    /// and one variant. Water slides pair each product with its own variant.
     /// </summary>
     private static List<AttractionProduct> Products(AttractionRow row, IReadOnlyDictionary<string, int> resolved,
         IReadOnlySet<int> productIds, List<DataIssue> issues)
     {
+        if (row.Type == "water_slide")
+        {
+            return SlideProducts(row, resolved, productIds, issues);
+        }
+
         var refs = ProductRefs(row.Product);
         var variants = FieldMapper.Split(row.ProductVariant).Select(Wikitext.Strip).Where(v => v.Length > 0).ToList();
         var paired = refs.Count == 1 && variants.Count == 1 ? variants[0] : null;
@@ -382,23 +388,55 @@ public static class AttractionMapper
                 refs.Count == 0 ? "a variant with no product" : $"{variants.Count} variants for {refs.Count} products; can't tell which goes with which"));
         }
 
-        // A red link is an article not written yet, not a problem: a Ref with no id.
-        var products = new List<AttractionProduct>(refs.Count);
-        foreach (var (target, r) in refs)
+        return refs.Select(x => new AttractionProduct(Product(row.PageId, x.Target, x.Ref, resolved, productIds, issues), paired)).ToList();
+    }
+
+    /// <summary>
+    /// A water slide's products from Water_Slide_Components, in slot order,
+    /// each with its own variant. One row per Product member since the
+    /// 2026-10-12 rebuild, so the pairing is the page's own. A product named in
+    /// two slots is published once, from the first, and reported (none was on
+    /// 2026-10-16).
+    /// </summary>
+    private static List<AttractionProduct> SlideProducts(AttractionRow row, IReadOnlyDictionary<string, int> resolved,
+        IReadOnlySet<int> productIds, List<DataIssue> issues)
+    {
+        var products = new List<AttractionProduct>();
+        var seen = new HashSet<string>();
+        foreach (var c in row.Components.OrderBy(c => c.Ordering))
         {
-            var product = r;
-            if (target != null && resolved.TryGetValue(target, out var id))
+            var (target, r) = Wikitext.Refs(c.Product).FirstOrDefault();
+            if (r == null)
             {
-                product = r with { Id = id };
-                if (!productIds.Contains(id))
-                {
-                    issues.Add(new DataIssue(row.PageId, "products", target, "links a page that is not a product"));
-                }
+                continue;
             }
 
-            products.Add(new AttractionProduct(product, paired));
+            if (!seen.Add(target ?? "\0" + r.Name))
+            {
+                issues.Add(new DataIssue(row.PageId, "products", target ?? r.Name, "named in two slots; only the first is published"));
+                continue;
+            }
+
+            products.Add(new AttractionProduct(Product(row.PageId, target, r, resolved, productIds, issues), Text(c.Variant)));
         }
 
         return products;
+    }
+
+    /// <summary>The Ref with its page's id. A red link is an article not written yet, not a problem: a Ref with no id.</summary>
+    private static Ref Product(int pageId, string? target, Ref r, IReadOnlyDictionary<string, int> resolved,
+        IReadOnlySet<int> productIds, List<DataIssue> issues)
+    {
+        if (target == null || !resolved.TryGetValue(target, out var id))
+        {
+            return r;
+        }
+
+        if (!productIds.Contains(id))
+        {
+            issues.Add(new DataIssue(pageId, "products", target, "links a page that is not a product"));
+        }
+
+        return r with { Id = id };
     }
 }

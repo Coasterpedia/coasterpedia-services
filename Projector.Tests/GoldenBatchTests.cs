@@ -213,9 +213,10 @@ public class GoldenBatchTests
             Country = "USA", State = "Ohio", Location = "Sandusky", Website = "http://cedarpoint.com/", Lat = 41.48,
             Lon = -82.6825,
             OpenedEdtf = "1870", OpenedEarliest = "1870-01-01", OpenedLatest = "1870-12-31",
-            // Live History rows, 2026-10-13: three owners, the first unlinked.
+            // Live History rows, 2026-10-13: three owners, the first unlinked. Never renamed, so no names.
             History =
             [
+                new() { PageId = 182, Type = "name", Name = "Cedar Point", Position = 1 },
                 new() { PageId = 182, Type = "owner", Name = "[[Six Flags]]", Start = "2024-01-01", StartPrecision = 3, Position = 1 },
                 new()
                 {
@@ -235,9 +236,30 @@ public class GoldenBatchTests
             Country = "USA", State = "Tennessee", Location = "Pigeon Forge", Website = "http://dollywood.com",
             Lat = 35.796504, Lon = -83.533699,
             OpenedEdtf = "1961", OpenedEarliest = "1961-01-01", OpenedLatest = "1961-12-31",
-            // One spell, two owners; the second an interwiki link with no page here.
+            // One spell, two owners; the second an interwiki link with no page here. Five names (live 2026-10-16).
             History =
             [
+                new() { PageId = 2156, Type = "name", Name = "Dollywood", Start = "1986-01-01", StartPrecision = 3, Position = 1 },
+                new()
+                {
+                    PageId = 2156, Type = "name", Name = "Silver Dollar City", Start = "1976-01-01", StartPrecision = 3,
+                    End = "1986-01-01", EndPrecision = 3, Position = 2,
+                },
+                new()
+                {
+                    PageId = 2156, Type = "name", Name = "Goldrush", Start = "1975-01-01", StartPrecision = 3,
+                    End = "1975-01-01", EndPrecision = 3, Position = 3,
+                },
+                new()
+                {
+                    PageId = 2156, Type = "name", Name = "Goldrush Junction", Start = "1970-01-01", StartPrecision = 3,
+                    End = "1974-01-01", EndPrecision = 3, Position = 4,
+                },
+                new()
+                {
+                    PageId = 2156, Type = "name", Name = "Rebel Railroad", Start = "1961-01-01", StartPrecision = 3,
+                    End = "1969-01-01", EndPrecision = 3, Position = 5,
+                },
                 new()
                 {
                     PageId = 2156, Type = "owner", Position = 1,

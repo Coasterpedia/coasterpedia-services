@@ -1,0 +1,23 @@
+/* Borders and radii. Radii are a small set — 4 / 8 / 12 / pill — and the wiki
+ * uses 8px (`medium`) for anything card-shaped, 4px for chips and thumbnails. */
+:root {
+	--border-width-base: 1px;
+	--border-width-thick: 2px;
+
+	--border-radius-sharp: 0;
+	--border-radius-base: 4px;
+	--border-radius-medium: 8px;
+	--border-radius-large: 12px;
+	--border-radius-pill: 9999px;
+	--border-radius-circle: 50%;
+
+	--border-color-base: color-mix(in oklab, var(--color-base) 22%, transparent);
+	--border-color-subtle: color-mix(in oklab, var(--color-base) 12%, transparent);
+	--border-color-muted: color-mix(in oklab, var(--color-base) 8%, transparent);
+	--border-color-interactive: color-mix(in oklab, var(--color-base) 30%, transparent);
+	--border-color-progressive: var(--color-progressive);
+	--border-color-progressive--focus: var(--color-progressive);
+
+	--border-base: var(--border-width-base) solid var(--border-color-base);
+	--border-subtle: var(--border-width-base) solid var(--border-color-subtle);
+}

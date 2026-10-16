@@ -1,0 +1,1017 @@
+/* The portal's own layout (DR-010 §13.2). build/css.ts puts Citizen's token
+ * values and the wiki's primitives (vendor/) above this, so everything here
+ * reads the same tokens the wiki does. Rules from CLAUDE.md's design
+ * standard: cards framed, text 1rem, sentence case, links #36c, buttons 4px,
+ * round means state. */
+
+:root {
+	/* Text on the brand green, in both themes: white on it is about 2.8:1,
+	 * near-black about 7:1 (§13.2). The one colour the portal adds. */
+	--portal-on-green: oklch( 5% 0.07 135.19 );
+	--portal-width: 1120px;
+	/* Codex's, read from the wiki's load.php on 2026-10-16: the primitives
+	 * use it and Design/tokens doesn't carry it. */
+	--line-height-xx-small: 1.375;
+}
+
+/* Citizen zeroes every transition under reduced motion; the portal has no
+ * Citizen, so it carries that one global rule itself (DR-007). */
+@media ( prefers-reduced-motion: reduce ) {
+	*, ::before, ::after {
+		transition-duration: 0ms !important;
+		animation-duration: 0ms !important;
+	}
+}
+
+/* ── Elements ─────────────────────────────────────────────────────────── */
+
+html {
+	-webkit-text-size-adjust: 100%;
+}
+
+body {
+	display: flex;
+	flex-direction: column;
+	min-height: 100vh;
+	margin: 0;
+	background-color: var( --color-surface-0 );
+	color: var( --color-base );
+	font-family: var( --font-family-base );
+	font-size: var( --font-size-medium );
+	line-height: var( --line-height-medium );
+	-webkit-font-smoothing: antialiased;
+}
+
+a {
+	color: var( --color-link );
+	text-decoration: none;
+}
+
+a:visited {
+	color: var( --color-visited );
+}
+
+a:hover {
+	color: var( --color-link--hover );
+	text-decoration: underline;
+}
+
+h1, h2, h3, h4 {
+	margin: 0;
+	color: var( --color-emphasized );
+	font-weight: var( --font-weight-bold );
+	text-wrap: pretty;
+}
+
+h1 {
+	font-size: 2rem;
+	line-height: 1.2;
+}
+
+h2 {
+	font-size: var( --font-size-xx-large );
+	line-height: var( --line-height-xx-large );
+}
+
+h3 {
+	font-size: var( --font-size-large );
+	line-height: var( --line-height-large );
+}
+
+p {
+	margin: 0;
+}
+
+code, pre, kbd {
+	font-family: var( --font-family-monospace );
+}
+
+code {
+	font-size: 0.9375em;
+	color: var( --color-emphasized );
+}
+
+:focus-visible {
+	outline: 2px solid var( --outline-color-progressive--focus );
+	outline-offset: 2px;
+}
+
+.visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect( 0 0 0 0 );
+	white-space: nowrap;
+}
+
+.skip-link {
+	position: absolute;
+	left: 16px;
+	top: -100px;
+	padding: 8px 12px;
+	border-radius: var( --border-radius-base );
+	background-color: var( --color-surface-1 );
+	color: var( --color-emphasized );
+	z-index: 10;
+}
+
+.skip-link:focus {
+	top: 8px;
+}
+
+.wrap {
+	box-sizing: border-box;
+	width: 100%;
+	max-width: var( --portal-width );
+	margin-inline: auto;
+	padding-inline: 16px;
+}
+
+.meta {
+	color: var( --color-subtle );
+	font-size: var( --font-size-small );
+}
+
+.lede {
+	font-size: var( --font-size-large );
+	line-height: 1.55;
+}
+
+/* ── Header and footer ────────────────────────────────────────────────── */
+
+/* Green chrome, dark text (§13.2). */
+.portal-header {
+	background-color: var( --color-progressive );
+	color: var( --portal-on-green );
+}
+
+.portal-header__inner {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px 32px;
+	padding-block: 12px;
+}
+
+.portal-header a,
+.portal-header a:visited {
+	color: var( --portal-on-green );
+}
+
+.portal-header__brand {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+	font-size: var( --font-size-x-large );
+	font-weight: var( --font-weight-bold );
+}
+
+.portal-header__brand span {
+	font-size: var( --font-size-medium );
+	font-weight: var( --font-weight-normal );
+}
+
+.portal-header__brand:hover {
+	text-decoration: none;
+}
+
+.portal-header__nav {
+	display: flex;
+	flex: 1 1 auto;
+	flex-wrap: wrap;
+	gap: 4px 24px;
+	font-weight: var( --font-weight-medium );
+}
+
+.portal-header__nav a[ aria-current='page' ] {
+	text-decoration: underline;
+	text-decoration-thickness: 2px;
+	text-underline-offset: 6px;
+}
+
+.portal-header__user {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	font-weight: var( --font-weight-medium );
+}
+
+.portal-header .portal-header__signin,
+.portal-header .portal-header__signin:visited {
+	border-color: transparent;
+	color: var( --portal-on-green );
+	background-color: #fff;
+}
+
+.portal-main {
+	flex: 1 0 auto;
+}
+
+.portal-footer {
+	border-top: var( --border-subtle );
+	color: var( --color-subtle );
+	font-size: var( --font-size-small );
+}
+
+.portal-footer__inner {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 24px;
+	padding-block: 24px;
+}
+
+.portal-footer__signout {
+	margin: 0;
+}
+
+/* ── Controls ─────────────────────────────────────────────────────────── */
+
+.btn {
+	box-sizing: border-box;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 44px;
+	padding: 0 16px;
+	border: var( --border-base );
+	border-radius: var( --border-radius-base );
+	background-color: var( --color-surface-1 );
+	color: var( --color-emphasized );
+	font: inherit;
+	font-weight: var( --font-weight-medium );
+	text-decoration: none;
+	white-space: nowrap;
+	cursor: pointer;
+	transition: var( --transition-hover );
+	transition-property: border-color, background-color, color;
+}
+
+.btn:visited {
+	color: var( --color-emphasized );
+}
+
+.btn:hover {
+	border-color: var( --color-progressive );
+	color: var( --color-emphasized );
+	text-decoration: none;
+}
+
+.btn--primary,
+.btn--primary:visited {
+	border-color: var( --color-progressive );
+	background-color: var( --color-progressive );
+	color: var( --portal-on-green );
+	font-weight: var( --font-weight-bold );
+}
+
+.btn--primary:hover {
+	border-color: var( --color-progressive--hover );
+	background-color: var( --color-progressive--hover );
+	color: var( --portal-on-green );
+}
+
+.btn--danger,
+.btn--danger:visited {
+	border-color: transparent;
+	background-color: transparent;
+	color: var( --color-destructive );
+}
+
+.btn--danger:hover {
+	border-color: var( --color-destructive );
+	color: var( --color-destructive );
+}
+
+.btn--danger-fill,
+.btn--danger-fill:hover {
+	border-color: var( --color-destructive );
+	background-color: var( --color-destructive );
+	color: #fff;
+}
+
+.link-button {
+	padding: 0;
+	border: 0;
+	background: none;
+	color: var( --color-link );
+	font: inherit;
+	cursor: pointer;
+}
+
+.link-button:hover {
+	color: var( --color-link--hover );
+	text-decoration: underline;
+}
+
+.form {
+	display: flex;
+	flex-direction: column;
+	gap: 28px;
+}
+
+.form__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 16px;
+	margin: 0;
+}
+
+.field {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+.field--ruled {
+	padding-top: 20px;
+	border-top: var( --border-subtle );
+}
+
+.field__label {
+	padding: 0;
+	color: var( --color-emphasized );
+	font-weight: var( --font-weight-medium );
+}
+
+.field__help {
+	color: var( --color-subtle );
+	font-size: var( --font-size-small );
+}
+
+.input {
+	box-sizing: border-box;
+	width: 100%;
+	min-height: 44px;
+	padding: 8px 12px;
+	border: 1px solid var( --border-color-interactive );
+	border-radius: var( --border-radius-base );
+	background-color: var( --color-surface-1 );
+	color: var( --color-emphasized );
+	font: inherit;
+}
+
+.input:focus {
+	border-color: var( --border-color-progressive--focus );
+	outline: 2px solid var( --outline-color-progressive--focus );
+	outline-offset: 0;
+}
+
+.check {
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+	cursor: pointer;
+}
+
+.check input {
+	flex: none;
+	width: 20px;
+	height: 20px;
+	margin: 3px 0 0;
+	accent-color: var( --color-progressive );
+}
+
+/* The platform choice is radios, so the form works without a script. The
+ * primitive keys its selection on aria-pressed; a checked radio is the same
+ * state, painted the same way. */
+.portal-segmented {
+	flex-wrap: wrap;
+	align-self: flex-start;
+}
+
+.portal-segmented .t-segmented__option {
+	display: inline-flex;
+	align-items: center;
+	min-height: 36px;
+	box-sizing: border-box;
+}
+
+.portal-segmented .t-segmented__option input {
+	position: absolute;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.portal-segmented .t-segmented__option:has( input:checked ) {
+	background-color: var( --background-color-progressive-subtle );
+	box-shadow: inset 0 0 0 1px var( --color-subtle );
+	color: var( --color-emphasized );
+	font-weight: var( --font-weight-medium );
+}
+
+.portal-segmented .t-segmented__option:has( input:focus-visible ) {
+	outline: 2px solid var( --outline-color-progressive--focus );
+	outline-offset: -2px;
+}
+
+.facets {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: 0;
+}
+
+/* A state, so round; uncoloured, because green, orange and red belong to
+ * lifecycle and type (§13.3). */
+.pill {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 10px;
+	border: var( --border-base );
+	border-radius: var( --border-radius-pill );
+	color: var( --color-subtle );
+	font-size: var( --font-size-x-small );
+	font-weight: var( --font-weight-medium );
+	line-height: 1.25;
+	white-space: nowrap;
+}
+
+.notice {
+	padding: 12px 16px;
+	border-radius: var( --border-radius-medium );
+	background-color: var( --color-surface-2 );
+	color: var( --color-emphasized );
+}
+
+.notice--error {
+	border: 1px solid var( --color-destructive );
+	background-color: transparent;
+}
+
+.notice ul {
+	margin: 4px 0 0;
+	padding-left: 20px;
+}
+
+.code {
+	margin: 0;
+	padding: 12px 16px;
+	overflow-x: auto;
+	border-radius: var( --border-radius-base );
+	background-color: var( --color-surface-2 );
+	color: var( --color-emphasized );
+	font-size: var( --font-size-small );
+	line-height: 1.6;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+/* ── Pages ────────────────────────────────────────────────────────────── */
+
+.page {
+	display: flex;
+	flex-direction: column;
+	gap: 32px;
+	padding-block: 48px 64px;
+}
+
+.page--narrow > * {
+	max-width: 46rem;
+}
+
+.page__head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: 16px 32px;
+}
+
+.page__intro {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	min-width: 0;
+}
+
+/* Beside the page's action, in a row. Not in .page itself, a column, where
+ * the basis would become a height. */
+.page__head .page__intro {
+	flex: 1 1 480px;
+}
+
+.page__foot {
+	max-width: 46rem;
+}
+
+.message {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	max-width: 46rem;
+}
+
+/* Your keys: a list read row by row, so no frame (§13.3). */
+.keys__row {
+	display: grid;
+	grid-template-columns: minmax( 0, 2.2fr ) minmax( 0, 1.4fr ) minmax( 0, 1.8fr ) auto;
+	gap: 16px;
+	align-items: start;
+	padding-block: 20px;
+	border-bottom: var( --border-subtle );
+}
+
+.keys__row--head {
+	padding-block: 0 8px;
+	border-bottom: var( --border-base );
+	color: var( --color-subtle );
+	font-size: var( --font-size-small );
+}
+
+.keys__project,
+.keys__key,
+.keys__showcase {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 4px;
+	min-width: 0;
+}
+
+.keys__project strong {
+	color: var( --color-emphasized );
+}
+
+.keys__showcase form {
+	margin: 0;
+}
+
+@media ( max-width: 760px ) {
+	.keys__row {
+		grid-template-columns: minmax( 0, 1fr );
+		gap: 12px;
+	}
+
+	.keys__row--head {
+		display: none;
+	}
+}
+
+.key-reveal {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px;
+}
+
+.key-reveal code {
+	padding: 12px 16px;
+	border: var( --border-base );
+	border-radius: var( --border-radius-base );
+	background-color: var( --color-surface-1 );
+	font-size: var( --font-size-medium );
+	word-break: break-all;
+}
+
+.listing-form__shot {
+	width: 320px;
+	max-width: 100%;
+	height: auto;
+	aspect-ratio: 16 / 10;
+	border-radius: var( --border-radius-base );
+	object-fit: cover;
+}
+
+/* ── Cards ────────────────────────────────────────────────────────────── */
+
+/* A thing beside siblings, holding a photo: framed (CLAUDE.md). */
+.card {
+	overflow: hidden;
+	border: var( --border-base );
+	border-radius: var( --border-radius-medium );
+	background-color: var( --color-surface-1 );
+}
+
+.projects {
+	display: grid;
+	grid-template-columns: repeat( auto-fill, minmax( min( 300px, 100% ), 1fr ) );
+	gap: 24px;
+}
+
+.project {
+	display: flex;
+	flex-direction: column;
+}
+
+/* A linked photo zooms on hover, as the wiki's thumbnails do; the box clips. */
+.project__shot {
+	--t-photo-placeholder-size: 20%;
+	position: relative;
+	display: block;
+	aspect-ratio: 16 / 10;
+	overflow: hidden;
+	background-color: var( --color-surface-3 );
+}
+
+.project__shot img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	transition: transform var( --transition-duration-medium ) var( --transition-timing-function-ease );
+}
+
+.project__shot:hover img {
+	transform: scale( 1.05 );
+}
+
+.project__body {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	gap: 8px;
+	padding: 16px;
+}
+
+.project__title {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.project__title a {
+	font-size: var( --font-size-large );
+	font-weight: var( --font-weight-bold );
+}
+
+.project__meta {
+	margin-top: auto;
+}
+
+.review-list {
+	display: flex;
+	flex-direction: column;
+	gap: 24px;
+}
+
+.review-entry {
+	display: grid;
+	grid-template-columns: minmax( 0, 2fr ) minmax( 0, 3fr );
+}
+
+.review-entry__shot {
+	--t-photo-placeholder-size: 20%;
+	position: relative;
+	width: 100%;
+	height: auto;
+	aspect-ratio: 16 / 10;
+	object-fit: cover;
+	background-color: var( --color-surface-3 );
+}
+
+.review-entry__body {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 20px;
+}
+
+.review-entry__body h2 {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	font-size: var( --font-size-x-large );
+}
+
+.review-entry__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: 16px 24px;
+	padding-top: 12px;
+	border-top: var( --border-subtle );
+}
+
+.review-entry__actions form {
+	margin: 0;
+}
+
+.review-entry__reject {
+	display: flex;
+	flex: 1 1 320px;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.review-entry__reject-row {
+	display: flex;
+	gap: 8px;
+}
+
+@media ( max-width: 760px ) {
+	.review-entry {
+		grid-template-columns: minmax( 0, 1fr );
+	}
+}
+
+.facts {
+	display: grid;
+	grid-template-columns: max-content minmax( 0, 1fr );
+	gap: 4px 16px;
+	margin: 0;
+}
+
+.facts dt {
+	color: var( --color-subtle );
+}
+
+.facts dd {
+	margin: 0;
+	overflow-wrap: anywhere;
+}
+
+/* ── Home ─────────────────────────────────────────────────────────────── */
+
+.hero {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 40px;
+	padding-block: 64px 48px;
+}
+
+.hero__text {
+	display: flex;
+	flex: 1 1 440px;
+	flex-direction: column;
+	gap: 20px;
+	min-width: 0;
+}
+
+.hero__text h1 {
+	font-size: 2.5rem;
+	line-height: 1.15;
+}
+
+.hero__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+}
+
+.hero__sample {
+	flex: 1 1 460px;
+	min-width: 0;
+}
+
+.sample {
+	overflow: hidden;
+	border: var( --border-base );
+	border-radius: var( --border-radius-medium );
+	background-color: var( --color-surface-2 );
+}
+
+.sample__label {
+	padding: 8px 16px;
+	border-bottom: var( --border-subtle );
+	color: var( --color-subtle );
+	font-size: var( --font-size-small );
+}
+
+.sample .code {
+	border-radius: 0;
+	background: none;
+}
+
+.sample .code + .sample__label {
+	border-top: var( --border-subtle );
+}
+
+.counts {
+	display: grid;
+	grid-template-columns: repeat( auto-fit, minmax( min( 200px, 100% ), 1fr ) );
+	gap: 16px;
+}
+
+.count {
+	padding: 16px 20px;
+}
+
+.count__number {
+	color: var( --color-emphasized );
+	font-size: 2rem;
+	font-weight: var( --font-weight-bold );
+	font-variant-numeric: tabular-nums;
+	line-height: 1.2;
+}
+
+.section {
+	display: flex;
+	flex-direction: column;
+	gap: 24px;
+	padding-block: 0 64px;
+}
+
+.gets {
+	display: grid;
+	grid-template-columns: repeat( auto-fit, minmax( min( 240px, 100% ), 1fr ) );
+	gap: 32px 40px;
+}
+
+.gets > div {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.strip {
+	border-top: var( --border-subtle );
+	background-color: var( --color-surface-2 );
+}
+
+.strip .section {
+	padding-block: 48px 56px;
+}
+
+.strip__head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 8px 24px;
+}
+
+/* ── Docs ─────────────────────────────────────────────────────────────── */
+
+.docs {
+	display: grid;
+	grid-template-columns: 220px minmax( 0, 1fr );
+	gap: 48px;
+	padding-block: 48px 64px;
+}
+
+@media ( max-width: 860px ) {
+	.docs {
+		grid-template-columns: minmax( 0, 1fr );
+		gap: 24px;
+	}
+}
+
+.docs-nav ul {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.docs-nav__heading {
+	margin-bottom: 8px;
+	color: var( --color-subtle );
+	font-size: var( --font-size-x-small );
+	font-weight: var( --font-weight-medium );
+}
+
+.docs-nav ul + .docs-nav__heading {
+	margin-top: 20px;
+}
+
+.docs-nav a[ aria-current='page' ] {
+	color: var( --color-emphasized );
+	font-weight: var( --font-weight-bold );
+}
+
+.prose {
+	max-width: 46rem;
+}
+
+.prose > * + * {
+	margin-top: 1em;
+}
+
+.prose h1 + * {
+	margin-top: 16px;
+}
+
+.prose h2 {
+	margin-top: 2em;
+	padding-bottom: 8px;
+	border-bottom: var( --border-subtle );
+}
+
+.prose h3 {
+	margin-top: 1.75em;
+}
+
+.prose h4 {
+	margin-top: 1.5em;
+	font-size: var( --font-size-medium );
+}
+
+.prose ul,
+.prose ol {
+	padding-left: 24px;
+}
+
+.prose li + li {
+	margin-top: 4px;
+}
+
+.prose :not( pre ) > code {
+	padding: 1px 4px;
+	border-radius: var( --border-radius-base );
+	background-color: var( --color-surface-2 );
+	overflow-wrap: anywhere;
+}
+
+.prose pre {
+	margin-inline: 0;
+	padding: 12px 16px;
+	overflow-x: auto;
+	border-radius: var( --border-radius-base );
+	background-color: var( --color-surface-2 );
+	font-size: var( --font-size-small );
+	line-height: 1.6;
+}
+
+.prose blockquote {
+	margin-inline: 0;
+	padding: 12px 16px;
+	border-radius: var( --border-radius-medium );
+	background-color: var( --color-surface-2 );
+}
+
+.prose table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: var( --font-size-medium );
+}
+
+.table-scroll {
+	overflow-x: auto;
+}
+
+.prose th,
+.prose td {
+	padding: 8px 12px 8px 0;
+	border-bottom: var( --border-subtle );
+	text-align: left;
+	vertical-align: top;
+}
+
+.prose th {
+	color: var( --color-subtle );
+	font-size: var( --font-size-small );
+	font-weight: var( --font-weight-medium );
+}
+
+.prose .endpoint {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 12px;
+}
+
+.prose .endpoint code {
+	padding: 0;
+	background: none;
+	font-size: var( --font-size-large );
+}
+
+/* A parameter or field name is read whole: it never breaks mid-word. */
+.prose td:first-child {
+	white-space: nowrap;
+}
+
+.prose td:first-child code {
+	overflow-wrap: normal;
+}
+
+/* An example response under an endpoint: one click to open, so the
+ * reference stays scannable. */
+.prose .example {
+	border: var( --border-base );
+	border-radius: var( --border-radius-medium );
+}
+
+.prose .example summary {
+	padding: 8px 16px;
+	color: var( --color-emphasized );
+	font-weight: var( --font-weight-medium );
+	cursor: pointer;
+}
+
+.prose .example[ open ] summary {
+	border-bottom: var( --border-subtle );
+}
+
+.prose .example .meta {
+	padding: 8px 16px 0;
+}
+
+.prose .example pre {
+	margin: 0;
+	max-height: 32rem;
+	overflow: auto;
+	border-radius: 0 0 var( --border-radius-medium ) var( --border-radius-medium );
+}
+

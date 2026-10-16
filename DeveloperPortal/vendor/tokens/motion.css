@@ -1,0 +1,22 @@
+/* Motion. Two durations only: 100ms for hover/press feedback, 250ms for
+ * anything that moves or reveals (menus, drawers, collapsibles). No bounce,
+ * no spring, no entrance animation on page content. */
+:root {
+	--transition-duration-base: 100ms; /* @kind other */
+	--transition-duration-medium: 250ms; /* @kind other */
+	--transition-delay-menu: 100ms; /* @kind other */
+
+	--transition-timing-function-ease: cubic-bezier(0.4, 0, 0.2, 1); /* @kind other */
+	--transition-timing-function-ease-in: cubic-bezier(0.4, 0, 1, 1); /* @kind other */
+	--transition-timing-function-ease-out: cubic-bezier(0, 0, 0.2, 1); /* @kind other */
+
+	--transition-hover: var(--transition-duration-base) var(--transition-timing-function-ease); /* @kind other */
+	--transition-menu: var(--transition-duration-medium) var(--transition-timing-function-ease-out); /* @kind other */
+}
+
+@media (prefers-reduced-motion: reduce) {
+	:root {
+		--transition-duration-base: 0ms; /* @kind other */
+		--transition-duration-medium: 0ms; /* @kind other */
+	}
+}

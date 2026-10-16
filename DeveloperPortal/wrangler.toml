@@ -1,0 +1,61 @@
+# The developer portal (DR-010 §13): its own Worker beside the API's
+# (§13.9). Public pages are static assets built by `npm run build`; the
+# script runs only for /auth, /account, /review and /showcase.
+name = "coasterpedia-developer-portal"
+main = "src/index.tsx"
+compatibility_date = "2026-08-20"
+routes = [
+  { pattern = "developer.coasterpedia.net", custom_domain = true },
+]
+# *.workers.dev skips the zone's WAF rules (§13.10).
+workers_dev = false
+
+# A request matching a file here never runs the Worker and isn't billed.
+# Nothing the Worker serves may share a path with one: the asset would win.
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+html_handling = "auto-trailing-slash"
+
+# Daily: usage rollup, the 90-day rule and the usage alert (§13.10).
+[triggers]
+crons = ["45 4 * * *"]
+
+[vars]
+WIKI_ORIGIN = "https://coasterpedia.net"
+PORTAL_ORIGIN = "https://developer.coasterpedia.net"
+# Set once the consumer is registered at Special:OAuthConsumerRegistration
+# (§7.2 step 2); OAUTH_CLIENT_SECRET is a Worker secret.
+OAUTH_CLIENT_ID = ""
+# Wiki user IDs allowed to review listings, comma-separated (§13.5).
+SHOWCASE_REVIEWERS = ""
+# SES (§13.7). SES_ACCESS_KEY_ID and SES_SECRET_ACCESS_KEY are Worker secrets.
+SES_REGION = "eu-west-2"
+MAIL_FROM = "developer@coasterpedia.net"
+# For the Analytics Engine SQL API and the GraphQL Analytics API (§13.10);
+# ANALYTICS_TOKEN (Account Analytics Read) is a Worker secret.
+CF_ACCOUNT_ID = ""
+USAGE_DATASET = "coasterpedia_api_usage"
+# Requests a day across every Worker on the account before the alert mails.
+USAGE_ALERT_DAILY = "200000"
+
+# Developers, keys and listings (§13.5). Created with
+# `wrangler d1 create coasterpedia-accounts`.
+[[d1_databases]]
+binding = "ACCOUNTS"
+database_name = "coasterpedia-accounts"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+# The API's key namespace: the API reads it, the portal writes it (§7.3 step 2).
+[[kv_namespaces]]
+binding = "KEYS"
+id = "c51bbf45a14f4fbbb57dd3a5cc08011d"
+
+# Showcase screenshots, re-encoded at upload; the original is never kept.
+[[r2_buckets]]
+binding = "SHOTS"
+bucket_name = "coasterpedia-showcase"
+
+[images]
+binding = "IMAGES"

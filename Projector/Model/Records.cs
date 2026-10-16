@@ -306,12 +306,18 @@ public sealed record ParkContent
 
     public IReadOnlyList<Ref>? Operators { get; init; }
 
-    /// <summary>Owner and operator spells from History; null when the page records none. Names wait for their own slice.</summary>
+    /// <summary>Past names and owner and operator spells from History; null when the page records none of them.</summary>
     public ParkHistory? History { get; init; }
 }
 
-/// <summary>A park's owner and operator spells, oldest first, as openapi.yaml Park.history.</summary>
-public sealed record ParkHistory(IReadOnlyList<DatedRef>? Owners, IReadOnlyList<DatedRef>? Operators);
+/// <summary>A park's names and owner and operator spells, each oldest first, as openapi.yaml Park.history.</summary>
+public sealed record ParkHistory(IReadOnlyList<ParkName>? Names, IReadOnlyList<DatedRef>? Owners, IReadOnlyList<DatedRef>? Operators);
+
+/// <summary>One name the park carried (openapi DatedNames). Dates are at Cargo's precision, null when not recorded.</summary>
+public sealed record ParkName(
+    string Name,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] DateValue? Start,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] DateValue? End);
 
 /// <summary>
 /// One company in one spell (openapi.yaml DatedRefs). A spell naming two

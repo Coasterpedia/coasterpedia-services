@@ -1,0 +1,14 @@
+/* Shadows. Citizen stacks two low-alpha layers rather than one soft blur, and
+ * multiplies the alpha by --shadow-opacity (0.03 light / 0.44 dark) so shadows
+ * survive on a dark page. Depth is mostly carried by surface lightness, not
+ * shadow — expect shadows to be almost invisible in light mode. */
+:root {
+	--box-shadow-color-alpha-base: oklch(0% 0 0 / calc(var(--shadow-opacity) * 1.4));
+	--box-shadow-color-alpha-small: oklch(0% 0 0 / var(--shadow-opacity));
+
+	--box-shadow-small: 0 1px 2px var(--box-shadow-color-alpha-small), 0 1px 3px var(--box-shadow-color-alpha-base);
+	--box-shadow-medium: 0 3px 6px var(--box-shadow-color-alpha-small), 0 3px 6px var(--box-shadow-color-alpha-base);
+	--box-shadow-large: 0 10px 20px var(--box-shadow-color-alpha-small), 0 6px 6px var(--box-shadow-color-alpha-base);
+	--box-shadow-border: inset 0 0 0 1px var(--border-color-subtle);
+	--box-shadow-focus: 0 0 0 2px var(--color-progressive);
+}

@@ -266,6 +266,54 @@ public class ParkTests
         Assert.Equal("attraction", Wire.Delete(1, null)["kind"]!.GetValue<string>());
     }
 
+    // ---- Names ---------------------------------------------------------------
+
+    private static HistoryRow Named(string name, int position, string? start = null, string? end = null) =>
+        new()
+        {
+            PageId = 182, Type = "name", Name = name, Position = position,
+            Start = start, StartPrecision = start == null ? null : 3, End = end, EndPrecision = end == null ? null : 3,
+        };
+
+    [Fact]
+    public void Names_come_oldest_first_with_their_dates()
+    {
+        var issues = new List<DataIssue>();
+        var p = Map(Row(name: "Dollywood") with
+        {
+            History = [Named("Dollywood", 1, "1986-01-01"), Named("Silver Dollar City", 2, "1976-01-01", "1986-01-01"), Named("Rebel Railroad", 3, "1961-01-01", "1969-01-01")],
+        }, issues);
+
+        Assert.Empty(issues);
+        Assert.Equal(["Rebel Railroad", "Silver Dollar City", "Dollywood"], p.History!.Names!.Select(n => n.Name));
+        Assert.Equal(new DateValue("1961", "1961-01-01", "1961-12-31"), p.History.Names![0].Start);
+        Assert.Null(p.History.Names![2].End);
+        Assert.Null(p.History.Owners);
+    }
+
+    [Fact]
+    public void A_park_never_renamed_has_no_history()
+    {
+        Assert.Null(Map(Row() with { History = [Named("Cedar Point", 1)] }).History);
+    }
+
+    [Fact]
+    public void A_placeholder_name_is_left_out_and_markup_is_stripped()
+    {
+        var p = Map(Row(name: "Kamataen") with { History = [Named("Kamataen", 1), Named("''unknown''", 2), Named("''Old Kamata''", 3)] });
+        Assert.Equal(["Old Kamata", "Kamataen"], p.History!.Names!.Select(n => n.Name));
+    }
+
+    [Fact]
+    public void A_park_name_carries_no_location_index_on_the_wire()
+    {
+        var p = Map(Row() with { History = [Named("Cedar Point", 1), Named("Cedar Point Pleasure Resort", 2)] });
+        var json = JsonSerializer.SerializeToNode(p.History, Wire.Json)!.AsObject();
+        var first = json["names"]![0]!.AsObject();
+        Assert.Equal(["name", "start", "end"], first.Select(kv => kv.Key));
+        Assert.Null(json["owners"]);
+    }
+
     [Fact]
     public void Status_values_parks_offer_apply_to_park_too()
     {

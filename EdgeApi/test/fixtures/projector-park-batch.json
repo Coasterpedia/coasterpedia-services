@@ -206,6 +206,69 @@
           }
         ],
         "history": {
+          "names": [
+            {
+              "name": "Rebel Railroad",
+              "start": {
+                "edtf": "1961",
+                "earliest": "1961-01-01",
+                "latest": "1961-12-31"
+              },
+              "end": {
+                "edtf": "1969",
+                "earliest": "1969-01-01",
+                "latest": "1969-12-31"
+              }
+            },
+            {
+              "name": "Goldrush Junction",
+              "start": {
+                "edtf": "1970",
+                "earliest": "1970-01-01",
+                "latest": "1970-12-31"
+              },
+              "end": {
+                "edtf": "1974",
+                "earliest": "1974-01-01",
+                "latest": "1974-12-31"
+              }
+            },
+            {
+              "name": "Goldrush",
+              "start": {
+                "edtf": "1975",
+                "earliest": "1975-01-01",
+                "latest": "1975-12-31"
+              },
+              "end": {
+                "edtf": "1975",
+                "earliest": "1975-01-01",
+                "latest": "1975-12-31"
+              }
+            },
+            {
+              "name": "Silver Dollar City",
+              "start": {
+                "edtf": "1976",
+                "earliest": "1976-01-01",
+                "latest": "1976-12-31"
+              },
+              "end": {
+                "edtf": "1986",
+                "earliest": "1986-01-01",
+                "latest": "1986-12-31"
+              }
+            },
+            {
+              "name": "Dollywood",
+              "start": {
+                "edtf": "1986",
+                "earliest": "1986-01-01",
+                "latest": "1986-12-31"
+              },
+              "end": null
+            }
+          ],
           "owners": [
             {
               "company": {

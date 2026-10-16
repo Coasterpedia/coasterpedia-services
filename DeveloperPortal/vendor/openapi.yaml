@@ -1,0 +1,2253 @@
+# The Coasterpedia API contract. Docs: https://developer.coasterpedia.net/docs/
+openapi: 3.1.0
+info:
+  title: Coasterpedia API
+  version: 1.0.0-beta
+  description: |
+    Structured data on amusement rides, parks and the companies behind them, from Coasterpedia. Read-only. The data is CC BY-SA 4.0, and every response says how to credit it.
+
+    Every request needs a User-Agent header. Without one, Cloudflare refuses the request with a 403 HTML page before it reaches the API. Name your project, its version, a web address and an email address, such as "RideCounter/1.2 (https://ridecounter.example; you@example.com)".
+  license:
+    name: CC BY-SA 4.0 (data)
+    url: https://creativecommons.org/licenses/by-sa/4.0/
+servers:
+  - url: https://api.coasterpedia.net/v1
+security:
+  - apiKey: []
+paths:
+  /attractions:
+    get:
+      summary: List attractions
+      security:
+        - apiKey: []
+        - session: []
+      parameters:
+        - name: type
+          in: query
+          schema:
+            $ref: "#/components/schemas/AttractionType"
+        - $ref: "#/components/parameters/status"
+        - $ref: "#/components/parameters/country"
+        - name: state
+          in: query
+          description: |
+            A US state or territory, as the wiki spells it ("New York"). Repeat the parameter for several (state=Ohio&state=Tennessee). Don't separate them with commas, because a name can contain one (Washington, D.C.).
+          schema:
+            type: string
+        - name: park
+          in: query
+          description: |
+            One park ID. Matches attractions at that park now, including ones stored there. An attraction that was there in the past doesn't match: use /parks/{id}/attractions?include=former for those. If the park was merged into another, its old ID still works.
+          schema:
+            type: integer
+        - name: manufacturer
+          in: query
+          description: |
+            One manufacturer ID. Matches any attraction that links to the manufacturer, including as a co-manufacturer. A manufacturer named without a link has no ID, so it can't match. If the manufacturer was merged into another, its old ID still works.
+          schema:
+            type: integer
+        - name: product
+          in: query
+          description: |
+            One product ID. Matches any attraction that links to the product, so a complex built from two products is listed under each. A product named without a link has no ID, so it can't match. If the product was merged into another, its old ID still works.
+          schema:
+            type: integer
+        - name: variant
+          in: query
+          description: Use with product. Matches the variant the attraction names beside the product, ignoring case.
+          schema:
+            type: string
+        - name: location_kind
+          in: query
+          schema:
+            $ref: "#/components/schemas/LocationKind"
+        - name: opened_from
+          in: query
+          description: The earliest opening year to include. An attraction matches only if it certainly opened in the range, so an opening recorded as '1989 or earlier' never matches.
+          schema:
+            type: integer
+        - name: opened_to
+          in: query
+          description: The latest opening year to include. It works the same way as opened_from.
+          schema:
+            type: integer
+        - $ref: "#/components/parameters/bbox"
+        - $ref: "#/components/parameters/updated_since"
+        - $ref: "#/components/parameters/q"
+        - name: sort
+          in: query
+          description: |
+            Sorting by height, speed or length ranks by the metric value, and leaves out attractions that don't record it. If you change the sort, start again without a cursor. The API refuses the old one.
+          schema:
+            type: string
+            enum:
+              - name
+              - -name
+              - opened
+              - -opened
+              - updated
+              - -updated
+              - height
+              - -height
+              - speed
+              - -speed
+              - length
+              - -length
+            default: name
+          x-beta: Sorting by opened ranks by opened.earliest, so an opening with no earliest day ([..1989]) is left out, as an unknown height is. Sorting by updated ranks by updated_at, the time the content last changed. With updated_since, it reads only what changed.
+        - $ref: "#/components/parameters/view"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/cursor"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttractionList"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        default:
+          $ref: "#/components/responses/Problem"
+  /attractions/facets:
+    get:
+      summary: Counts per filter for a set of attractions
+      description: |
+        Takes the same filters as /attractions, apart from sort, limit and cursor. Each list of counts leaves out its own filter, so choosing a country doesn't shrink the country list. ranges gives histograms of height, speed and length.
+      security:
+        - apiKey: []
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/view"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Facets"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /attractions/{id}:
+    get:
+      summary: One attraction
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - $ref: "#/components/parameters/view"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Attraction"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "301":
+          description: Merged into another attraction. The Location header gives the new address.
+        "404":
+          $ref: "#/components/responses/Problem"
+          description: There's no such attraction, or it isn't in the settled view yet. A page created by an editor the wiki doesn't trust appears there after 7 days. The problem's detail says which, and suggests view=latest.
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /parks:
+    get:
+      summary: List parks
+      security:
+        - apiKey: []
+        - session: []
+      parameters:
+        - $ref: "#/components/parameters/status"
+        - $ref: "#/components/parameters/country"
+        - name: state
+          in: query
+          description: |
+            A US state or territory, as the wiki spells it ("New York"). Repeat the parameter for several (state=Ohio&state=Tennessee). Don't separate them with commas, because a name can contain one (Washington, D.C.).
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: resort
+          in: query
+          description: Resort IDs (a park's resort.id), separated by commas
+          schema:
+            type: string
+            examples:
+              - "58420"
+              - 58420,57454
+        - $ref: "#/components/parameters/bbox"
+        - $ref: "#/components/parameters/updated_since"
+        - $ref: "#/components/parameters/q"
+        - name: sort
+          in: query
+          description: By name, ignoring case and accents. Use -name for reverse order.
+          schema:
+            type: string
+            enum:
+              - name
+              - -name
+            default: name
+        - $ref: "#/components/parameters/view"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/cursor"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkList"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /parks/{id}:
+    get:
+      summary: One park
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - $ref: "#/components/parameters/view"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Park"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "301":
+          description: Merged into another park. The Location header gives the new address.
+        "404":
+          $ref: "#/components/responses/Problem"
+          description: There's no such park, or it isn't in the settled view yet, as for attractions.
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /parks/{id}/attractions:
+    get:
+      summary: Attractions at a park, now or before
+      description: |
+        The same list as /attractions?park={id}, with that list's filters and sorts. By default it lists attractions at the park now, including ones stored there.
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - name: include
+          in: query
+          description: current lists attractions at the park now, including ones stored there. former lists attractions that were at the park in the past and aren't now (see history.locations). all lists both.
+          schema:
+            type: string
+            enum:
+              - current
+              - former
+              - all
+            default: current
+        - name: type
+          in: query
+          schema:
+            $ref: "#/components/schemas/AttractionType"
+        - $ref: "#/components/parameters/status"
+        - name: location_kind
+          in: query
+          schema:
+            $ref: "#/components/schemas/LocationKind"
+        - name: manufacturer
+          in: query
+          description: One manufacturer ID, as on /attractions
+          schema:
+            type: integer
+        - name: product
+          in: query
+          description: One product ID, as on /attractions
+          schema:
+            type: integer
+        - name: opened_from
+          in: query
+          description: Year, inclusive, as on /attractions
+          schema:
+            type: integer
+        - name: opened_to
+          in: query
+          description: Year, inclusive, as on /attractions
+          schema:
+            type: integer
+        - $ref: "#/components/parameters/updated_since"
+        - $ref: "#/components/parameters/q"
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum:
+              - name
+              - -name
+              - opened
+              - -opened
+              - updated
+              - -updated
+              - height
+              - -height
+              - speed
+              - -speed
+              - length
+              - -length
+            default: name
+        - $ref: "#/components/parameters/view"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/cursor"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttractionList"
+        "301":
+          description: The park was merged into another. The Location header gives that park's attractions.
+        "404":
+          $ref: "#/components/responses/Problem"
+          description: There's no such park. If the park exists but has no attractions, you get an empty list.
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /park-companies:
+    get:
+      summary: List park companies
+      parameters:
+        - $ref: "#/components/parameters/country"
+        - $ref: "#/components/parameters/updated_since"
+        - $ref: "#/components/parameters/q"
+        - $ref: "#/components/parameters/view"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/cursor"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkCompanyList"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /park-companies/{id}:
+    get:
+      summary: One park company
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - $ref: "#/components/parameters/view"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/ParkCompany"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /park-companies/{id}/parks:
+    get:
+      summary: Parks the company owns or operates, now or before
+      description: |
+        One item for each period the company owned or operated a park, taken from the parks' histories (see Park.history). A company that owned a park twice is listed twice. Sorted by park name. Within a park, owners come before operators, oldest first. The list isn't paged, because the longest, for Six Flags, has about 80 items.
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum:
+              - owner
+              - operator
+              - any
+            default: any
+        - name: include
+          in: query
+          schema:
+            type: string
+            enum:
+              - current
+              - former
+              - all
+            default: all
+        - $ref: "#/components/parameters/view"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        park:
+                          $ref: "#/components/schemas/Ref"
+                        role:
+                          type: string
+                          x-known-values:
+                            - owner
+                            - operator
+                          description: An open vocabulary. Today it's owner or operator.
+                        start:
+                          $ref: "#/components/schemas/DateValue"
+                        end:
+                          $ref: "#/components/schemas/DateValue"
+                        current:
+                          type: boolean
+                          description: As DatedRefs.current
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "301":
+          description: The company was merged into another. The Location header gives that company's parks.
+        "404":
+          $ref: "#/components/responses/Problem"
+          description: There's no such park company. If the company exists but has no parks, you get an empty list.
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /manufacturers:
+    get:
+      summary: List manufacturers
+      parameters:
+        - $ref: "#/components/parameters/status"
+        - $ref: "#/components/parameters/country"
+        - $ref: "#/components/parameters/updated_since"
+        - $ref: "#/components/parameters/q"
+        - name: sort
+          in: query
+          description: By name, ignoring case and accents. Use -name for reverse order.
+          schema:
+            type: string
+            enum:
+              - name
+              - -name
+            default: name
+        - $ref: "#/components/parameters/view"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/cursor"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManufacturerList"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /manufacturers/{id}:
+    get:
+      summary: One manufacturer
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - $ref: "#/components/parameters/view"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Manufacturer"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "301":
+          description: Merged into another manufacturer. The Location header gives the new address.
+        "404":
+          $ref: "#/components/responses/Problem"
+          description: There's no such manufacturer, or it isn't in the settled view yet, as for attractions.
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /manufacturers/{id}/products:
+    get:
+      summary: A manufacturer's products
+      description: |
+        The same list as /products?manufacturer={id}. It lists every product that links to the manufacturer, so a product two firms built together is listed under each.
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - name: type
+          in: query
+          schema:
+            $ref: "#/components/schemas/AttractionType"
+        - $ref: "#/components/parameters/status"
+        - name: sort
+          in: query
+          description: By name, ignoring case and accents. Use -name for reverse order.
+          schema:
+            type: string
+            enum:
+              - name
+              - -name
+            default: name
+        - $ref: "#/components/parameters/view"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/cursor"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductList"
+        "301":
+          description: The manufacturer was merged into another. The Location header gives that manufacturer's products.
+        "404":
+          $ref: "#/components/responses/Problem"
+          description: There's no such manufacturer. If it exists but has no products, you get an empty list.
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /products:
+    get:
+      summary: List products
+      parameters:
+        - name: type
+          in: query
+          schema:
+            $ref: "#/components/schemas/AttractionType"
+        - $ref: "#/components/parameters/status"
+        - name: manufacturer
+          in: query
+          description: One manufacturer ID. Matches products that link to it among their manufacturers. If the manufacturer was merged into another, its old ID still works.
+          schema:
+            type: integer
+        - $ref: "#/components/parameters/updated_since"
+        - $ref: "#/components/parameters/q"
+        - name: sort
+          in: query
+          description: By name, ignoring case and accents. Use -name for reverse order.
+          schema:
+            type: string
+            enum:
+              - name
+              - -name
+            default: name
+        - $ref: "#/components/parameters/view"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/cursor"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductList"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /products/{id}:
+    get:
+      summary: One product
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - $ref: "#/components/parameters/view"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Product"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "301":
+          description: Merged into another product. The Location header gives the new address.
+        "404":
+          $ref: "#/components/responses/Problem"
+          description: There's no such product, or it isn't in the settled view yet, as for attractions.
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /products/{id}/installations:
+    get:
+      summary: Attractions built as this product
+      description: |
+        The same list as /attractions?product={id}, with that list's filters and sorts. It includes attractions of every status, so a demolished installation still counts. The number of items in data, across all pages, is the product's installations count, in the same view.
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - name: variant
+          in: query
+          description: The variant the attraction names beside the product, ignoring case
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            $ref: "#/components/schemas/AttractionType"
+        - $ref: "#/components/parameters/status"
+        - $ref: "#/components/parameters/country"
+        - name: manufacturer
+          in: query
+          description: One manufacturer ID, as on /attractions
+          schema:
+            type: integer
+        - $ref: "#/components/parameters/bbox"
+        - $ref: "#/components/parameters/updated_since"
+        - $ref: "#/components/parameters/q"
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum:
+              - name
+              - -name
+              - opened
+              - -opened
+              - updated
+              - -updated
+              - height
+              - -height
+              - speed
+              - -speed
+              - length
+              - -length
+            default: name
+        - $ref: "#/components/parameters/view"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/cursor"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttractionList"
+        "301":
+          description: The product was merged into another. The Location header gives that product's installations.
+        "404":
+          $ref: "#/components/responses/Problem"
+          description: There's no such product. If it exists but was never built, you get an empty list.
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /search:
+    get:
+      summary: Search every resource by name
+      description: |
+        Searches every kind of record by name, with q working as it does on the lists. You get one result for each record, and matched is the name that matched, which can be a past name. Records whose current name matched come first, then the closest matches, then by name. Results aren't paged, and limit sets how many you get.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: As the q parameter on the lists
+          schema:
+            type: string
+            maxLength: 200
+        - name: types
+          in: query
+          description: Kinds of record, separated by commas, such as attraction,park
+          schema:
+            type: string
+        - $ref: "#/components/parameters/view"
+        - $ref: "#/components/parameters/limit"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind:
+                          type: string
+                          x-known-values:
+                            - attraction
+                            - park
+                            - park_company
+                            - manufacturer
+                            - product
+                        id:
+                          type: integer
+                        name:
+                          type: string
+                        matched:
+                          type: string
+                          description: The name that matched, which may be a past name
+                        url:
+                          type: string
+                          format: uri
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /changes:
+    get:
+      summary: What changed, in order
+      description: |
+        Lists the changes to every record, in the order they reached the API. A deleted record appears with op set to delete, and a merged one is a delete with merged_into set. You may get the same change twice, and applying it again does no harm. The change feed guide (https://developer.coasterpedia.net/docs/changes/) explains how to follow it.
+      parameters:
+        - name: since
+          in: query
+          required: true
+          description: A next_cursor from a previous call, or a time such as 2026-10-11T12:00:00Z. You get the changes recorded at or after it.
+          schema:
+            type: string
+        - name: kinds
+          in: query
+          description: Kinds of record, separated by commas. A kind we don't publish yet is refused with a 400.
+          schema:
+            type: string
+        - $ref: "#/components/parameters/view"
+        - $ref: "#/components/parameters/limit"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - kind
+                        - id
+                        - op
+                        - at
+                      properties:
+                        kind:
+                          type: string
+                          x-known-values:
+                            - attraction
+                            - park
+                            - park_company
+                            - manufacturer
+                            - product
+                        id:
+                          type: integer
+                        op:
+                          type: string
+                          enum:
+                            - upsert
+                            - delete
+                        revision:
+                          type: integer
+                          description: On an upsert, the revision the view now holds. If an edit was reverted to the settled version, this is that version's revision.
+                        merged_into:
+                          type:
+                            - integer
+                            - "null"
+                          description: On a delete, the record it was merged into, or null
+                        at:
+                          type: string
+                          format: date-time
+                          description: When the change reached the API
+                  meta:
+                    allOf:
+                      - $ref: "#/components/schemas/Meta"
+                      - type: object
+                        required:
+                          - next_cursor
+                          - has_more
+                          - delay
+                        properties:
+                          next_cursor:
+                            type: string
+                            description: Where your next call starts. It's always set.
+                          has_more:
+                            type: boolean
+                            description: If true, more changes are waiting. Call again now.
+                          delay:
+                            type: string
+                            format: duration
+                            examples:
+                              - PT0H
+                            description: How far behind real time your feed runs. Every key, free or paid, gets each change as soon as it reaches the API, so this is PT0H. It stays in the response in case we ever need to slow one key down.
+        "410":
+          description: The cursor or time is older than the change log reaches, or the log has been rebuilt since. Rebuild your copy from the lists.
+          $ref: "#/components/responses/Problem"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /vocabularies:
+    get:
+      summary: Every open vocabulary, as the wiki holds it now
+      description: |
+        The values each vocabulary field can take today, with the label the wiki shows for each, in the order the wiki's edit forms offer them. A new value appears here no later than in any record, and adding one doesn't change the API's version. type lists the wiki's own attraction types. Before the first list arrives, this answers 503.
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    description: "Keyed by field: type, status, and the products' track_material, support_material, restraints, classes, containment and slide_material. A field appears once a record we publish carries it."
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: object
+                        required:
+                          - value
+                          - label
+                        properties:
+                          value:
+                            type: string
+                            description: The value records use
+                          label:
+                            type: string
+                            description: The wiki's own wording, in sentence case
+                          applies_to:
+                            type: array
+                            items:
+                              type: string
+                            description: "The kinds of record whose wiki form offers this value: attraction types, park, manufacturer or product"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+  /session:
+    post:
+      summary: A browser session, for the site's own Attractions Browser
+      description: |
+        Swaps a Turnstile token from the browser's widget (action attraction-browser, on coasterpedia.net) for a session token, checked once with siteverify. Nothing is stored: the token is an HMAC over a random ID and its expiry. It lasts 30 minutes and is not bound to an IP. When a request with it is a 401, solve Turnstile again and retry once. It's for the site's own Attractions Browser. Use a key instead, which can read more, for longer.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - turnstile
+              properties:
+                turnstile:
+                  type: string
+                  maxLength: 2048
+                  description: The token the Turnstile widget returned
+      responses:
+        "200":
+          description: A session. Cache-Control is no-store.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - token
+                  - expires_at
+                properties:
+                  token:
+                    type: string
+                    pattern: ^cps_
+                    description: "Send as Authorization: Bearer cps_…"
+                  expires_at:
+                    type: string
+                    format: date-time
+        "400":
+          description: No turnstile token in the body
+        "403":
+          description: "turnstile-failed: Turnstile did not pass, or the token came from another host or widget"
+        "503":
+          description: turnstile-unavailable (siteverify unreachable, with Retry-After) or sessions-unavailable (not configured)
+  /meta:
+    get:
+      summary: Dataset state, counts and licence
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/view"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data_as_of:
+                    type: string
+                    format: date-time
+                  schema_version:
+                    type: string
+                  settle_after:
+                    type: string
+                    format: duration
+                    examples:
+                      - P7D
+                    description: How long a change by an editor the wiki doesn't trust has to stand before it settles
+                  changes_window:
+                    type: string
+                    format: duration
+                    examples:
+                      - P90D
+                    description: How far back /v1/changes reaches. If your copy is older than this, rebuild it from the lists.
+                  view:
+                    type: string
+                    description: The view the counts are in
+                  counts:
+                    type: object
+                    additionalProperties:
+                      type: integer
+                    description: Records per resource in the view asked for
+                  licence:
+                    $ref: "#/components/schemas/Licence"
+components:
+  securitySchemes:
+    apiKey:
+      type: http
+      scheme: bearer
+      description: "A key from the developer portal, sent as Authorization: Bearer cpk_…"
+    session:
+      type: http
+      scheme: bearer
+      description: |
+        Authorization: Bearer cps_… from POST /session. Only on /attractions, /attractions/facets and /parks, with view=latest written out (absent or settled is a 400 session-view) and limit at most 25 (400 session-limit); anywhere else a 403 session-scope. An expired token is a 401 session-expired; a malformed or badly signed one a 401 session-invalid, never served as anonymous. Limited per session, not per account.
+  parameters:
+    id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    status:
+      name: status
+      in: query
+      description: Statuses, separated by commas. Each value is one wiki status. For 'open now', list the statuses you count as open.
+      schema:
+        type: string
+    country:
+      name: country
+      in: query
+      description: ISO 3166-1 alpha-2 codes, separated by commas
+      schema:
+        type: string
+    bbox:
+      name: bbox
+      in: query
+      description: |
+        south,west,north,east in decimal degrees. If west is greater than east, the box crosses the antimeridian. Each side can be at most 20°. For a larger area, filter by country or state instead. Only records with coordinates can fall inside a box.
+      schema:
+        type: string
+    updated_since:
+      name: updated_since
+      in: query
+      description: |
+        Returns records whose content changed at or after this time (their updated_at), to the second. Give an RFC 3339 time with its offset. To keep a copy up to date, page through sort=updated on attractions, or follow /changes.
+      schema:
+        type: string
+        format: date-time
+    q:
+      name: q
+      in: query
+      description: |
+        Each word of two letters or more must match the start of a word in a name, ignoring case and accents, so "bat ride" finds Batman The Ride and "elan" finds Élan. We use the first six such words and ignore the rest, and we ignore one-letter words. If q has no word of two letters or more, it's refused. Attractions and parks are also found by their past names (history.names).
+      schema:
+        type: string
+        maxLength: 200
+    limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 25
+    view:
+      name: view
+      in: query
+      description: |
+        latest is the wiki now, 1–2 minutes behind. settled holds, for each record, the newest version that has stood for 7 days unchanged, or that only trusted editors made. Latest and settled (https://developer.coasterpedia.net/docs/views/) explains the difference.
+      schema:
+        type: string
+        enum:
+          - latest
+          - settled
+        default: settled
+    cursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+  headers:
+    RateLimit-Policy:
+      description: The limit your key is under, such as "burst";q=60;w=60, meaning 60 requests in any 60 seconds. Sent with every response to a request with a key.
+      schema:
+        type: string
+    RateLimit:
+      description: Sent only with a 429, as "burst";r=0;t=60. At other times we can't report how many requests you have left, because each Cloudflare location counts them separately.
+      schema:
+        type: string
+    Retry-After:
+      description: Seconds to wait before trying again
+      schema:
+        type: integer
+    Cache-Control:
+      description: Sent with a 200. It's private, max-age=30 for a request with a key, and public, max-age=30 for one without.
+      schema:
+        type: string
+    Age:
+      description: How many seconds this answer has been in Cloudflare's cache, or 0 when it came straight from the database
+      schema:
+        type: integer
+  responses:
+    TooManyRequests:
+      description: Over your key's limit (RateLimit-Policy). Wait for the number of seconds in Retry-After.
+      headers:
+        RateLimit-Policy:
+          $ref: "#/components/headers/RateLimit-Policy"
+        RateLimit:
+          $ref: "#/components/headers/RateLimit"
+        Retry-After:
+          $ref: "#/components/headers/Retry-After"
+      content:
+        application/problem+json:
+          schema:
+            type: object
+            properties:
+              type:
+                type: string
+              title:
+                type: string
+              status:
+                type: integer
+              detail:
+                type: string
+    Problem:
+      description: An error (RFC 9457)
+      content:
+        application/problem+json:
+          schema:
+            type: object
+            properties:
+              type:
+                type: string
+              title:
+                type: string
+              status:
+                type: integer
+              detail:
+                type: string
+  schemas:
+    Meta:
+      type: object
+      required:
+        - data_as_of
+        - licence
+      properties:
+        data_as_of:
+          type: string
+          format: date-time
+          description: When the newest data in this response left the wiki
+        next_cursor:
+          type:
+            - string
+            - "null"
+        view:
+          type: string
+          description: The view served
+          after the default is applied: null
+        licence:
+          $ref: "#/components/schemas/Licence"
+    Licence:
+      type: object
+      properties:
+        name:
+          const: CC BY-SA 4.0
+        url:
+          const: https://creativecommons.org/licenses/by-sa/4.0/
+        attribution:
+          const: Coasterpedia contributors
+    Ref:
+      description: |
+        A pointer to another record. id is null when the wiki names something without linking to a page for it, or links to a page that doesn't exist yet. name is then the text as written.
+      type: object
+      required:
+        - name
+      properties:
+        id:
+          type:
+            - integer
+            - "null"
+        name:
+          type: string
+    RefList:
+      description: |
+        Everything a field names, in order. Absent when it names nothing. Each line of the field is read separately. A line with links gives one Ref per link, and leaves out any other text on it, such as dates or shares. A line without links is a list of names separated by commas, except before a suffix ("The Gravity Group, LLC", "Clair Hain, Jr."), with any text in brackets removed. A placeholder such as "Unknown" or "???" names nobody. The same page named twice gives one Ref.
+      type: array
+      items:
+        $ref: "#/components/schemas/Ref"
+    DateValue:
+      description: |
+        A date as the wiki records it. edtf is the date in EDTF (ISO 8601-2). It can be an exact date at its precision ("1996", "1996-05", "1996-05-04") or an uncertain one, such as "[..1989]" (1989 or earlier), "[1982..]" (1982 or later), "[1997..1998]" (one of those years), "199X" (the 1990s), "1950~" (about 1950), "1993-05?" (possibly May 1993) or "2000-37" (early 2000). Expect forms not listed here. earliest and latest are the first and last day the date can be, or null at an open end, so you can filter and sort without reading edtf.
+      type:
+        - object
+        - "null"
+      required:
+        - edtf
+      properties:
+        edtf:
+          type: string
+          examples:
+            - 1996-05-04
+            - "[..1989]"
+            - 199X
+        earliest:
+          type:
+            - string
+            - "null"
+          format: date
+        latest:
+          type:
+            - string
+            - "null"
+          format: date
+    Measurement:
+      type:
+        - object
+        - "null"
+      required:
+        - value
+        - unit
+      properties:
+        value:
+          type: number
+          description: Metric. If the editor entered imperial units, we convert the value to one decimal place finer than the figure they typed (740 ft becomes 225.6 m).
+        unit:
+          type: string
+          x-known-values:
+            - m
+            - cm
+            - km/h
+            - kg
+            - s
+        entered:
+          description: The value and unit the editor typed, so the original precision and units survive conversion. Absent when nothing was converted, such as a duration.
+          type: object
+          properties:
+            value:
+              type: number
+            unit:
+              type: string
+              x-known-values:
+                - m
+                - ft
+                - cm
+                - in
+                - km/h
+                - mph
+                - kg
+                - lb
+    Country:
+      type:
+        - object
+        - "null"
+      properties:
+        code:
+          type: string
+          pattern: ^[A-Z]{2}$
+          description: ISO 3166-1 alpha-2 (Kosovo XK)
+        name:
+          type: string
+          description: The site's name for it (UK, USA, UAE)
+    Coordinates:
+      type:
+        - object
+        - "null"
+      properties:
+        lat:
+          type: number
+        lon:
+          type: number
+    Status:
+      type:
+        - string
+        - "null"
+      description: An open vocabulary. /vocabularies lists today's values, and new ones can appear at any time.
+      x-known-values:
+        - planned
+        - under_construction
+        - operating
+        - under_refurbishment
+        - standing_but_not_operating
+        - in_storage
+        - defunct
+        - cancelled
+        - unknown
+        - active
+        - in_production
+        - discontinued
+    AttractionType:
+      type: string
+      description: An open vocabulary. /vocabularies lists today's values, and new ones can appear at any time.
+      x-known-values:
+        - coaster
+        - ride
+        - water_slide
+    LocationKind:
+      type: string
+      description: Whether the attraction is at a park, travelling, in storage, standing on its own, or unknown. It's an open vocabulary. /vocabularies lists today's values, and new ones can appear at any time.
+      x-known-values:
+        - park
+        - travelling
+        - storage
+        - standalone
+        - unknown
+    Location:
+      type: object
+      properties:
+        kind:
+          $ref: "#/components/schemas/LocationKind"
+        on_loan:
+          type: boolean
+        park:
+          allOf:
+            - $ref: "#/components/schemas/Ref"
+        owner:
+          allOf:
+            - $ref: "#/components/schemas/Ref"
+        place:
+          type:
+            - string
+            - "null"
+          description: Town or venue as written
+        state:
+          type:
+            - string
+            - "null"
+        country:
+          $ref: "#/components/schemas/Country"
+        coordinates:
+          $ref: "#/components/schemas/Coordinates"
+        area:
+          type:
+            - object
+            - "null"
+          description: Where in the park
+          properties:
+            section:
+              type: string
+            subsection:
+              type:
+                - string
+                - "null"
+    Record:
+      description: Fields every full record has
+      type: object
+      required:
+        - id
+        - name
+        - title
+        - url
+        - revision
+        - updated_at
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        title:
+          type: string
+          description: The page title, which can differ from name, for example when the wiki tells apart two pages with the same name
+        url:
+          type: string
+          format: uri
+        revision:
+          type: integer
+          description: The wiki revision this record was built from
+        updated_at:
+          type: string
+          format: date-time
+        merged_ids:
+          type: array
+          items:
+            type: integer
+          description: IDs of pages that were merged into this one
+        settlement:
+          description: The same in both views. See https://developer.coasterpedia.net/docs/views/
+          type: object
+          properties:
+            settled_revision:
+              type:
+                - integer
+                - "null"
+              description: The revision of the settled version, or null if the record has never settled
+            pending_revision:
+              type:
+                - integer
+                - "null"
+              description: A newer revision waiting to settle, or null if there's none
+            settles_at:
+              type:
+                - string
+                - "null"
+              format: date-time
+              description: When the pending revision settles if nobody edits the page first, or null if there's none
+    AttractionSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          $ref: "#/components/schemas/AttractionType"
+        name:
+          type: string
+        name_is_placeholder:
+          type: boolean
+          description: As on the full record
+        status:
+          $ref: "#/components/schemas/Status"
+        park:
+          $ref: "#/components/schemas/Ref"
+        location_kind:
+          $ref: "#/components/schemas/LocationKind"
+        country:
+          $ref: "#/components/schemas/Country"
+        opened:
+          $ref: "#/components/schemas/DateValue"
+        closed:
+          $ref: "#/components/schemas/DateValue"
+        manufacturers:
+          type: array
+          items:
+            $ref: "#/components/schemas/Ref"
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/AttractionProduct"
+          description: As on the full record
+        stats:
+          type: object
+          description: The headline figures a list can be sorted by, as on the full record. Absent when none is known.
+          properties:
+            height:
+              $ref: "#/components/schemas/Measurement"
+            speed:
+              $ref: "#/components/schemas/Measurement"
+            length:
+              $ref: "#/components/schemas/Measurement"
+        updated_at:
+          type: string
+          format: date-time
+    AttractionList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/AttractionSummary"
+        meta:
+          $ref: "#/components/schemas/Meta"
+    Attraction:
+      allOf:
+        - $ref: "#/components/schemas/Record"
+        - type: object
+          required:
+            - type
+            - status
+            - location
+            - name_is_placeholder
+          properties:
+            type:
+              $ref: "#/components/schemas/AttractionType"
+            name_is_placeholder:
+              type: boolean
+              description: True when the name is a description, written because the real name isn't known ("Blue Water Slide"). Always present. You may want to show these names differently, or leave them out of a name search.
+            status:
+              $ref: "#/components/schemas/Status"
+            dates:
+              type: object
+              properties:
+                opened:
+                  allOf:
+                    - $ref: "#/components/schemas/DateValue"
+                closed:
+                  allOf:
+                    - $ref: "#/components/schemas/DateValue"
+                opening:
+                  allOf:
+                    - $ref: "#/components/schemas/DateValue"
+                  description: Announced opening
+                closing:
+                  allOf:
+                    - $ref: "#/components/schemas/DateValue"
+                  description: Announced closing
+            location:
+              $ref: "#/components/schemas/Location"
+            manufacturers:
+              type: array
+              items:
+                $ref: "#/components/schemas/Ref"
+              description: Usually one. Some attractions link more than one, for example when a builder was subcontracted or replaced.
+            products:
+              type: array
+              items:
+                $ref: "#/components/schemas/AttractionProduct"
+              description: Usually one. A water slide complex names each product it's built from. Empty when none is recorded.
+            designers:
+              allOf:
+                - $ref: "#/components/schemas/RefList"
+              description: Names only for now. People and firms are mixed together, and people don't have records yet, so id is never set. The shape lets us set it later.
+            builders:
+              allOf:
+                - $ref: "#/components/schemas/RefList"
+            categories:
+              type: array
+              items:
+                type: string
+              description: The wiki's own tags for the kind of attraction (Kiddie, Spinning, Wild Mouse, Log Flume…), as written. It's an open list, with no fixed values yet. A coaster's track material is in coaster.track_material. Absent when there are none.
+            restraints:
+              type: array
+              items:
+                type: string
+              description: Coasters and rides. Usually one, but a car can have two kinds (a hamster wheel's spinning and fixed seats).
+              x-known-values:
+                - lap_bars
+                - shared_lap_bars
+                - over_the_shoulder
+                - vest_harness
+                - seatbelt_only
+                - hip
+                - buzz_bars
+                - back
+                - none
+            replaced:
+              allOf:
+                - $ref: "#/components/schemas/RefList"
+              description: What it replaced
+            replaced_by:
+              allOf:
+                - $ref: "#/components/schemas/RefList"
+              description: What replaced it
+            stats:
+              $ref: "#/components/schemas/AttractionStats"
+            restrictions:
+              $ref: "#/components/schemas/Restrictions"
+            coaster:
+              $ref: "#/components/schemas/CoasterDetail"
+            ride:
+              $ref: "#/components/schemas/RideDetail"
+            water_slide:
+              $ref: "#/components/schemas/WaterSlideDetail"
+            history:
+              $ref: "#/components/schemas/AttractionHistory"
+    AttractionProduct:
+      type: object
+      required:
+        - product
+        - variant
+      properties:
+        product:
+          allOf:
+            - $ref: "#/components/schemas/Ref"
+          description: The product's page. Its id works with /products/{id} when the page is a product.
+        variant:
+          type:
+            - string
+            - "null"
+          description: |
+            As the page writes it. A water slide gives a variant for each product. A coaster or ride page has one variant for the whole field, so we give it only when the page names one product and one variant. Otherwise it's null.
+    AttractionStats:
+      type: object
+      description: Only the fields the attraction's type records are present.
+      properties:
+        height:
+          allOf:
+            - $ref: "#/components/schemas/Measurement"
+        drop:
+          allOf:
+            - $ref: "#/components/schemas/Measurement"
+        elevation_difference:
+          allOf:
+            - $ref: "#/components/schemas/Measurement"
+        length:
+          allOf:
+            - $ref: "#/components/schemas/Measurement"
+        speed:
+          allOf:
+            - $ref: "#/components/schemas/Measurement"
+        diameter:
+          allOf:
+            - $ref: "#/components/schemas/Measurement"
+        inversions:
+          type:
+            - object
+            - "null"
+          properties:
+            track:
+              type: integer
+            rider:
+              type: integer
+        max_angle:
+          type:
+            - number
+            - "null"
+          description: Degrees
+        bank_angle:
+          type:
+            - number
+            - "null"
+          description: Degrees
+        g_force:
+          type:
+            - number
+            - "null"
+        duration:
+          allOf:
+            - $ref: "#/components/schemas/Measurement"
+          description: Seconds
+        riders_per_hour:
+          type:
+            - integer
+            - "null"
+        riders_per_train:
+          type:
+            - integer
+            - "null"
+        tracks:
+          type:
+            - integer
+            - "null"
+          description: Coasters only. The wiki records 1 unless the page says otherwise.
+        footprint:
+          type:
+            - object
+            - "null"
+          properties:
+            length:
+              $ref: "#/components/schemas/Measurement"
+            width:
+              $ref: "#/components/schemas/Measurement"
+    Restrictions:
+      type:
+        - object
+        - "null"
+      description: Rider requirements, as recorded. Heights in cm, weights in kg.
+      properties:
+        min_height:
+          $ref: "#/components/schemas/Measurement"
+        min_height_driver:
+          $ref: "#/components/schemas/Measurement"
+        min_height_standing:
+          $ref: "#/components/schemas/Measurement"
+        min_height_upside_down:
+          $ref: "#/components/schemas/Measurement"
+        min_height_unaccompanied:
+          $ref: "#/components/schemas/Measurement"
+        max_height_without_child:
+          $ref: "#/components/schemas/Measurement"
+        max_height:
+          $ref: "#/components/schemas/Measurement"
+        min_age:
+          type:
+            - integer
+            - "null"
+        min_age_driver:
+          type:
+            - integer
+            - "null"
+        min_age_unaccompanied:
+          type:
+            - integer
+            - "null"
+        max_age_without_child:
+          type:
+            - integer
+            - "null"
+        max_age:
+          type:
+            - integer
+            - "null"
+        children_only:
+          type:
+            - boolean
+            - "null"
+        adult_only_with_child:
+          type:
+            - boolean
+            - "null"
+        min_weight:
+          $ref: "#/components/schemas/Measurement"
+        max_weight:
+          $ref: "#/components/schemas/Measurement"
+        max_weight_per_tube:
+          $ref: "#/components/schemas/Measurement"
+    CoasterDetail:
+      type:
+        - object
+        - "null"
+      properties:
+        propulsion:
+          type:
+            - string
+            - "null"
+          x-known-values:
+            - roller
+            - powered
+            - alpine
+        track_material:
+          type:
+            - string
+            - "null"
+          x-known-values:
+            - steel
+            - wooden
+            - mixed
+            - other
+        support_material:
+          type:
+            - string
+            - "null"
+          x-known-values:
+            - steel
+            - wooden
+            - mixed
+            - other
+        train_manufacturers:
+          allOf:
+            - $ref: "#/components/schemas/RefList"
+          description: Every firm that built its trains, over time. Dates written beside them are left out.
+        elements:
+          type: array
+          items:
+            $ref: "#/components/schemas/Ref"
+          description: In layout order
+    RideDetail:
+      type:
+        - object
+        - "null"
+      properties:
+        indoor:
+          type:
+            - boolean
+            - "null"
+        enclosed:
+          type:
+            - boolean
+            - "null"
+        dark_ride:
+          type:
+            - boolean
+            - "null"
+        cabins:
+          type:
+            - integer
+            - "null"
+        units:
+          type:
+            - integer
+            - "null"
+          description: Identical units operating at this location
+        extra_coordinates:
+          type: array
+          items:
+            $ref: "#/components/schemas/Coordinates"
+          description: Further points, such as a ropeway's other stations
+    WaterSlideDetail:
+      type:
+        - object
+        - "null"
+      properties:
+        classes:
+          type: array
+          items:
+            type: string
+          x-known-values:
+            - body
+            - mat
+            - multi
+            - sled
+            - tube
+        environment:
+          type:
+            - string
+            - "null"
+          x-known-values:
+            - indoors
+            - outdoors
+            - mixed
+        containment:
+          type:
+            - string
+            - "null"
+          x-known-values:
+            - open
+            - partially_enclosed
+            - enclosed
+        exit:
+          type:
+            - string
+            - "null"
+          x-known-values:
+            - pool
+            - runout
+        lanes:
+          type:
+            - integer
+            - "null"
+          description: Identical lanes or slides operating at this location
+        components:
+          type: array
+          description: The products a multi-part slide is built from, in order
+          items:
+            type: object
+            properties:
+              product:
+                $ref: "#/components/schemas/Ref"
+              variant:
+                type:
+                  - string
+                  - "null"
+    AttractionHistory:
+      type: object
+      properties:
+        locations:
+          type: array
+          description: Past locations, oldest first. The current location is the record's own location, and isn't repeated here.
+          items:
+            type: object
+            properties:
+              index:
+                type: integer
+              kind:
+                $ref: "#/components/schemas/LocationKind"
+              on_loan:
+                type: boolean
+              park:
+                $ref: "#/components/schemas/Ref"
+              owner:
+                $ref: "#/components/schemas/Ref"
+              place:
+                type:
+                  - string
+                  - "null"
+              state:
+                type:
+                  - string
+                  - "null"
+              country:
+                $ref: "#/components/schemas/Country"
+              coordinates:
+                allOf:
+                  - $ref: "#/components/schemas/Coordinates"
+              opened:
+                $ref: "#/components/schemas/DateValue"
+              closed:
+                $ref: "#/components/schemas/DateValue"
+        names:
+          type: array
+          description: |
+            Names the attraction has had, oldest first. They're grouped by location, oldest location first and the current location last, in the order used at each. Each location's last entry is the name it had when it left. Absent if the attraction has only ever had its current name, even if it has moved. A placeholder such as "Unknown" is left out, and formatting is removed.
+          items:
+            type: object
+            required:
+              - name
+              - start
+              - end
+              - location_index
+            properties:
+              name:
+                type: string
+              start:
+                allOf:
+                  - $ref: "#/components/schemas/DateValue"
+                description: Null when not recorded
+              end:
+                allOf:
+                  - $ref: "#/components/schemas/DateValue"
+                description: Null when not recorded or still carried
+              location_index:
+                type:
+                  - integer
+                  - "null"
+                description: Which past location this was (history.locations.index)
+                or null at the current location: null
+    ParkSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        status:
+          $ref: "#/components/schemas/Status"
+        country:
+          $ref: "#/components/schemas/Country"
+        state:
+          type:
+            - string
+            - "null"
+        coordinates:
+          $ref: "#/components/schemas/Coordinates"
+        opened:
+          $ref: "#/components/schemas/DateValue"
+        closed:
+          $ref: "#/components/schemas/DateValue"
+        resort:
+          $ref: "#/components/schemas/Resort"
+        updated_at:
+          type: string
+          format: date-time
+    Resort:
+      description: |
+        The resort the park belongs to, or absent if it isn't in one. id is the page ID of the wiki template that lists the resort's parks, so every resort has one, and it stays the same if the resort is renamed. Most resorts don't have an article of their own, and there's no /resorts endpoint. Instead, a park's own record lists the other parks in its resort (see ParkResort).
+      type:
+        - object
+        - "null"
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          description: Formatting removed
+    ParkResort:
+      description: |
+        A park's resort, with the resort's parks, including this one, in the order the resort lists them, from the same view as the record. We read the list when you ask for the record, so an edit to another park in the resort shows straight away. Editing one park in a resort doesn't add the other parks to /changes.
+      allOf:
+        - $ref: "#/components/schemas/Resort"
+        - type: object
+          required:
+            - parks
+          properties:
+            parks:
+              type: array
+              maxItems: 50
+              items:
+                type: object
+                required:
+                  - id
+                  - name
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  status:
+                    allOf:
+                      - $ref: "#/components/schemas/Status"
+                    description: Absent when the park's status isn't known
+    ParkList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParkSummary"
+        meta:
+          $ref: "#/components/schemas/Meta"
+    Park:
+      allOf:
+        - $ref: "#/components/schemas/Record"
+        - type: object
+          properties:
+            status:
+              allOf:
+                - $ref: "#/components/schemas/Status"
+            dates:
+              type: object
+              properties:
+                opened:
+                  allOf:
+                    - $ref: "#/components/schemas/DateValue"
+                closed:
+                  allOf:
+                    - $ref: "#/components/schemas/DateValue"
+                opening:
+                  allOf:
+                    - $ref: "#/components/schemas/DateValue"
+            place:
+              type:
+                - string
+                - "null"
+              description: Town and region as written, formatting removed
+            state:
+              type:
+                - string
+                - "null"
+              description: US states and territories only, as the wiki spells them
+            country:
+              $ref: "#/components/schemas/Country"
+            coordinates:
+              allOf:
+                - $ref: "#/components/schemas/Coordinates"
+            owners:
+              allOf:
+                - $ref: "#/components/schemas/RefList"
+              description: The companies that own the park now, which are the current entries in history.owners. Absent once a park has closed.
+            operators:
+              allOf:
+                - $ref: "#/components/schemas/RefList"
+              description: As owners, for the companies that operate the park
+            resort:
+              $ref: "#/components/schemas/ParkResort"
+            website:
+              type:
+                - string
+                - "null"
+              format: uri
+              description: One http or https address. For a closed park, it may be an archived copy of the old site.
+            history:
+              type: object
+              properties:
+                names:
+                  allOf:
+                    - $ref: "#/components/schemas/DatedNames"
+                  description: Names the park has had, oldest first, ending with its name now. Absent if it has only ever had its current name. A placeholder such as "Unknown" is left out, and formatting is removed.
+                owners:
+                  $ref: "#/components/schemas/DatedRefs"
+                operators:
+                  $ref: "#/components/schemas/DatedRefs"
+              description: Absent when the page records no past name, owner or operator. Each list is absent when it's empty.
+    DatedNames:
+      type: array
+      items:
+        type: object
+        required:
+          - name
+          - start
+          - end
+        properties:
+          name:
+            type: string
+          start:
+            allOf:
+              - $ref: "#/components/schemas/DateValue"
+            description: Null when not recorded
+          end:
+            allOf:
+              - $ref: "#/components/schemas/DateValue"
+            description: Null when not recorded or still carried
+    DatedRefs:
+      description: |
+        One company over one period. If a period names two companies, they're two items with the same dates. company gives the page the wiki links to and the name it shows, so a company renamed since keeps its name from the time ("Premier Parks", linking to Six Flags). A name without a link has no id. A placeholder such as "Unknown" names nobody, and is left out.
+      type: array
+      items:
+        type: object
+        required:
+          - company
+          - start
+          - end
+          - current
+        properties:
+          company:
+            $ref: "#/components/schemas/Ref"
+          start:
+            allOf:
+              - $ref: "#/components/schemas/DateValue"
+            description: Null when not recorded
+          end:
+            allOf:
+              - $ref: "#/components/schemas/DateValue"
+            description: Null when not recorded or still in force
+          current:
+            type: boolean
+            description: True for the period in force now. That's the latest one on the page, with no end date, at a park that hasn't closed or been cancelled.
+    CompanyBase:
+      allOf:
+        - $ref: "#/components/schemas/Record"
+        - type: object
+          properties:
+            status:
+              $ref: "#/components/schemas/Status"
+            headquarters:
+              type:
+                - string
+                - "null"
+            country:
+              $ref: "#/components/schemas/Country"
+            predecessors:
+              allOf:
+                - $ref: "#/components/schemas/RefList"
+              description: Two after a merger
+            successors:
+              allOf:
+                - $ref: "#/components/schemas/RefList"
+            website:
+              type:
+                - string
+                - "null"
+              format: uri
+    ParkCompany:
+      description: |
+        status is one of the values the wiki allows for park companies (active, defunct, unknown).
+      allOf:
+        - $ref: "#/components/schemas/CompanyBase"
+        - type: object
+          properties:
+            established:
+              allOf:
+                - $ref: "#/components/schemas/DateValue"
+            closed:
+              allOf:
+                - $ref: "#/components/schemas/DateValue"
+    ParkCompanyList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParkCompany"
+        meta:
+          $ref: "#/components/schemas/Meta"
+    Manufacturer:
+      description: |
+        status is one of the values the wiki allows for manufacturers (active, defunct, unknown). A company's status is never operating.
+      allOf:
+        - $ref: "#/components/schemas/CompanyBase"
+        - type: object
+          properties:
+            founded:
+              allOf:
+                - $ref: "#/components/schemas/DateValue"
+    ManufacturerList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Manufacturer"
+        meta:
+          $ref: "#/components/schemas/Meta"
+    ProductSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          $ref: "#/components/schemas/AttractionType"
+        name:
+          type: string
+        manufacturers:
+          type: array
+          items:
+            $ref: "#/components/schemas/Ref"
+        status:
+          $ref: "#/components/schemas/Status"
+        introduced:
+          $ref: "#/components/schemas/DateValue"
+        discontinued:
+          $ref: "#/components/schemas/DateValue"
+        installations:
+          type: integer
+          description: How many attractions were built as this product, in the view you asked for, whatever their status. It's the number of items /products/{id}/installations returns, and 0 when none were.
+    ProductList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductSummary"
+        meta:
+          $ref: "#/components/schemas/Meta"
+    Product:
+      allOf:
+        - $ref: "#/components/schemas/Record"
+        - type: object
+          properties:
+            type:
+              allOf:
+                - $ref: "#/components/schemas/AttractionType"
+            status:
+              $ref: "#/components/schemas/Status"
+            manufacturers:
+              description: Every firm the wiki links for the product, as on an attraction. A product two firms built together, or a range that changed hands, names two.
+              type: array
+              items:
+                $ref: "#/components/schemas/Ref"
+            designers:
+              allOf:
+                - $ref: "#/components/schemas/RefList"
+              description: Names only, as on an attraction
+            introduced:
+              allOf:
+                - $ref: "#/components/schemas/DateValue"
+            discontinued:
+              allOf:
+                - $ref: "#/components/schemas/DateValue"
+            installations:
+              type: integer
+              description: As on ProductSummary. We count this when you ask, so it can change without the product appearing in /changes.
+            offered:
+              description: |
+                What the manufacturer offers the product as. Each installation's own fields say what was built.
+              type: object
+              properties:
+                types:
+                  type: array
+                  items:
+                    type: string
+                  description: The wiki's tags for the kind of attraction, as written. It's an open list, like an attraction's categories.
+                track_material:
+                  type: array
+                  items:
+                    type: string
+                  x-known-values:
+                    - steel
+                    - wooden
+                support_material:
+                  type: array
+                  items:
+                    type: string
+                  x-known-values:
+                    - steel
+                    - wooden
+                lift_launch:
+                  type: array
+                  items:
+                    type: string
+                  description: As written, formatting removed ("Chain lift", "Chain lift hill"). It's an open list.
+                restraints:
+                  type: array
+                  items:
+                    type: string
+                  x-known-values:
+                    - lap_bars
+                    - shared_lap_bars
+                    - over_the_shoulder
+                    - buzz_bars
+                    - vest_harness
+                    - seatbelt_only
+                    - back
+                    - hip
+                    - none
+                classes:
+                  type: array
+                  items:
+                    type: string
+                  x-known-values:
+                    - body
+                    - mat
+                    - tube
+                    - sled
+                containment:
+                  type: array
+                  items:
+                    type: string
+                  x-known-values:
+                    - enclosed
+                    - open
+                    - partially_enclosed
+                slide_material:
+                  type: array
+                  items:
+                    type: string
+                  x-known-values:
+                    - plastic
+                    - metal
+                    - concrete
+                    - other
+                riders_per_tube:
+                  type: array
+                  items:
+                    type: integer
+            variants:
+              description: |
+                Each catalogued configuration, in page order. Absent when the page records no specifications. When the wiki records the specifications on the product itself rather than in variants, they appear as one variant with a null name. A page does one or the other.
+              type: array
+              items:
+                $ref: "#/components/schemas/ProductVariant"
+    ProductVariant:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type:
+            - string
+            - "null"
+          description: Null for the product's own configuration, which the wiki leaves unnamed
+        group:
+          type:
+            - string
+            - "null"
+        introduced:
+          $ref: "#/components/schemas/DateValue"
+        discontinued:
+          $ref: "#/components/schemas/DateValue"
+        stats:
+          description: As AttractionStats, plus the fields below that only variants have. Only what the product's type records.
+          allOf:
+            - $ref: "#/components/schemas/AttractionStats"
+            - type: object
+              properties:
+                sweep:
+                  type:
+                    - number
+                    - "null"
+                  description: Degrees
+                cabins:
+                  type:
+                    - integer
+                    - "null"
+                number_of_slides:
+                  type:
+                    - integer
+                    - "null"
+                max_weight:
+                  $ref: "#/components/schemas/Measurement"
+                max_weight_per_tube:
+                  $ref: "#/components/schemas/Measurement"
+    Facets:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+              description: Attractions matching every filter
+            dimensions:
+              description: |
+                One list of counts per filter: type, status, country, location_kind, manufacturer and product, plus variant when you filter by one product. Each list is sorted most frequent first, and leaves out its own filter. The product list also ignores the variant filter. value is what the filter parameter takes, and label is the wiki's wording, when we have one.
+                An attraction with no value counts toward total but isn't listed, so a list can add up to less than total. For manufacturer and product, value is the record's ID as text, and an attraction that links several counts under each, so those lists can add up to more than total. When two products share a name, the label names the maker ("Boomerang (Vekoma)"). Variants are listed as written, with one spelling where two differ only in case. An attraction that names no variant counts only toward its product, so the product's count minus the variants' counts is how many name none.
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: object
+                  required:
+                    - value
+                    - count
+                  properties:
+                    value:
+                      type: string
+                    label:
+                      type: string
+                    count:
+                      type: integer
+            ranges:
+              description: |
+                One histogram per measurement a list can sort by (height, speed and length), over the attractions that record it. Absent when none of them do. Each bucket counts values from its from up to, but not including, its to. Buckets are all the same width, include empty ones, and start at multiples of the width. The width is the smallest of 1, 2 or 5 × 10ⁿ that gives 32 buckets or fewer, preferring whole numbers. If every value is the same (min = max), there are no buckets.
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  unit:
+                    type: string
+                    x-known-values:
+                      - m
+                      - km/h
+                  min:
+                    type: number
+                  max:
+                    type: number
+                  buckets:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        from:
+                          type: number
+                        to:
+                          type: number
+                        count:
+                          type: integer
+        meta:
+          $ref: "#/components/schemas/Meta"

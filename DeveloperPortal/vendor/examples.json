@@ -1,0 +1,1694 @@
+{
+	"captured_at": "2026-10-16T10:31:07Z",
+	"schema_version": "1.0.0-beta.19",
+	"examples": {
+		"GET /attractions": {
+			"request": "/v1/attractions?park=2027&sort=-height&limit=2",
+			"shortened": false,
+			"body": {
+				"data": [
+					{
+						"id": 18742,
+						"type": "ride",
+						"name": "Flume",
+						"name_is_placeholder": false,
+						"status": "defunct",
+						"park": {
+							"id": 2027,
+							"name": "Alton Towers"
+						},
+						"location_kind": "park",
+						"country": {
+							"code": "GB",
+							"name": "UK"
+						},
+						"opened": {
+							"edtf": "1981-07-21",
+							"earliest": "1981-07-21",
+							"latest": "1981-07-21"
+						},
+						"closed": {
+							"edtf": "2015-10-10",
+							"earliest": "2015-10-10",
+							"latest": "2015-10-10"
+						},
+						"manufacturers": [
+							{
+								"id": 2393,
+								"name": "Mack Rides"
+							}
+						],
+						"products": [
+							{
+								"product": {
+									"id": 74726,
+									"name": "Flume Ride"
+								},
+								"variant": null
+							}
+						],
+						"stats": {
+							"height": {
+								"value": 27,
+								"unit": "m",
+								"entered": {
+									"value": 27,
+									"unit": "m"
+								}
+							},
+							"length": {
+								"value": 886,
+								"unit": "m",
+								"entered": {
+									"value": 886,
+									"unit": "m"
+								}
+							},
+							"speed": {
+								"value": 45,
+								"unit": "km/h",
+								"entered": {
+									"value": 45,
+									"unit": "km/h"
+								}
+							}
+						},
+						"updated_at": "2026-10-13T12:28:06Z"
+					},
+					{
+						"id": 3180,
+						"type": "coaster",
+						"name": "Corkscrew",
+						"name_is_placeholder": false,
+						"status": "defunct",
+						"park": {
+							"id": 2027,
+							"name": "Alton Towers"
+						},
+						"location_kind": "park",
+						"country": {
+							"code": "GB",
+							"name": "UK"
+						},
+						"opened": {
+							"edtf": "1980-04-04",
+							"earliest": "1980-04-04",
+							"latest": "1980-04-04"
+						},
+						"closed": {
+							"edtf": "2008-11-09",
+							"earliest": "2008-11-09",
+							"latest": "2008-11-09"
+						},
+						"manufacturers": [
+							{
+								"id": 548,
+								"name": "Vekoma"
+							}
+						],
+						"products": [
+							{
+								"product": {
+									"id": 9484,
+									"name": "Corkscrew with Bayerncurve"
+								},
+								"variant": null
+							}
+						],
+						"stats": {
+							"height": {
+								"value": 22.9,
+								"unit": "m",
+								"entered": {
+									"value": 22.9,
+									"unit": "m"
+								}
+							},
+							"length": {
+								"value": 731.5,
+								"unit": "m",
+								"entered": {
+									"value": 731.5,
+									"unit": "m"
+								}
+							},
+							"speed": {
+								"value": 64.4,
+								"unit": "km/h",
+								"entered": {
+									"value": 64.4,
+									"unit": "km/h"
+								}
+							}
+						},
+						"updated_at": "2026-10-13T12:28:06Z"
+					}
+				],
+				"meta": {
+					"data_as_of": "2026-10-16T10:00:56Z",
+					"next_cursor": "WyJoZWlnaHQiLDIyLjksMzE4MF0",
+					"view": "settled",
+					"licence": {
+						"name": "CC BY-SA 4.0",
+						"url": "https://creativecommons.org/licenses/by-sa/4.0/",
+						"attribution": "Coasterpedia contributors"
+					}
+				}
+			}
+		},
+		"GET /attractions/facets": {
+			"request": "/v1/attractions/facets?park=2027",
+			"shortened": true,
+			"body": {
+				"data": {
+					"total": 44,
+					"dimensions": {
+						"type": [
+							{
+								"value": "ride",
+								"label": "Ride",
+								"count": 34
+							},
+							{
+								"value": "coaster",
+								"label": "Roller coaster",
+								"count": 10
+							}
+						],
+						"status": [
+							{
+								"value": "operating",
+								"label": "Operating",
+								"count": 27
+							},
+							{
+								"value": "defunct",
+								"label": "Defunct",
+								"count": 15
+							},
+							{
+								"value": "in_storage",
+								"label": "In storage",
+								"count": 1
+							}
+						],
+						"country": [
+							{
+								"value": "GB",
+								"label": "UK",
+								"count": 44
+							}
+						],
+						"location_kind": [
+							{
+								"value": "park",
+								"count": 44
+							}
+						],
+						"manufacturer": [
+							{
+								"value": "2393",
+								"label": "Mack Rides",
+								"count": 7
+							},
+							{
+								"value": "19013",
+								"label": "HUSS Park Attractions",
+								"count": 4
+							},
+							{
+								"value": "543",
+								"label": "Bolliger & Mabillard",
+								"count": 3
+							}
+						],
+						"product": [
+							{
+								"value": "75479",
+								"label": "Free-Flow Boat Ride",
+								"count": 2
+							},
+							{
+								"value": "38673",
+								"label": "Top Spin",
+								"count": 2
+							},
+							{
+								"value": "68311",
+								"label": "1001 Nacht",
+								"count": 1
+							}
+						]
+					},
+					"ranges": {
+						"height": {
+							"unit": "m",
+							"min": 4,
+							"max": 27,
+							"buckets": [
+								{
+									"from": 4,
+									"to": 5,
+									"count": 1
+								},
+								{
+									"from": 5,
+									"to": 6,
+									"count": 0
+								},
+								{
+									"from": 6,
+									"to": 7,
+									"count": 2
+								}
+							]
+						},
+						"speed": {
+							"unit": "km/h",
+							"min": 27.36,
+							"max": 109.4,
+							"buckets": [
+								{
+									"from": 25,
+									"to": 30,
+									"count": 1
+								},
+								{
+									"from": 30,
+									"to": 35,
+									"count": 1
+								},
+								{
+									"from": 35,
+									"to": 40,
+									"count": 1
+								}
+							]
+						},
+						"length": {
+							"unit": "m",
+							"min": 143,
+							"max": 2800,
+							"buckets": [
+								{
+									"from": 100,
+									"to": 200,
+									"count": 1
+								},
+								{
+									"from": 200,
+									"to": 300,
+									"count": 0
+								},
+								{
+									"from": 300,
+									"to": 400,
+									"count": 2
+								}
+							]
+						}
+					}
+				},
+				"meta": {
+					"data_as_of": "2026-10-16T10:00:56Z",
+					"view": "settled",
+					"licence": {
+						"name": "CC BY-SA 4.0",
+						"url": "https://creativecommons.org/licenses/by-sa/4.0/",
+						"attribution": "Coasterpedia contributors"
+					}
+				}
+			}
+		},
+		"GET /attractions/{id}": {
+			"request": "/v1/attractions/3173",
+			"shortened": true,
+			"body": {
+				"data": {
+					"id": 3173,
+					"type": "coaster",
+					"name": "Nemesis Reborn",
+					"name_is_placeholder": false,
+					"title": "Nemesis Reborn",
+					"url": "https://coasterpedia.net/wiki/Nemesis_Reborn",
+					"status": "operating",
+					"dates": {
+						"opened": {
+							"edtf": "1994-03-19",
+							"earliest": "1994-03-19",
+							"latest": "1994-03-19"
+						}
+					},
+					"location": {
+						"kind": "park",
+						"on_loan": false,
+						"park": {
+							"id": 2027,
+							"name": "Alton Towers"
+						},
+						"place": "Alton, Staffordshire, England",
+						"country": {
+							"code": "GB",
+							"name": "UK"
+						},
+						"coordinates": {
+							"lat": 52.986737,
+							"lon": -1.882481
+						},
+						"area": {
+							"section": "Forbidden Valley"
+						}
+					},
+					"manufacturers": [
+						{
+							"id": 543,
+							"name": "Bolliger & Mabillard"
+						}
+					],
+					"products": [
+						{
+							"product": {
+								"id": 1498,
+								"name": "Inverted Coaster"
+							},
+							"variant": "Custom"
+						}
+					],
+					"designers": [
+						{
+							"name": "Ing.-Büro Stengel GmbH"
+						}
+					],
+					"categories": [
+						"Inverted",
+						"Terrain"
+					],
+					"stats": {
+						"height": {
+							"value": 13,
+							"unit": "m",
+							"entered": {
+								"value": 13,
+								"unit": "m"
+							}
+						},
+						"drop": {
+							"value": 31.7,
+							"unit": "m",
+							"entered": {
+								"value": 31.7,
+								"unit": "m"
+							}
+						},
+						"length": {
+							"value": 716,
+							"unit": "m",
+							"entered": {
+								"value": 716,
+								"unit": "m"
+							}
+						},
+						"speed": {
+							"value": 80.5,
+							"unit": "km/h",
+							"entered": {
+								"value": 80.5,
+								"unit": "km/h"
+							}
+						},
+						"inversions": {
+							"track": 4
+						},
+						"max_angle": 40,
+						"g_force": 3.5,
+						"duration": {
+							"value": 80,
+							"unit": "s"
+						},
+						"riders_per_hour": 1400,
+						"riders_per_train": 32,
+						"tracks": 1
+					},
+					"restrictions": {
+						"min_height": {
+							"value": 140,
+							"unit": "cm",
+							"entered": {
+								"value": 140,
+								"unit": "cm"
+							}
+						}
+					},
+					"coaster": {
+						"propulsion": "roller",
+						"track_material": "steel",
+						"elements": [
+							{
+								"id": 2915,
+								"name": "Chain lift"
+							},
+							{
+								"id": 2768,
+								"name": "Pre-drop"
+							},
+							{
+								"id": 6745,
+								"name": "Corkscrew (element)"
+							}
+						]
+					},
+					"revision": 488888,
+					"updated_at": "2026-10-13T12:28:06Z",
+					"settlement": {
+						"settled_revision": 488888,
+						"pending_revision": null,
+						"settles_at": null
+					}
+				},
+				"meta": {
+					"data_as_of": "2026-10-16T10:00:56Z",
+					"view": "settled",
+					"licence": {
+						"name": "CC BY-SA 4.0",
+						"url": "https://creativecommons.org/licenses/by-sa/4.0/",
+						"attribution": "Coasterpedia contributors"
+					}
+				}
+			}
+		},
+		"GET /parks": {
+			"request": "/v1/parks?country=GB&limit=2",
+			"shortened": false,
+			"body": {
+				"data": [
+					{
+						"id": 10387,
+						"name": "Adventure Coast Southport",
+						"status": "operating",
+						"country": {
+							"code": "GB",
+							"name": "UK"
+						},
+						"opened": {
+							"edtf": "1913",
+							"earliest": "1913-01-01",
+							"latest": "1913-12-31"
+						},
+						"updated_at": "2026-10-13T12:28:06Z"
+					},
+					{
+						"id": 4720,
+						"name": "Adventure Island",
+						"status": "operating",
+						"country": {
+							"code": "GB",
+							"name": "UK"
+						},
+						"opened": {
+							"edtf": "1918",
+							"earliest": "1918-01-01",
+							"latest": "1918-12-31"
+						},
+						"updated_at": "2026-10-13T12:28:06Z"
+					}
+				],
+				"meta": {
+					"data_as_of": "2026-10-16T10:00:56Z",
+					"next_cursor": "WyJuYW1lIiwiYWR2ZW50dXJlIGlzbGFuZCIsNDcyMF0",
+					"view": "settled",
+					"licence": {
+						"name": "CC BY-SA 4.0",
+						"url": "https://creativecommons.org/licenses/by-sa/4.0/",
+						"attribution": "Coasterpedia contributors"
+					}
+				}
+			}
+		},
+		"GET /parks/{id}": {
+			"request": "/v1/parks/2027",
+			"shortened": false,
+			"body": {
+				"data": {
+					"id": 2027,
+					"name": "Alton Towers",
+					"title": "Alton Towers",
+					"url": "https://coasterpedia.net/wiki/Alton_Towers",
+					"status": "operating",
+					"dates": {
+						"opened": {
+							"edtf": "1980-04-04",
+							"earliest": "1980-04-04",
+							"latest": "1980-04-04"
+						}
+					},
+					"place": "Alton, Staffordshire, England",
+					"country": {
+						"code": "GB",
+						"name": "UK"
+					},
+					"coordinates": {
+						"lat": 52.99106,
+						"lon": -1.892265
+					},
+					"resort": {
+						"id": 56523,
+						"name": "Alton Towers Resort",
+						"parks": [
+							{
+								"id": 2027,
+								"name": "Alton Towers",
+								"status": "operating"
+							},
+							{
+								"id": 55838,
+								"name": "Alton Towers Waterpark",
+								"status": "operating"
+							}
+						]
+					},
+					"website": "http://altontowers.com/",
+					"owners": [
+						{
+							"name": "Prestbury Investments"
+						}
+					],
+					"operators": [
+						{
+							"id": 5800,
+							"name": "Merlin Entertainments"
+						}
+					],
+					"history": {
+						"owners": [
+							{
+								"company": {
+									"name": "John Broome"
+								},
+								"start": {
+									"edtf": "1980",
+									"earliest": "1980-01-01",
+									"latest": "1980-12-31"
+								},
+								"end": {
+									"edtf": "1990",
+									"earliest": "1990-01-01",
+									"latest": "1990-12-31"
+								},
+								"current": false
+							},
+							{
+								"company": {
+									"name": "The Tussauds Group"
+								},
+								"start": {
+									"edtf": "1990",
+									"earliest": "1990-01-01",
+									"latest": "1990-12-31"
+								},
+								"end": {
+									"edtf": "2007",
+									"earliest": "2007-01-01",
+									"latest": "2007-12-31"
+								},
+								"current": false
+							},
+							{
+								"company": {
+									"name": "Prestbury Investments"
+								},
+								"start": {
+									"edtf": "2007",
+									"earliest": "2007-01-01",
+									"latest": "2007-12-31"
+								},
+								"end": null,
+								"current": true
+							}
+						],
+						"operators": [
+							{
+								"company": {
+									"name": "John Broome"
+								},
+								"start": {
+									"edtf": "1980",
+									"earliest": "1980-01-01",
+									"latest": "1980-12-31"
+								},
+								"end": {
+									"edtf": "1990",
+									"earliest": "1990-01-01",
+									"latest": "1990-12-31"
+								},
+								"current": false
+							},
+							{
+								"company": {
+									"name": "The Tussauds Group"
+								},
+								"start": {
+									"edtf": "1990",
+									"earliest": "1990-01-01",
+									"latest": "1990-12-31"
+								},
+								"end": {
+									"edtf": "2007",
+									"earliest": "2007-01-01",
+									"latest": "2007-12-31"
+								},
+								"current": false
+							},
+							{
+								"company": {
+									"id": 5800,
+									"name": "Merlin Entertainments"
+								},
+								"start": {
+									"edtf": "2007",
+									"earliest": "2007-01-01",
+									"latest": "2007-12-31"
+								},
+								"end": null,
+								"current": true
+							}
+						]
+					},
+					"revision": 461701,
+					"updated_at": "2026-10-13T16:37:25Z",
+					"settlement": {
+						"settled_revision": 461701,
+						"pending_revision": null,
+						"settles_at": null
+					}
+				},
+				"meta": {
+					"data_as_of": "2026-10-16T10:00:56Z",
+					"view": "settled",
+					"licence": {
+						"name": "CC BY-SA 4.0",
+						"url": "https://creativecommons.org/licenses/by-sa/4.0/",
+						"attribution": "Coasterpedia contributors"
+					}
+				}
+			}
+		},
+		"GET /parks/{id}/attractions": {
+			"request": "/v1/parks/2027/attractions?limit=2",
+			"shortened": false,
+			"body": {
+				"data": [
+					{
+						"id": 68493,
+						"type": "ride",
+						"name": "1001 Nights",
+						"name_is_placeholder": false,
+						"status": "defunct",
+						"park": {
+							"id": 2027,
+							"name": "Alton Towers"
+						},
+						"location_kind": "park",
+						"country": {
+							"code": "GB",
+							"name": "UK"
+						},
+						"opened": {
+							"edtf": "1984",
+							"earliest": "1984-01-01",
+							"latest": "1984-12-31"
+						},
+						"closed": {
+							"edtf": "1994",
+							"earliest": "1994-01-01",
+							"latest": "1994-12-31"
+						},
+						"manufacturers": [
+							{
+								"id": 84547,
+								"name": "Weber"
+							}
+						],
+						"products": [
+							{
+								"product": {
+									"id": 68311,
+									"name": "1001 Nacht"
+								},
+								"variant": null
+							}
+						],
+						"updated_at": "2026-10-13T12:28:06Z"
+					},
+					{
+						"id": 18167,
+						"type": "ride",
+						"name": "Alton Towers Dungeon",
+						"name_is_placeholder": false,
+						"status": "standing_but_not_operating",
+						"park": {
+							"id": 2027,
+							"name": "Alton Towers"
+						},
+						"location_kind": "park",
+						"country": {
+							"code": "GB",
+							"name": "UK"
+						},
+						"opened": {
+							"edtf": "1981",
+							"earliest": "1981-01-01",
+							"latest": "1981-12-31"
+						},
+						"closed": {
+							"edtf": "2024-07-03",
+							"earliest": "2024-07-03",
+							"latest": "2024-07-03"
+						},
+						"manufacturers": [
+							{
+								"id": 2393,
+								"name": "Mack Rides"
+							}
+						],
+						"products": [
+							{
+								"product": {
+									"id": 75479,
+									"name": "Free-Flow Boat Ride"
+								},
+								"variant": null
+							}
+						],
+						"updated_at": "2026-10-13T12:28:06Z"
+					}
+				],
+				"meta": {
+					"data_as_of": "2026-10-16T10:00:56Z",
+					"next_cursor": "WyJuYW1lIiwiYWx0b24gdG93ZXJzIGR1bmdlb24iLDE4MTY3XQ",
+					"view": "settled",
+					"licence": {
+						"name": "CC BY-SA 4.0",
+						"url": "https://creativecommons.org/licenses/by-sa/4.0/",
+						"attribution": "Coasterpedia contributors"
+					}
+				}
+			}
+		},
+		"GET /park-companies": {
+			"request": "/v1/park-companies?limit=2",
+			"shortened": false,
+			"body": {
+				"data": [
+					{
+						"id": 28308,
+						"name": "Apex Parks Group",
+						"title": "Apex Parks Group",
+						"url": "https://coasterpedia.net/wiki/Apex_Parks_Group",
+						"status": "defunct",
+						"headquarters": "Aliso Viejo, California",
+						"country": {
+							"code": "US",
+							"name": "USA"
+						},
+						"revision": 397095,
+						"updated_at": "2026-10-13T12:28:06Z"
+					},
+					{
+						"id": 63679,
+						"name": "Aspro Parks",
+						"title": "Aspro Parks",
+						"url": "https://coasterpedia.net/wiki/Aspro_Parks",
+						"status": "active",
+						"headquarters": "Madrid, Community of Madrid",
+						"country": {
+							"code": "ES",
+							"name": "Spain"
+						},
+						"website": "https://www.asproparks.com/en/",
+						"revision": 449021,
+						"updated_at": "2026-10-13T12:28:06Z"
+					}
+				],
+				"meta": {
+					"data_as_of": "2026-10-16T10:00:56Z",
+					"next_cursor": "WyJuYW1lIiwiYXNwcm8gcGFya3MiLDYzNjc5XQ",
+					"view": "settled",
+					"licence": {
+						"name": "CC BY-SA 4.0",
+						"url": "https://creativecommons.org/licenses/by-sa/4.0/",
+						"attribution": "Coasterpedia contributors"
+					}
+				}
+			}
+		},
+		"GET /park-companies/{id}": {
+			"request": "/v1/park-companies/5800",
+			"shortened": false,
+			"body": {
+				"data": {
+					"id": 5800,
+					"name": "Merlin Entertainments",
+					"title": "Merlin Entertainments",
+					"url": "https://coasterpedia.net/wiki/Merlin_Entertainments",
+					"status": "active",
+					"established": {
+						"edtf": "1998-12",
+						"earliest": "1998-12-01",
+						"latest": "1998-12-31"
+					},
+					"headquarters": "London, England",
+					"country": {
+						"code": "GB",
+						"name": "UK"
+					},
+					"predecessors": [
+						{
+							"name": "Vardon Attractions"
+						}
+					],
+					"revision": 477002,
+					"updated_at": "2026-10-13T12:28:06Z",
+					"settlement": {
+						"settled_revision": 477002,
+						"pending_revision": null,
+						"settles_at": null
+					}
+				},
+				"meta": {
+					"data_as_of": "2026-10-16T10:00:56Z",
+					"view": "settled",
+					"licence": {
+						"name": "CC BY-SA 4.0",
+						"url": "https://creativecommons.org/licenses/by-sa/4.0/",
+						"attribution": "Coasterpedia contributors"
+					}
+				}
+			}
+		},
+		"GET /park-companies/{id}/parks": {
+			"request": "/v1/park-companies/5800/parks",
+			"shortened": true,
+			"body": {
+				"data": [
+					{
+						"park": {
+							"id": 80820,
+							"name": "Abenteuer Park Oberhausen"
+						},
+						"role": "operator",
+						"start": {
+							"edtf": "2011",
+							"earliest": "2011-01-01",
+							"latest": "2011-12-31"
+						},
+						"end": {
+							"edtf": "2015",
+							"earliest": "2015-01-01",
+							"latest": "2015-12-31"
+						},
+						"current": false
+					},
+					{
+						"park": {
+							"id": 2027,
+							"name": "Alton Towers"
+						},
+						"role": "operator",
+						"start": {
+							"edtf": "2007",
+							"earliest": "2007-01-01",
+							"latest": "2007-12-31"
+						},
+						"end": null,
+						"current": true
+					},
+					{
+						"park": {
+							"id": 55838,
+							"name": "Alton Towers Waterpark"
+						},
+						"role": "owner",
+						"start": null,
+						"end": null,
+						"current": true
+					}
+				],
+				"meta": {
+					"data_as_of": "2026-10-16T10:00:56Z",
+					"view": "settled",
+					"licence": {
+						"name": "CC BY-SA 4.0",
+						"url": "https://creativecommons.org/licenses/by-sa/4.0/",
+						"attribution": "Coasterpedia contributors"
+					}
+				}
+			}
+		},
+		"GET /manufacturers": {
+			"request": "/v1/manufacturers?limit=2",
+			"shortened": false,
+			"body": {
+				"data": [
+					{
+						"id": 17460,
+						"name": "A.R.M.",
+						"title": "A.R.M.",
+						"url": "https://coasterpedia.net/wiki/A.R.M.",
+						"status": "defunct",
+						"headquarters": "Oxford, Oxfordshire, England, UK",
+						"country": {
+							"code": "GB",
+							"name": "UK"
+						},
+						"revision": 441828,
+						"updated_at": "2026-10-12T15:34:31Z"
+					},
+					{
+						"id": 46253,
+						"name": "A.R.M. (USA)",
+						"title": "A.R.M. (USA)",
+						"url": "https://coasterpedia.net/wiki/A.R.M._(USA)",
+						"status": "active",
+						"founded": {
+							"edtf": "1998",
+							"earliest": "1998-01-01",
+							"latest": "1998-12-31"
+						},
+						"headquarters": "Wintersville, Ohio, USA",
+						"country": {
+							"code": "US",
+							"name": "USA"
+						},
+						"website": "https://www.armrides.com/",
+						"revision": 448491,
+						"updated_at": "2026-10-12T15:34:31Z"
+					}
+				],
+				"meta": {
+					"data_as_of": "2026-10-16T10:00:56Z",
+					"next_cursor": "WyJuYW1lIiwiYS5yLm0uICh1c2EpIiw0NjI1M10",
+					"view": "settled",
+					"licence": {
+						"name": "CC BY-SA 4.0",
+						"url": "https://creativecommons.org/licenses/by-sa/4.0/",
+						"attribution": "Coasterpedia contributors"
+					}
+				}
+			}
+		},
+		"GET /manufacturers/{id}": {
+			"request": "/v1/manufacturers/543",
+			"shortened": false,
+			"body": {
+				"data": {
+					"id": 543,
+					"name": "Bolliger & Mabillard",
+					"title": "Bolliger & Mabillard",
+					"url": "https://coasterpedia.net/wiki/Bolliger_%26_Mabillard",
+					"status": "active",
+					"founded": {
+						"edtf": "1988",
+						"earliest": "1988-01-01",
+						"latest": "1988-12-31"
+					},
+					"headquarters": "Monthey, Valais, Switzerland",
+					"country": {
+						"code": "CH",
+						"name": "Switzerland"
+					},
+					"website": "https://bolliger-mabillard.com/",
+					"revision": 442933,
+					"updated_at": "2026-10-12T15:34:31Z",
+					"settlement": {
+						"settled_revision": 442933,
+						"pending_revision": null,
+						"settles_at": null
+					}
+				},
+				"meta": {
+					"data_as_of": "2026-10-16T10:00:56Z",
+					"view": "settled",
+					"licence": {
+						"name": "CC BY-SA 4.0",
+						"url": "https://creativecommons.org/licenses/by-sa/4.0/",
+						"attribution": "Coasterpedia contributors"
+					}
+				}
+			}
+		},
+		"GET /manufacturers/{id}/products": {
+			"request": "/v1/manufacturers/543/products?limit=2",
+			"shortened": false,
+			"body": {
+				"data": [
+					{
+						"id": 3444,
+						"type": "coaster",
+						"name": "Dive Coaster",
+						"status": "in_production",
+						"manufacturers": [
+							{
+								"id": 543,
+								"name": "Bolliger & Mabillard"
+							}
+						],
+						"installations": 16,
+						"updated_at": "2026-10-12T15:34:31Z"
+					},
+					{
+						"id": 14061,
+						"type": "coaster",
+						"name": "Family Coaster",
+						"status": "in_production",
+						"manufacturers": [
+							{
+								"id": 543,
+								"name": "Bolliger & Mabillard"
+							}
+						],
+						"installations": 5,
+						"updated_at": "2026-10-12T15:34:31Z"
+					}
+				],
+				"meta": {
+					"data_as_of": "2026-10-16T10:00:56Z",
+					"next_cursor": "WyJuYW1lIiwiZmFtaWx5IGNvYXN0ZXIiLDE0MDYxXQ",
+					"view": "settled",
+					"licence": {
+						"name": "CC BY-SA 4.0",
+						"url": "https://creativecommons.org/licenses/by-sa/4.0/",
+						"attribution": "Coasterpedia contributors"
+					}
+				}
+			}
+		},
+		"GET /products": {
+			"request": "/v1/products?limit=2",
+			"shortened": false,
+			"body": {
+				"data": [
+					{
+						"id": 68311,
+						"type": "ride",
+						"name": "1001 Nacht",
+						"status": "discontinued",
+						"manufacturers": [
+							{
+								"id": 84547,
+								"name": "Weber"
+							}
+						],
+						"installations": 8,
+						"updated_at": "2026-10-13T12:28:06Z"
+					},
+					{
+						"id": 74257,
+						"type": "coaster",
+						"name": "208 ReTraK",
+						"status": "in_production",
+						"manufacturers": [
+							{
+								"id": 8921,
+								"name": "Rocky Mountain Construction"
+							}
+						],
+						"installations": 2,
+						"updated_at": "2026-10-12T15:34:31Z"
+					}
+				],
+				"meta": {
+					"data_as_of": "2026-10-16T10:00:56Z",
+					"next_cursor": "WyJuYW1lIiwiMjA4IHJldHJhayIsNzQyNTdd",
+					"view": "settled",
+					"licence": {
+						"name": "CC BY-SA 4.0",
+						"url": "https://creativecommons.org/licenses/by-sa/4.0/",
+						"attribution": "Coasterpedia contributors"
+					}
+				}
+			}
+		},
+		"GET /products/{id}": {
+			"request": "/v1/products/1498",
+			"shortened": false,
+			"body": {
+				"data": {
+					"id": 1498,
+					"type": "coaster",
+					"name": "Inverted Coaster",
+					"title": "Inverted Coaster (Bolliger & Mabillard product)",
+					"url": "https://coasterpedia.net/wiki/Inverted_Coaster_(Bolliger_%26_Mabillard_product)",
+					"status": "in_production",
+					"manufacturers": [
+						{
+							"id": 543,
+							"name": "Bolliger & Mabillard"
+						}
+					],
+					"offered": {
+						"track_material": [
+							"steel"
+						],
+						"support_material": [
+							"steel"
+						],
+						"types": [
+							"Inverted"
+						]
+					},
+					"revision": 470846,
+					"updated_at": "2026-10-13T12:28:06Z",
+					"installations": 28,
+					"settlement": {
+						"settled_revision": 470846,
+						"pending_revision": null,
+						"settles_at": null
+					}
+				},
+				"meta": {
+					"data_as_of": "2026-10-16T10:00:56Z",
+					"view": "settled",
+					"licence": {
+						"name": "CC BY-SA 4.0",
+						"url": "https://creativecommons.org/licenses/by-sa/4.0/",
+						"attribution": "Coasterpedia contributors"
+					}
+				}
+			}
+		},
+		"GET /products/{id}/installations": {
+			"request": "/v1/products/1498/installations?limit=2",
+			"shortened": false,
+			"body": {
+				"data": [
+					{
+						"id": 1378,
+						"type": "coaster",
+						"name": "Afterburn",
+						"name_is_placeholder": false,
+						"status": "operating",
+						"park": {
+							"id": 781,
+							"name": "Carowinds"
+						},
+						"location_kind": "park",
+						"country": {
+							"code": "US",
+							"name": "USA"
+						},
+						"opened": {
+							"edtf": "1999-03-20",
+							"earliest": "1999-03-20",
+							"latest": "1999-03-20"
+						},
+						"manufacturers": [
+							{
+								"id": 543,
+								"name": "Bolliger & Mabillard"
+							}
+						],
+						"products": [
+							{
+								"product": {
+									"id": 1498,
+									"name": "Inverted Coaster"
+								},
+								"variant": "Custom"
+							}
+						],
+						"stats": {
+							"height": {
+								"value": 34.4,
+								"unit": "m",
+								"entered": {
+									"value": 113,
+									"unit": "ft"
+								}
+							},
+							"length": {
+								"value": 901,
+								"unit": "m",
+								"entered": {
+									"value": 2956,
+									"unit": "ft"
+								}
+							},
+							"speed": {
+								"value": 99.8,
+								"unit": "km/h",
+								"entered": {
+									"value": 62,
+									"unit": "mph"
+								}
+							}
+						},
+						"updated_at": "2026-10-13T12:28:06Z"
+					},
+					{
+						"id": 240,
+						"type": "coaster",
+						"name": "Alpengeist",
+						"name_is_placeholder": false,
+						"status": "operating",
+						"park": {
+							"id": 238,
+							"name": "Busch Gardens Williamsburg"
+						},
+						"location_kind": "park",
+						"country": {
+							"code": "US",
+							"name": "USA"
+						},
+						"opened": {
+							"edtf": "1997-03-22",
+							"earliest": "1997-03-22",
+							"latest": "1997-03-22"
+						},
+						"manufacturers": [
+							{
+								"id": 543,
+								"name": "Bolliger & Mabillard"
+							}
+						],
+						"products": [
+							{
+								"product": {
+									"id": 1498,
+									"name": "Inverted Coaster"
+								},
+								"variant": "Custom"
+							}
+						],
+						"stats": {
+							"height": {
+								"value": 59.4,
+								"unit": "m",
+								"entered": {
+									"value": 195,
+									"unit": "ft"
+								}
+							},
+							"length": {
+								"value": 1166.8,
+								"unit": "m",
+								"entered": {
+									"value": 3828,
+									"unit": "ft"
+								}
+							},
+							"speed": {
+								"value": 107.8,
+								"unit": "km/h",
+								"entered": {
+									"value": 67,
+									"unit": "mph"
+								}
+							}
+						},
+						"updated_at": "2026-10-13T12:28:06Z"
+					}
+				],
+				"meta": {
+					"data_as_of": "2026-10-16T10:00:56Z",
+					"next_cursor": "WyJuYW1lIiwiYWxwZW5nZWlzdCIsMjQwXQ",
+					"view": "settled",
+					"licence": {
+						"name": "CC BY-SA 4.0",
+						"url": "https://creativecommons.org/licenses/by-sa/4.0/",
+						"attribution": "Coasterpedia contributors"
+					}
+				}
+			}
+		},
+		"GET /search": {
+			"request": "/v1/search?q=nemesis&limit=3",
+			"shortened": false,
+			"body": {
+				"data": [
+					{
+						"kind": "attraction",
+						"id": 1767,
+						"name": "Nemesis Inferno",
+						"matched": "Nemesis Inferno",
+						"url": "https://coasterpedia.net/wiki/Nemesis_Inferno"
+					},
+					{
+						"kind": "attraction",
+						"id": 3173,
+						"name": "Nemesis Reborn",
+						"matched": "Nemesis Reborn",
+						"url": "https://coasterpedia.net/wiki/Nemesis_Reborn"
+					},
+					{
+						"kind": "attraction",
+						"id": 41293,
+						"name": "Nemesis Sub-Terra",
+						"matched": "Nemesis Sub-Terra",
+						"url": "https://coasterpedia.net/wiki/Nemesis_Sub-Terra"
+					}
+				],
+				"meta": {
+					"data_as_of": "2026-10-16T10:00:56Z",
+					"view": "settled",
+					"licence": {
+						"name": "CC BY-SA 4.0",
+						"url": "https://creativecommons.org/licenses/by-sa/4.0/",
+						"attribution": "Coasterpedia contributors"
+					}
+				}
+			}
+		},
+		"GET /changes": {
+			"request": "/v1/changes?since=2026-10-15T10:30:44Z&limit=2",
+			"shortened": false,
+			"body": {
+				"data": [
+					{
+						"kind": "attraction",
+						"id": 91131,
+						"op": "upsert",
+						"revision": 491570,
+						"at": "2026-10-15T11:58:42Z"
+					},
+					{
+						"kind": "park",
+						"id": 68518,
+						"op": "upsert",
+						"revision": 491574,
+						"at": "2026-10-15T12:20:42Z"
+					}
+				],
+				"meta": {
+					"data_as_of": "2026-10-16T10:00:56Z",
+					"next_cursor": "WyJjaGFuZ2VzIiwiMTVlOTA5OWU0OGFmNTVjYyIsMTAxNTE0XQ",
+					"has_more": true,
+					"view": "settled",
+					"delay": "PT0H",
+					"licence": {
+						"name": "CC BY-SA 4.0",
+						"url": "https://creativecommons.org/licenses/by-sa/4.0/",
+						"attribution": "Coasterpedia contributors"
+					}
+				}
+			}
+		},
+		"GET /vocabularies": {
+			"request": "/v1/vocabularies",
+			"shortened": true,
+			"body": {
+				"data": {
+					"type": [
+						{
+							"value": "coaster",
+							"label": "Roller coaster"
+						},
+						{
+							"value": "ride",
+							"label": "Ride"
+						},
+						{
+							"value": "water_slide",
+							"label": "Water slide"
+						}
+					],
+					"status": [
+						{
+							"value": "operating",
+							"label": "Operating",
+							"applies_to": [
+								"coaster",
+								"ride",
+								"water_slide"
+							]
+						},
+						{
+							"value": "defunct",
+							"label": "Defunct",
+							"applies_to": [
+								"coaster",
+								"ride",
+								"water_slide"
+							]
+						},
+						{
+							"value": "under_construction",
+							"label": "Under construction",
+							"applies_to": [
+								"coaster",
+								"ride",
+								"water_slide"
+							]
+						}
+					],
+					"restraints": [
+						{
+							"value": "lap_bars",
+							"label": "Lap-bars",
+							"applies_to": [
+								"coaster",
+								"ride",
+								"product"
+							]
+						},
+						{
+							"value": "shared_lap_bars",
+							"label": "Shared lap-bars",
+							"applies_to": [
+								"coaster",
+								"ride",
+								"product"
+							]
+						},
+						{
+							"value": "over_the_shoulder",
+							"label": "Over-the-shoulder",
+							"applies_to": [
+								"coaster",
+								"ride",
+								"product"
+							]
+						}
+					],
+					"propulsion": [
+						{
+							"value": "roller",
+							"label": "Roller",
+							"applies_to": [
+								"coaster"
+							]
+						},
+						{
+							"value": "powered",
+							"label": "Powered",
+							"applies_to": [
+								"coaster"
+							]
+						},
+						{
+							"value": "alpine",
+							"label": "Alpine",
+							"applies_to": [
+								"coaster"
+							]
+						}
+					],
+					"track_material": [
+						{
+							"value": "steel",
+							"label": "Steel",
+							"applies_to": [
+								"coaster",
+								"product"
+							]
+						},
+						{
+							"value": "wooden",
+							"label": "Wooden",
+							"applies_to": [
+								"coaster",
+								"product"
+							]
+						},
+						{
+							"value": "mixed",
+							"label": "Mixed",
+							"applies_to": [
+								"coaster"
+							]
+						}
+					],
+					"support_material": [
+						{
+							"value": "steel",
+							"label": "Steel",
+							"applies_to": [
+								"coaster",
+								"product"
+							]
+						},
+						{
+							"value": "wooden",
+							"label": "Wooden",
+							"applies_to": [
+								"coaster",
+								"product"
+							]
+						},
+						{
+							"value": "mixed",
+							"label": "Mixed",
+							"applies_to": [
+								"coaster"
+							]
+						}
+					],
+					"classes": [
+						{
+							"value": "body",
+							"label": "Body",
+							"applies_to": [
+								"water_slide",
+								"product"
+							]
+						},
+						{
+							"value": "mat",
+							"label": "Mat",
+							"applies_to": [
+								"water_slide",
+								"product"
+							]
+						},
+						{
+							"value": "tube",
+							"label": "Tube",
+							"applies_to": [
+								"water_slide",
+								"product"
+							]
+						}
+					],
+					"environment": [
+						{
+							"value": "indoors",
+							"label": "Indoors",
+							"applies_to": [
+								"water_slide"
+							]
+						},
+						{
+							"value": "outdoors",
+							"label": "Outdoors",
+							"applies_to": [
+								"water_slide"
+							]
+						},
+						{
+							"value": "mixed",
+							"label": "Mixed",
+							"applies_to": [
+								"water_slide"
+							]
+						}
+					],
+					"containment": [
+						{
+							"value": "enclosed",
+							"label": "Enclosed",
+							"applies_to": [
+								"water_slide",
+								"product"
+							]
+						},
+						{
+							"value": "open",
+							"label": "Open",
+							"applies_to": [
+								"water_slide",
+								"product"
+							]
+						},
+						{
+							"value": "partially_enclosed",
+							"label": "Partially enclosed",
+							"applies_to": [
+								"water_slide",
+								"product"
+							]
+						}
+					],
+					"exit": [
+						{
+							"value": "pool",
+							"label": "Pool",
+							"applies_to": [
+								"water_slide"
+							]
+						},
+						{
+							"value": "runout",
+							"label": "Runout",
+							"applies_to": [
+								"water_slide"
+							]
+						}
+					],
+					"slide_material": [
+						{
+							"value": "plastic",
+							"label": "Plastic",
+							"applies_to": [
+								"product"
+							]
+						},
+						{
+							"value": "metal",
+							"label": "Metal",
+							"applies_to": [
+								"product"
+							]
+						},
+						{
+							"value": "concrete",
+							"label": "Concrete",
+							"applies_to": [
+								"product"
+							]
+						}
+					]
+				},
+				"meta": {
+					"data_as_of": "2026-10-13T12:28:06Z",
+					"licence": {
+						"name": "CC BY-SA 4.0",
+						"url": "https://creativecommons.org/licenses/by-sa/4.0/",
+						"attribution": "Coasterpedia contributors"
+					}
+				}
+			}
+		},
+		"GET /meta": {
+			"request": "/v1/meta",
+			"shortened": false,
+			"body": {
+				"data_as_of": "2026-10-16T10:00:56Z",
+				"schema_version": "1.0.0-beta.19",
+				"settle_after": "P7D",
+				"changes_window": "P90D",
+				"view": "settled",
+				"counts": {
+					"attractions": 21080,
+					"parks": 2170,
+					"manufacturers": 261,
+					"products": 1088,
+					"park_companies": 67
+				},
+				"licence": {
+					"name": "CC BY-SA 4.0",
+					"url": "https://creativecommons.org/licenses/by-sa/4.0/",
+					"attribution": "Coasterpedia contributors"
+				}
+			}
+		}
+	}
+}

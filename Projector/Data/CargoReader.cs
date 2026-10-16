@@ -231,7 +231,7 @@ public sealed record ParkRow
     public string? Opening { get; init; }
     public int? OpeningPrecision { get; init; }
 
-    /// <summary>The page's owner and operator History rows, in page order (Position 1 is the spell in force).</summary>
+    /// <summary>The page's name, owner and operator History rows, in page order (Position 1 is the one in force).</summary>
     public IReadOnlyList<HistoryRow> History { get; init; } = [];
 }
 
@@ -722,7 +722,8 @@ public sealed partial class CargoReader
                        CAST(t.Start AS CHAR) AS Start, t.Start__precision AS StartPrecision,
                        CAST(t.`End` AS CHAR) AS `End`, t.End__precision AS EndPrecision, t.Position, t.LocationOrdering
                 FROM {Cargo("History")} t
-                WHERE t._pageNamespace = 0 AND t.Type IN ('owner', 'operator') {PageFilter("t._pageID", ids)}
+                WHERE t._pageNamespace = 0 {PageFilter("t._pageID", ids)}
+                  AND (t.Type IN ('owner', 'operator') OR (t.Type = 'name' AND t.LocationOrdering IS NULL))
                 ORDER BY t._pageID, t.Type, t.Position, t._ID
                 """, new { ids }, ct));
         }

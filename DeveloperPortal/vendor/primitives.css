@@ -1,0 +1,504 @@
+/*
+ * ===========================================================================
+ * UI PRIMITIVES
+ * ===========================================================================
+ *
+ * The five shared UI primitives. They live here, at the top of Common.css, so
+ * that both wikitext surfaces (Lua + TemplateStyles) and gadget surfaces (Vue)
+ * can use the same classes. TemplateStyles is prefixed .mw-parser-output and
+ * can never reach gadget DOM, so this cannot live in a module — but Common.css
+ * carries no such prefix and reaches both.
+ *
+ * Previously MediaWiki:Gadget-cp-primitives.css, a separate type=styles gadget.
+ * That cost a whole render-blocking request and round-trip for ~1 KB gzipped,
+ * on a page whose LCP is render-bound. Merged here Sept 2026.
+ *
+ * KEEP THIS BLOCK FIRST in the file. Surfaces override primitives, never the
+ * other way round, and within one stylesheet that ordering is source order.
+ *
+ * Rules for editing this file:
+ *   - Single-class selectors only. No compound selectors, no !important.
+ *     Surfaces override by scoping to themselves (.ab-results .t-chip), which
+ *     wins on specificity regardless of load order — TemplateStyles is injected
+ *     inline in the body and beats anything here on an equal-specificity tie.
+ *   - The t- prefix belongs to this file. Nothing else may write a bare
+ *     t- selector.
+ *   - Declare no Citizen tokens. Only the --t-status-* and --t-type-* values
+ *     below are ours; Citizen has no equivalent for either.
+ *
+ * Radius carries the job: full radius = state, 4px = thing.
+ */
+
+:root {
+	/* Status is its own colour system — flatter and more saturated than the
+	   tuned OKLCH semantics, which are for maintenance messaging instead.
+	   Tuned from the literal green/orange/red keywords, which fail contrast on
+	   both grounds: green (#008000) is unreadable on the dark surface and
+	   orange (#ffa500) on the light one. Same character, legible in both. */
+	--t-status-live: oklch( 48% 0.15 145 );
+	--t-status-transit: oklch( 52% 0.13 60 );
+	--t-status-ended: oklch( 52% 0.20 25 );
+
+	/* Attraction type. Mode-invariant on purpose, so there is no night block
+	   for these: they are the Atlas map pins' own values, and the orange's
+	   brightness is what separates it from the red for deuteranopes -- tuning
+	   either per theme breaks the match with the pin it stands in for.
+	   Type is always a FILL; status is always an outline. See DR-001
+	   (2026-09-11, 2026-09-12), which also records why park green may accent
+	   but never discriminate. */
+	--t-type-coaster: #e73235;
+	--t-type-ride: #f38f1a;
+	--t-type-slide: #3b6db4;
+	--t-type-park: var( --color-progressive );
+}
+
+:root.skin-theme-clientpref-night,
+:root.skin-theme-clientpref-black {
+	--t-status-live: oklch( 76% 0.17 145 );
+	--t-status-transit: oklch( 79% 0.15 70 );
+	--t-status-ended: oklch( 71% 0.19 25 );
+}
+
+@media screen and ( prefers-color-scheme: dark ) {
+	:root.skin-theme-clientpref-os {
+		--t-status-live: oklch( 76% 0.17 145 );
+		--t-status-transit: oklch( 79% 0.15 70 );
+		--t-status-ended: oklch( 71% 0.19 25 );
+	}
+}
+
+/* ── Value chip — one value in a row being scanned ─────────────────────────
+   Neutral, never coloured, never hoverable. For dense lists only: in an
+   infobox the field label already supplies the meaning and a chip costs a
+   border, padding and a font-size drop to say nothing. */
+
+.t-chip {
+	display: inline-block;
+	padding: 1px var( --space-xs );
+	border: 1px solid var( --border-color-base );
+	border-radius: var( --border-radius-base );
+	background-color: var( --color-surface-3 );
+	color: var( --color-base );
+	font-size: var( --font-size-x-small );
+	font-weight: var( --font-weight-medium );
+	line-height: var( --line-height-xx-small );
+	white-space: nowrap;
+}
+
+/* ── Status pill — lifecycle state of the subject ──────────────────────────
+   Green, orange and red mean lifecycle and nothing else, anywhere. A control
+   that filters by status still selects in the accent, not in the status
+   colour. Module:Status owns the name→group map; nothing else restates it. */
+
+.t-status {
+	display: inline-flex;
+	align-items: center;
+	padding: 3px 10px;
+	border: 1px solid var( --border-color-base );
+	border-radius: var( --border-radius-pill );
+	background: transparent;
+	color: var( --color-subtle );
+	font-size: var( --font-size-x-small );
+	font-weight: var( --font-weight-medium );
+	line-height: var( --line-height-xx-small );
+	white-space: nowrap;
+}
+
+.t-status--live {
+	border-color: var( --t-status-live );
+	color: var( --t-status-live );
+}
+
+.t-status--transit {
+	border-color: var( --t-status-transit );
+	color: var( --t-status-transit );
+}
+
+.t-status--ended {
+	border-color: var( --t-status-ended );
+	color: var( --t-status-ended );
+}
+
+/* Inline presentation of the same state. A pill in the middle of a table cell
+   or a prose run is a box around a word; the colour alone carries it there.
+   Same primitive, same lifecycle vocabulary, no border and no padding — the
+   modifier resets the box only, so the group colour above still applies. */
+.t-status--text {
+	display: inline;
+	padding: 0;
+	border: 0;
+	font-size: inherit;
+	font-weight: inherit;
+	line-height: inherit;
+	white-space: normal;
+}
+
+.t-status a {
+	color: inherit;
+	text-decoration: none;
+}
+
+.t-status a:hover {
+	text-decoration: underline;
+}
+
+/* ── Filter chip — an independent on/off facet ─────────────────────────────
+   Counts belong to the component: they tell the reader whether the click is
+   worth making. Several may be on at once; for one-of-N use .t-segmented. */
+
+.t-facet {
+	display: inline-flex;
+	align-items: center;
+	gap: var( --space-xxs );
+	padding: 4px 11px;
+	border: 1px solid var( --border-color-base );
+	border-radius: var( --border-radius-pill );
+	background-color: var( --color-surface-1 );
+	color: var( --color-subtle );
+	font-family: inherit;
+	font-size: var( --font-size-small );
+	line-height: var( --line-height-xx-small );
+	cursor: pointer;
+	transition: var( --transition-hover );
+	transition-property: border-color, color, background-color;
+}
+
+.t-facet__count {
+	opacity: 0.75;
+	font-variant-numeric: tabular-nums;
+}
+
+.t-facet:hover {
+	border-color: var( --border-color-progressive );
+	color: var( --color-emphasized );
+}
+
+/* Selection is the accent border plus the accent fill. The label stays in
+   normal ink: --color-progressive on --background-color-progressive-subtle
+   measures 2.44:1 in the light theme, which fails AA on a control small
+   enough to already be hard work. The state has two channels without it. */
+.t-facet[ aria-pressed='true' ] {
+	border-color: var( --border-color-progressive );
+	background-color: var( --background-color-progressive-subtle );
+	color: var( --color-emphasized );
+	font-weight: var( --font-weight-medium );
+}
+
+.t-facet:disabled {
+	opacity: 0.45;
+	cursor: default;
+}
+
+.t-facet:focus-visible {
+	outline: 2px solid var( --outline-color-progressive--focus );
+	outline-offset: 1px;
+}
+
+/* ── Segmented control — exactly one of a short, fixed set ─────────────────
+   The joined shape says "these are alternatives". Four options at most, and
+   never a set that grows with the data. */
+
+/* The track is recessed and the selected option is a thumb sitting inside it,
+   inset by the padding below. That inset is a shape channel: it survives
+   greyscale, which a tint alone does not. */
+.t-segmented {
+	position: relative;
+	display: inline-flex;
+	gap: 2px;
+	padding: 2px;
+	border: 1px solid var( --border-color-base );
+	border-radius: var( --border-radius-pill );
+	background-color: var( --color-surface-2 );
+}
+
+.t-segmented__option {
+	position: relative;
+	padding: 4px 12px;
+	border: 0;
+	border-radius: var( --border-radius-pill );
+	background: transparent;
+	color: var( --color-subtle );
+	font-family: inherit;
+	font-size: var( --font-size-small );
+	cursor: pointer;
+	transition: var( --transition-hover );
+	transition-property: color, background-color, box-shadow;
+}
+
+.t-segmented__option:hover {
+	color: var( --color-emphasized );
+}
+
+/* Selection is a thumb: an inset, a hard edge, and the accent fill inside it.
+   Measured against the track (WCAG 1.4.11 wants 3:1 for a state indicator):
+
+       fill alone, no edge          1.01 : 1  light    1.11 : 1  dark
+       edge in --color-progressive  2.41 : 1  light    6.68 : 1  dark
+       edge in --color-subtle       9.69 : 1  light    6.93 : 1  dark
+
+   --background-color-progressive-subtle and --color-surface-2 are the SAME
+   lightness in the light theme -- both oklch 96%, differing only in chroma --
+   so the fill on its own is invisible in greyscale and to a reader who cannot
+   separate the two hues. That is what the first row measures.
+
+   The edge is therefore NEUTRAL, not the accent. The brand green sits at L68%,
+   mid-scale, and cannot reach 3:1 against a near-white track as a ring or as a
+   solid fill; 2.41 is the ceiling. The accent still marks the selection -- it
+   is the fill -- but the thing carrying it in luminance is the thumb's edge,
+   the same way a physical segmented control's thumb has an edge whatever
+   colour it is. Never let this state go back to fill alone.
+
+   aria-selected is the same state for a switcher over panels: those options
+   are role=tab, which takes aria-selected, not aria-pressed (DR-005). */
+.t-segmented__option[ aria-pressed='true' ],
+.t-segmented__option[ aria-selected='true' ] {
+	background-color: var( --background-color-progressive-subtle );
+	box-shadow: inset 0 0 0 1px var( --color-subtle );
+	color: var( --color-emphasized );
+	font-weight: var( --font-weight-medium );
+}
+
+.t-segmented__option:focus-visible {
+	outline: 2px solid var( --outline-color-progressive--focus );
+	outline-offset: -2px;
+}
+
+/* Over a photo or a map a tinted outline cannot read, so selection inverts.
+   Fixed rgba on purpose: it has to work over arbitrary imagery in both
+   themes. This is the only permitted inversion. */
+.t-segmented--on-image {
+	border-color: rgba( 255, 255, 255, 0.18 );
+	background-color: rgba( 0, 0, 0, 0.68 );
+}
+
+.t-segmented--on-image .t-segmented__option {
+	color: rgba( 255, 255, 255, 0.72 );
+}
+
+.t-segmented--on-image .t-segmented__option:hover {
+	color: #fff;
+}
+
+/* No ring here: white on a 68%-black track is already the biggest luminance
+   step in the set. */
+.t-segmented--on-image .t-segmented__option[ aria-pressed='true' ],
+.t-segmented--on-image .t-segmented__option[ aria-selected='true' ] {
+	background-color: #fff;
+	box-shadow: none;
+	color: #14160f;
+}
+
+/* The sliding thumb. Once a pointer or focus reaches a track, MediaWiki:Common.js
+   measures the selected option into the custom properties below and adds
+   --sliding; the track then paints the thumb and the option stops painting its
+   own, so a change of selection slides rather than jumps. Same fill and edge as
+   the rules above -- only who paints them moves. Without JS, or before anyone
+   reaches the control, the option carries the selection itself.
+   Options are position: relative so their text paints above this. */
+.t-segmented--sliding::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: var( --t-segmented-w );
+	height: var( --t-segmented-h );
+	transform: translate( var( --t-segmented-x ), var( --t-segmented-y ) );
+	border-radius: var( --border-radius-pill );
+	background-color: var( --background-color-progressive-subtle );
+	box-shadow: inset 0 0 0 1px var( --color-subtle );
+	transition-property: transform, width;
+	/* The script sets 0s for a placement that must not animate: first paint,
+	   a resize, a move to another row of a wrapping track. */
+	transition-duration: var( --t-segmented-duration, var( --transition-duration-medium ) );
+	transition-timing-function: var( --transition-timing-function-ease );
+}
+
+.t-segmented--on-image::before {
+	background-color: #fff;
+	box-shadow: none;
+}
+
+.t-segmented--sliding .t-segmented__option[ aria-pressed='true' ],
+.t-segmented--sliding .t-segmented__option[ aria-selected='true' ] {
+	background-color: transparent;
+	box-shadow: none;
+}
+
+/* ── Badge — a single icon-led fact ────────────────────────────────────────
+   Square corners so it never reads as a status or a facet. Module:Badge
+   already emits .t-badge; this is its shared appearance. Maintenance state
+   belongs to Mbox and the infobox indicators, not here. */
+
+.t-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: var( --space-xxs );
+	padding: 2px var( --space-xs );
+	border: 1px solid var( --border-color-base );
+	border-radius: var( --border-radius-base );
+	background-color: var( --color-surface-3 );
+	color: var( --color-base );
+	font-size: var( --font-size-x-small );
+	font-weight: var( --font-weight-medium );
+	line-height: var( --line-height-xx-small );
+}
+
+.t-badge__icon {
+	flex: 0 0 auto;
+	opacity: var( --opacity-icon-base );
+}
+
+.t-badge a {
+	color: inherit;
+	text-decoration: none;
+}
+
+.t-badge a:hover {
+	text-decoration: underline;
+}
+
+/* ── t-pagenav — one of a set of sibling PAGES ────────────────────────────
+   A labelled row of links to other articles, with the one you are on marked.
+   Rankings use four of them at once: region, track material, shuttles,
+   lifecycle.
+
+   THIS IS NOT t-segmented, AND THE DIFFERENCE IS THE POINT. A segmented
+   control is a joined track, and a joined track promises the page will change
+   under you when you press it. Every option here loads a different URL — the
+   regional ranking pages out-earn their worldwide parents two to six times
+   over, so they stay separate articles rather than one JS-filtered page, and
+   the control has to say so before it is pressed. Separate pills: each carries
+   its own border, the row carries none.
+
+   Full radius, because this answers *which* — a state, not a thing.
+
+   It lives here rather than in a module stylesheet because two surfaces use it
+   (Module:RankingsPortal and Module:RankingsTable) and TemplateStyles reaches
+   neither the other module's DOM nor a gadget's. Scope a variation to your own
+   surface (.cp-rk .t-pagenav__opt); never redefine the bare class. */
+
+.t-pagenav {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var( --space-xs );
+}
+
+.t-pagenav__label {
+	font-size: var( --font-size-x-small );
+	font-weight: var( --font-weight-medium );
+	color: var( --color-subtle );
+}
+
+.t-pagenav__list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var( --space-xs );
+}
+
+.t-pagenav__opt {
+	padding: 4px 12px;
+	border: var( --border-base );
+	border-radius: var( --border-radius-pill );
+	font-size: var( --font-size-small );
+	line-height: var( --line-height-xx-small );
+	white-space: nowrap;
+	transition: background-color var( --transition-hover ),
+		border-color var( --transition-hover );
+}
+
+.t-pagenav__opt:hover {
+	background-color: var( --color-surface-2 );
+}
+
+/* Where you are, not something to press. The accent fill, and no link inside
+   it to suggest otherwise. */
+.t-pagenav__opt--current,
+.t-pagenav__opt--current:hover {
+	border-color: var( --color-progressive );
+	background-color: var( --color-progressive );
+	color: var( --color-inverted-fixed );
+	font-weight: var( --font-weight-medium );
+}
+
+/* No article yet, shown rather than hidden: Template:Rankings promises eleven
+   regional pages that do not exist, silently, at the foot of every ranking
+   page. Dashed, holding a red link so the gap is one click from being written.
+   Keyed off the link's own `new` class, so no module looks the page up.
+   --absent is the old emitted class; drop it once cached pages have rendered.
+   --none is an option with no title to create: muted, not pressable. */
+.t-pagenav__opt:has( > a.new ),
+.t-pagenav__opt--absent {
+	border-style: dashed;
+}
+
+.t-pagenav__opt--none,
+.t-pagenav__opt--none:hover {
+	background-color: transparent;
+	color: var( --color-subtle );
+	cursor: default;
+}
+
+/* ── Icon mask — a file rendered in currentColor ───────────────────────────
+   Module:Icon, and Module:Button's icon slot, stash the file URL inline as a
+   bare quoted string in --t-icon-url: Sanitizer::checkCss rejects url() and
+   image-set() in a style attribute, so a string is all an element can carry.
+
+   Turning that string back into an image needs image-set( var( … ) ), which a
+   module stylesheet cannot do: TemplateStylesExtender 3.0.0 refuses url(),
+   image(), image-set(), src() and attr() inside a custom property value
+   outright. (Do not re-try this on the strength of 3.0.0 fixing var() inside
+   colour functions and grid track lists — those are a different matcher.) And
+   TemplateStyles is prefixed .mw-parser-output, so it could never reach the
+   gadget DOM that uses the same class anyway. It lives here, unsanitised, and
+   reaches wikitext and gadget surfaces alike.
+
+   The fill sits in the same block as the mask on purpose. Alone it paints a
+   solid currentColor square where the icon should be, which is exactly how
+   the TemplateStyles version failed. */
+
+.t-icon--mask {
+	display: inline-block;
+	vertical-align: middle;
+	-webkit-mask-image: image-set( var( --t-icon-url ) 1x );
+	mask-image: image-set( var( --t-icon-url ) 1x );
+	mask-size: contain;
+	mask-repeat: no-repeat;
+	mask-position: center;
+	background-color: currentColor;
+}
+
+/* ── Photo placeholder — the absence of an image, holding its space ────────
+   Put on the image box itself, which must be position: relative and carry its
+   own tint; this paints the glyph over it. The box stays in the layout so that
+   rows and cards keep a constant shape whether or not a photo exists — see
+   DR-001's "lead with the constant". Roughly four openings in five have none.
+
+   Masked rather than set as a background-image so the colour is a token. Both
+   copies this replaces carried fill='#888888', a fixed grey picked against the
+   light surface and near-invisible on the dark one.
+
+   The shape has to be a data: URI, and TemplateStyles refuses one at any size —
+   $wgTemplateStylesAllowedUrls admits Commons uploads only — so this cannot
+   live in a module stylesheet even for the wikitext surfaces that use it.
+
+   Size defaults to 40% of the box, which suits a small square thumb. A larger
+   box wants a smaller fraction: set --t-photo-placeholder-size on the box from
+   the surface's own stylesheet rather than overriding mask-size here. */
+
+.t-photo-placeholder::after,
+/* Parser-cache alias — DELETE THIS ONE SELECTOR after a full refreshLinks
+   cycle. Product pages cached before Module:ProductsByManufacturer started
+   emitting .t-photo-placeholder still carry only the surface class. */
+.productGrid__photo--empty::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	-webkit-mask-image: url( "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' d='M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z'/%3E%3C/svg%3E" );
+	mask-image: url( "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' d='M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z'/%3E%3C/svg%3E" );
+	mask-size: var( --t-photo-placeholder-size, 40% );
+	mask-repeat: no-repeat;
+	mask-position: center;
+	background-color: var( --color-subtle );
+	opacity: 0.25;
+}

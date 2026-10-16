@@ -1,0 +1,33 @@
+{
+  "name": "coasterpedia-developer-portal",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sync": "node scripts/sync-sources.mjs",
+    "build": "tsx --tsconfig build/tsconfig.json build/build.tsx",
+    "dev": "npm run build && wrangler dev",
+    "deploy": "npm run build && wrangler deploy",
+    "migrate:local": "wrangler d1 migrations apply ACCOUNTS --local",
+    "migrate:remote": "wrangler d1 migrations apply ACCOUNTS --remote",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p build",
+    "examples": "node scripts/capture-examples.mjs"
+  },
+  "dependencies": {
+    "aws4fetch": "1.0.20",
+    "hono": "4.13.13"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.22.0",
+    "@cloudflare/workers-types": "^5.20260926.1",
+    "@fontsource/roboto": "5.3.0",
+    "@fontsource/roboto-mono": "5.3.0",
+    "@types/node": "24.19.2",
+    "marked": "18.1.1",
+    "tsx": "4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11",
+    "wrangler": "^4.141.0",
+    "yaml": "2.9.1"
+  }
+}

@@ -1,0 +1,60 @@
+/* From MediaWiki:Citizen.css by scripts/sync-sources.mjs. */
+:root {
+    /* Set Coasterpedia primary color */
+    --color-progressive-oklch__l: 68.11%;
+	--color-progressive-oklch__c: 0.1827;
+	--color-progressive-oklch__h: 135.19;
+	--color-surface-0-oklch__l: 100%;
+	--color-surface-0-oklch__c: 0;
+	--color-surface-1-oklch__c: 0;
+	--color-surface-2-oklch__c: 0;
+	--color-visited: #36c;
+	/* Citizen derives these three from --color-progressive-hsl__h, which is
+	   still 220 — our accent is re-themed through the OKLCH channel instead.
+	   Overriding only the base left the two interaction states navy, so a
+	   selected row in any Codex menu turned blue on hover.
+	   Citizen's steps are base + delta-lightness-surface-base x3 and x6. We
+	   take x3 for hover, but x4 for active in dark: our green ink is lighter
+	   than the blue this ramp was drawn for, and at x6 (36%) it falls to
+	   3.92:1 on the fill. 32% holds 4.62:1. Light mode keeps x3/x6 — see
+	   DR-009 section 7a for the separate contrast problem there. */
+	--background-color-progressive-subtle: oklch( 96% 0.04 135.19 );
+	--background-color-progressive-subtle--hover: oklch( 90% 0.04 135.19 );
+	--background-color-progressive-subtle--active: oklch( 84% 0.04 135.19 );
+
+	/* --- The focus ring, in light mode ----------------------------------
+	   The accent is oklch( 68.11% ) in both themes. On white that is 2.71:1,
+	   under the 3:1 a focus indicator needs; on a dark surface it is already
+	   7.18:1. 52% gives 5.17:1.
+
+	   ONLY these three. They are read by focus indicators and nothing else, so
+	   this cannot touch the resting page — which is why it is here and the
+	   control-edge work in DR-009 section 7b is not.
+
+	   Do NOT darken --color-progressive to do this. Codex treats it as the ink
+	   half of an ink/fill pair; on this wiki it is used as a FILL in eleven
+	   places, including .citizen-header below, the TOC indicator, ::selection
+	   and the loading bar. Darkening it turns the brand green muddy.
+
+	   Undone in each dark block below: there is no light-theme class, light is
+	   the bare :root, so a value here reaches every theme until it is undone. */
+	--border-color-progressive--focus: oklch( 52% 0.1827 135.19 );
+	--box-shadow-color-progressive--focus: oklch( 52% 0.1827 135.19 );
+	--outline-color-progressive--focus: oklch( 52% 0.1827 135.19 );
+}
+
+@media (prefers-color-scheme: dark) {
+:root {
+	--color-surface-0-oklch__l: 16%;
+	--color-surface-1-oklch__l: calc( var( --color-surface-0-oklch__l ) + var( --delta-lightness-surface-base ) );
+	--background-color-progressive-subtle: oklch( 24% 0.045 135.19 );
+	--background-color-progressive-subtle--hover: oklch( 30% 0.045 135.19 );
+	--background-color-progressive-subtle--active: oklch( 32% 0.045 135.19 );
+
+	/* Undo the light-mode focus darkening from :root — the accent is
+	   already 7.18:1 on a dark surface. */
+	--border-color-progressive--focus: var( --color-progressive );
+	--box-shadow-color-progressive--focus: var( --color-progressive );
+	--outline-color-progressive--focus: var( --color-progressive );
+}
+}

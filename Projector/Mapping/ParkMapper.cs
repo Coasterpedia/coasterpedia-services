@@ -7,8 +7,8 @@ namespace CoasterpediaServices.Projector.Mapping;
 /// <summary>
 /// Amusement_Parks row → public park record. Pure, like AttractionMapper.
 /// History's owner and operator spells arrived with park companies (DR-010
-/// §12.16), the current ones as owners and operators with §12.18; name
-/// history still waits.
+/// §12.16), the current ones as owners and operators with §12.18, and the
+/// park's past names with §12.22.
 /// </summary>
 public static class ParkMapper
 {
@@ -20,7 +20,7 @@ public static class ParkMapper
 
     /// <summary>Every company link the parks' History rows cite, for one batched resolve.</summary>
     public static IEnumerable<string> LinkTargets(IEnumerable<ParkRow> rows) =>
-        rows.SelectMany(r => r.History).SelectMany(h => Wikitext.RefList(h.Name)).Select(x => x.Target).OfType<string>();
+        rows.SelectMany(r => r.History).Where(h => h.Type != "name").SelectMany(h => Wikitext.RefList(h.Name)).Select(x => x.Target).OfType<string>();
 
     /// <param name="resolved">Link target → page ID, through redirects; a red link is absent and keeps a null id.</param>
     /// <param name="resort">The park's resort, from <see cref="Resorts"/>; null when it is in none.</param>
@@ -88,8 +88,34 @@ public static class ParkMapper
             return refs.Count == 0 ? null : refs;
         }
 
-        var history = new ParkHistory(Role("owner"), Role("operator"));
-        return history.Owners == null && history.Operators == null ? null : history;
+        var history = new ParkHistory(Names(row, issues), Role("owner"), Role("operator"));
+        return history.Names == null && history.Owners == null && history.Operators == null ? null : history;
+    }
+
+    /// <summary>
+    /// The names History records for the park, oldest first (Position 1 is the
+    /// name now). A placeholder ("Unknown") names nothing and is left out.
+    /// Null unless one name differs from the current one, so a park never
+    /// renamed doesn't repeat its name back as a list.
+    /// </summary>
+    private static List<ParkName>? Names(ParkRow row, List<DataIssue> issues)
+    {
+        var current = FieldMapper.Name(row.Name, row.PageName);
+        var names = new List<ParkName>();
+        foreach (var h in row.History.Where(h => h.Type == "name").OrderByDescending(h => h.Position ?? 0))
+        {
+            var name = Wikitext.Strip(h.Name ?? "");
+            if (name.Length == 0 || Wikitext.IsPlaceholder(name))
+            {
+                continue;
+            }
+
+            names.Add(new ParkName(name,
+                FieldMapper.Precise(row.PageId, "history.names.start", h.Start, h.StartPrecision, issues),
+                FieldMapper.Precise(row.PageId, "history.names.end", h.End, h.EndPrecision, issues)));
+        }
+
+        return names.Any(n => n.Name != current) ? names : null;
     }
 
     /// <summary>Every member title the resorts name, for one batched resolve.</summary>
