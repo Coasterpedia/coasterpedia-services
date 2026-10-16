@@ -44,7 +44,7 @@ USAGE_ALERT_DAILY = "200000"
 [[d1_databases]]
 binding = "ACCOUNTS"
 database_name = "coasterpedia-accounts"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "73745dca-2d1a-4d60-b09e-db12008095c7"
 migrations_dir = "migrations"
 
 # The API's key namespace: the API reads it, the portal writes it (§7.3 step 2).
