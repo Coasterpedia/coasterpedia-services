@@ -28,13 +28,13 @@ PORTAL_ORIGIN = "https://developer.coasterpedia.net"
 # (§7.2 step 2); OAUTH_CLIENT_SECRET is a Worker secret.
 OAUTH_CLIENT_ID = ""
 # Wiki user IDs allowed to review listings, comma-separated (§13.5).
-SHOWCASE_REVIEWERS = ""
+SHOWCASE_REVIEWERS = "1,2123"
 # SES (§13.7). SES_ACCESS_KEY_ID and SES_SECRET_ACCESS_KEY are Worker secrets.
 SES_REGION = "eu-west-2"
 MAIL_FROM = "developer@coasterpedia.net"
 # For the Analytics Engine SQL API and the GraphQL Analytics API (§13.10);
 # ANALYTICS_TOKEN (Account Analytics Read) is a Worker secret.
-CF_ACCOUNT_ID = ""
+CF_ACCOUNT_ID = "2faf8e536b2a7b502cd01dbce29f94c7"
 USAGE_DATASET = "coasterpedia_api_usage"
 # Requests a day across every Worker on the account before the alert mails.
 USAGE_ALERT_DAILY = "200000"
