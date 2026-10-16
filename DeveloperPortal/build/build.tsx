@@ -192,7 +192,7 @@ await page('terms/index.html', {
 const COUNTED: [string, string][] = [['attractions', 'Attractions'], ['parks', 'Parks'], ['manufacturers', 'Manufacturers'], ['products', 'Products']];
 
 const GETS = [
-	{ title: 'The wiki’s own records', body: 'The same data the wiki shows, kept up by its editors every day, with stable IDs that survive renames and moves.' },
+	{ title: 'The wiki’s own records', body: 'The same data the wiki shows, updated by its editors every day, with stable IDs that survive renames and moves.' },
 	{ title: 'Current within minutes', body: <>An edit reaches the API in a couple of minutes. You can read edits as they happen, or <a href="/docs/views/">only those that have stood for a week</a>.</> },
 	{ title: 'A feed of what changed', body: <><code>/v1/changes</code> lists every record that changed since you last asked, so you only download what changed.</> },
 	{ title: 'Open licence', body: <>The data is CC BY-SA 4.0. Credit Coasterpedia wherever you show it, and <a href="/docs/attribution/">share alike</a>.</> },
