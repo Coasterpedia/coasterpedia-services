@@ -27,7 +27,7 @@ const md = new Marked({ gfm: true });
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 
-function write(path: string, body: string): void {
+function write(path: string, body: string | Uint8Array): void {
 	const file = join(out, path);
 	mkdirSync(dirname(file), { recursive: true });
 	writeFileSync(file, body);
@@ -71,7 +71,7 @@ const published = parse(contractText) as { info: { version: string } };
 if (meta) published.info.version = meta.schema_version;
 write('openapi.yaml', contractText.split('\n')[0] + '\n' + stringify(published, { lineWidth: 0 }));
 write('copy.js', readFileSync(join(root, 'content/copy.js'), 'utf8'));
-write('favicon.svg', readFileSync(join(root, 'content/favicon.svg'), 'utf8'));
+write('favicon.ico', readFileSync(join(root, 'content/favicon.ico')));
 write('robots.txt', 'User-agent: *\nDisallow: /account/\nDisallow: /auth/\nDisallow: /review\n');
 // Static assets carry the same headers the Worker sets on its pages.
 write('_headers', [

@@ -96,7 +96,7 @@ export function Layout(props: PageProps) {
 				{props.description && <meta name="description" content={props.description} />}
 				{props.markdown && <link rel="alternate" type="text/markdown" href={props.markdown} />}
 				<link rel="stylesheet" href="/portal.css" />
-				<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+				<link rel="icon" href="/favicon.ico" sizes="16x16 32x32" />
 			</head>
 			<body>
 				<a class="skip-link" href="#content">Skip to content</a>
