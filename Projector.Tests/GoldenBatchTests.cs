@@ -420,7 +420,8 @@ public class GoldenBatchTests
             Type = "coaster", PageId = 3213, PageName = "Boomerang (Vekoma product)", Revision = 701, Name = "Boomerang",
             Types = "Shuttle", LiftLaunch = "[[Chain lift]]",
             Status = "Discontinued", Manufacturer = "[[Vekoma]]", Units = "metric",
-            Introduced = "1984-01-01", IntroducedPrecision = 3, TrackMaterial = "Steel", SupportMaterial = "Steel",
+            IntroducedEdtf = "1984", IntroducedEarliest = "1984-01-01", IntroducedLatest = "1984-12-31",
+            TrackMaterial = "Steel", SupportMaterial = "Steel",
             Variants =
             [
                 new VariantRow
@@ -440,7 +441,7 @@ public class GoldenBatchTests
         {
             Type = "coaster", PageId = 68541, PageName = "Sit Down Thrill Coaster (Vekoma product)", Revision = 702,
             Name = "Sit Down Thrill Coaster", Status = "in production", Manufacturer = "[[Vekoma]]", Units = "metric",
-            Introduced = "2016-01-01", IntroducedPrecision = 3,
+            IntroducedEdtf = "2016", IntroducedEarliest = "2016-01-01", IntroducedLatest = "2016-12-31",
             Variants =
             [
                 new VariantRow { PageId = 68541, RowId = 574 },
@@ -469,14 +470,15 @@ public class GoldenBatchTests
         {
             Type = "coaster", PageId = 86315, PageName = "Mini Mouse (Zamperla product)", Revision = 704,
             Name = "Mini Mouse", Status = "discontinued", Manufacturer = "[[Zamperla]]", Units = "metric",
-            Discontinued = "2015-01-01", DiscontinuedPrecision = 3, TrackMaterial = "Steel", Restraints = "Shared lap-bars",
+            DiscontinuedEdtf = "2015", DiscontinuedEarliest = "2015-01-01", DiscontinuedLatest = "2015-12-31",
+            TrackMaterial = "Steel", Restraints = "Shared lap-bars",
         },
         // Grouped ride variants.
         new()
         {
             Type = "ride", PageId = 18364, PageName = "Disk'O (Zamperla product)", Revision = 705, Name = "Disk'O", TypeText = "Disk'O",
             Status = "in production", Manufacturer = "[[Zamperla]]", Units = "metric",
-            Introduced = "2003-01-01", IntroducedPrecision = 3,
+            IntroducedEdtf = "2003", IntroducedEarliest = "2003-01-01", IntroducedLatest = "2003-12-31",
             Variants =
             [
                 new VariantRow { PageId = 18364, RowId = 1038 },
@@ -500,12 +502,12 @@ public class GoldenBatchTests
                 },
             ],
         },
-        // Imperial, with Diameter_Metric and a sweep; a piped manufacturer.
+        // Imperial, with Diameter_Metric and a sweep; a piped manufacturer; a variant dated from its EDTF columns.
         new()
         {
             Type = "ride", PageId = 52106, PageName = "Vertigo (A.R.M. USA product)", Revision = 706, Name = "Vertigo",
             Status = "in production", Manufacturer = "[[A.R.M. (USA)|A.R.M.]]", Units = "imperial",
-            Introduced = "2009-01-01", IntroducedPrecision = 3,
+            IntroducedEdtf = "2009", IntroducedEarliest = "2009-01-01", IntroducedLatest = "2009-12-31",
             Variants =
             [
                 new VariantRow
@@ -517,6 +519,7 @@ public class GoldenBatchTests
                 new VariantRow
                 {
                     PageId = 52106, RowId = 1557, Name = "Vertigo 100",
+                    IntroducedEdtf = "2009", IntroducedEarliest = "2009-01-01", IntroducedLatest = "2009-12-31",
                     Stats = new StatsRow
                     {
                         Units = "imperial", Height = 94.4, HeightMetric = 28.77311907926, Diameter = 76, DiameterMetric = 23.164799258726,

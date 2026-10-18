@@ -551,6 +551,11 @@
         "variants": [
           {
             "name": "Vertigo 100",
+            "introduced": {
+              "edtf": "2009",
+              "earliest": "2009-01-01",
+              "latest": "2009-12-31"
+            },
             "stats": {
               "height": {
                 "value": 28.77,

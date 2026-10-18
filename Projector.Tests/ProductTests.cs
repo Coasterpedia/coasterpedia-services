@@ -28,7 +28,7 @@ public class ProductTests
         {
             Type = "coaster", PageId = 3213, PageName = "Boomerang (Vekoma product)", Revision = 123456, Name = "Boomerang",
             Status = "Discontinued", Manufacturer = "[[Vekoma]]", Units = "metric",
-            Introduced = "1984-01-01", IntroducedPrecision = 3,
+            IntroducedEdtf = "1984", IntroducedEarliest = "1984-01-01", IntroducedLatest = "1984-12-31",
             TrackMaterial = "Steel", SupportMaterial = "Steel",
             Variants = variants ??
             [
@@ -194,6 +194,40 @@ public class ProductTests
         Assert.Equal(new Measurement(23.2, "m", new Entered(76, "ft")), stats.Diameter);
         Assert.Equal(12, stats.Sweep);
         Assert.Equal(2, stats.Cabins);
+    }
+
+    [Fact]
+    public void Product_dates_come_from_the_EDTF_columns_and_keep_an_open_end()
+    {
+        // Turn Tike (Venture Rides product) as stored on 2026-10-18: 1977 or earlier, and 1979 or later.
+        var issues = new List<DataIssue>();
+        var c = Map(Boomerang() with
+        {
+            IntroducedEdtf = "[..1977]", IntroducedEarliest = null, IntroducedLatest = "1977-12-31",
+            DiscontinuedEdtf = "[1979..]", DiscontinuedEarliest = "1979-01-01",
+        }, issues);
+
+        Assert.Equal(new DateValue("[..1977]", null, "1977-12-31"), c.Introduced);
+        Assert.Equal(new DateValue("[1979..]", "1979-01-01", null), c.Discontinued);
+        Assert.Empty(issues);
+    }
+
+    [Fact]
+    public void Variant_dates_come_from_the_EDTF_columns()
+    {
+        // Vertigo 100 as stored on 2026-10-18, and an uncertain end on the same row.
+        var issues = new List<DataIssue>();
+        var c = Map(Boomerang([new VariantRow
+        {
+            PageId = 52106, RowId = 1557, Name = "Vertigo 100",
+            IntroducedEdtf = "2009", IntroducedEarliest = "2009-01-01", IntroducedLatest = "2009-12-31",
+            DiscontinuedEdtf = "[2015..]", DiscontinuedEarliest = "2015-01-01",
+        }]), issues);
+
+        var variant = Assert.Single(c.Variants!);
+        Assert.Equal(new DateValue("2009", "2009-01-01", "2009-12-31"), variant.Introduced);
+        Assert.Equal(new DateValue("[2015..]", "2015-01-01", null), variant.Discontinued);
+        Assert.Empty(issues);
     }
 
     [Fact]

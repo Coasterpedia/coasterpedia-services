@@ -311,10 +311,12 @@ public sealed record ProductRow
     /// <summary>Ride products' Type: one wikitext cell, where the other two tables keep a list (Types).</summary>
     public string? TypeText { get; init; }
 
-    public string? Introduced { get; init; }
-    public int? IntroducedPrecision { get; init; }
-    public string? Discontinued { get; init; }
-    public int? DiscontinuedPrecision { get; init; }
+    public string? IntroducedEdtf { get; init; }
+    public string? IntroducedEarliest { get; init; }
+    public string? IntroducedLatest { get; init; }
+    public string? DiscontinuedEdtf { get; init; }
+    public string? DiscontinuedEarliest { get; init; }
+    public string? DiscontinuedLatest { get; init; }
 
     public string? TrackMaterial { get; init; }
     public string? SupportMaterial { get; init; }
@@ -337,10 +339,12 @@ public sealed record VariantRow
     public required long RowId { get; init; }
     public string? Name { get; init; }
     public string? Group { get; init; }
-    public string? Introduced { get; init; }
-    public int? IntroducedPrecision { get; init; }
-    public string? Discontinued { get; init; }
-    public int? DiscontinuedPrecision { get; init; }
+    public string? IntroducedEdtf { get; init; }
+    public string? IntroducedEarliest { get; init; }
+    public string? IntroducedLatest { get; init; }
+    public string? DiscontinuedEdtf { get; init; }
+    public string? DiscontinuedEarliest { get; init; }
+    public string? DiscontinuedLatest { get; init; }
     public StatsRow Stats { get; init; } = StatsRow.Empty;
     public double? Sweep { get; init; }
     public int? Cabins { get; init; }
@@ -798,8 +802,10 @@ public sealed partial class CargoReader
             {
                 variants.AddRange(await QueryAsync<VariantRow>(conn, tx, $"""
                     SELECT t._pageID AS PageId, t._ID AS RowId, t.Variant_Name AS Name, t.Variant_Group AS `Group`,
-                           CAST(t.Introduced AS CHAR) AS Introduced, t.Introduced__precision AS IntroducedPrecision,
-                           CAST(t.Discontinued AS CHAR) AS Discontinued, t.Discontinued__precision AS DiscontinuedPrecision,
+                           t.Introduced_EDTF AS IntroducedEdtf,
+                           CAST(t.Introduced_Earliest AS CHAR) AS IntroducedEarliest, CAST(t.Introduced_Latest AS CHAR) AS IntroducedLatest,
+                           t.Discontinued_EDTF AS DiscontinuedEdtf,
+                           CAST(t.Discontinued_Earliest AS CHAR) AS DiscontinuedEarliest, CAST(t.Discontinued_Latest AS CHAR) AS DiscontinuedLatest,
                            {Select(ColumnProperties(typeof(VariantRow), VariantSpecs), VariantColumns[variantTable])},
                            {Select(StatProperties, VariantColumns[variantTable])}
                     FROM {Cargo(variantTable)} t
@@ -819,8 +825,10 @@ public sealed partial class CargoReader
                     SELECT @type AS Type, t._pageID AS PageId, t._pageName AS PageName, {Revision},
                            t.Name, t.Status, t.Manufacturer, t.Designer, t.Units,
                            {(lists.ContainsKey("Types") ? "NULL" : "CAST(t.`Type` AS CHAR)")} AS TypeText,
-                           CAST(t.Introduced AS CHAR) AS Introduced, t.Introduced__precision AS IntroducedPrecision,
-                           CAST(t.Discontinued AS CHAR) AS Discontinued, t.Discontinued__precision AS DiscontinuedPrecision,
+                           t.Introduced_EDTF AS IntroducedEdtf,
+                           CAST(t.Introduced_Earliest AS CHAR) AS IntroducedEarliest, CAST(t.Introduced_Latest AS CHAR) AS IntroducedLatest,
+                           t.Discontinued_EDTF AS DiscontinuedEdtf,
+                           CAST(t.Discontinued_Earliest AS CHAR) AS DiscontinuedEarliest, CAST(t.Discontinued_Latest AS CHAR) AS DiscontinuedLatest,
                            {listSelect}
                     FROM {Cargo(table)} t
                     JOIN {Page} p ON p.page_id = t._pageID

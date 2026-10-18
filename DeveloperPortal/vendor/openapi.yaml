@@ -2168,9 +2168,11 @@ components:
             - string
             - "null"
         introduced:
-          $ref: "#/components/schemas/DateValue"
+          allOf:
+            - $ref: "#/components/schemas/DateValue"
         discontinued:
-          $ref: "#/components/schemas/DateValue"
+          allOf:
+            - $ref: "#/components/schemas/DateValue"
         stats:
           description: As AttractionStats, plus the fields below that only variants have. Only what the product's type records.
           allOf:

@@ -19,6 +19,17 @@ When we add a field, a record with an edit waiting to settle keeps its old
 shape in the settled view until that edit settles, up to seven days later.
 [Latest and settled](/docs/views/) explains why.
 
+## 1.0.0-beta.21 - 2026-10-18
+
+### Changed
+
+- `introduced` and `discontinued` on a product, and on each of its
+  `variants`, can now be an uncertain date, such as `[..1989]` (1989 or
+  earlier) or `198X` (the 1980s). Before, they were always exact, and a
+  product whose date wasn't exact had none. About 40 products now have a
+  date they didn't. To filter or sort by these dates, read `earliest` and
+  `latest` rather than parsing `edtf`. Either can be null at an open end.
+
 ## 1.0.0-beta.20 - 2026-10-16
 
 ### Added

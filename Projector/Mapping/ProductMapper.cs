@@ -66,8 +66,8 @@ public static class ProductMapper
                 .Select(x => x.Target != null && resolved.TryGetValue(x.Target, out var id) ? x.Ref with { Id = id } : x.Ref)
                 .ToList(),
             Designers = FieldMapper.Refs(row.PageId, "designers", row.Designer, null, issues),
-            Introduced = FieldMapper.Precise(row.PageId, "introduced", row.Introduced, row.IntroducedPrecision, issues),
-            Discontinued = FieldMapper.Precise(row.PageId, "discontinued", row.Discontinued, row.DiscontinuedPrecision, issues),
+            Introduced = FieldMapper.Edtf(row.PageId, "introduced", row.IntroducedEdtf, row.IntroducedEarliest, row.IntroducedLatest, issues),
+            Discontinued = FieldMapper.Edtf(row.PageId, "discontinued", row.DiscontinuedEdtf, row.DiscontinuedEarliest, row.DiscontinuedLatest, issues),
             Offered = offered.IsEmpty ? null : offered,
             Variants = variants.Count == 0 ? null : variants,
         };
@@ -94,8 +94,8 @@ public static class ProductMapper
             var variant = new ProductVariant(name.Length == 0 ? null : name)
             {
                 Group = group.Length == 0 ? null : group,
-                Introduced = FieldMapper.Precise(row.PageId, "variants.introduced", v.Introduced, v.IntroducedPrecision, issues),
-                Discontinued = FieldMapper.Precise(row.PageId, "variants.discontinued", v.Discontinued, v.DiscontinuedPrecision, issues),
+                Introduced = FieldMapper.Edtf(row.PageId, "variants.introduced", v.IntroducedEdtf, v.IntroducedEarliest, v.IntroducedLatest, issues),
+                Discontinued = FieldMapper.Edtf(row.PageId, "variants.discontinued", v.DiscontinuedEdtf, v.DiscontinuedEarliest, v.DiscontinuedLatest, issues),
                 Stats = stats,
             };
 
