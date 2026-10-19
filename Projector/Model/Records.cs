@@ -108,10 +108,22 @@ public sealed record CoasterDetail
     public IReadOnlyList<Ref>? TrainManufacturers { get; init; }
     public IReadOnlyList<Ref>? Elements { get; init; }
 
+    /// <summary>Each track's own figures, on a coaster with two or more; the record's stats take each figure's largest.</summary>
+    public IReadOnlyList<CoasterTrack>? Tracks { get; init; }
+
     [JsonIgnore]
     public bool IsEmpty => Propulsion == null && TrackMaterial == null && SupportMaterial == null && TrainManufacturers == null
-                           && Elements == null;
+                           && Elements == null && Tracks == null;
 }
+
+/// <summary>
+/// One track (openapi CoasterTrack): numbered as the infobox numbers it, named
+/// when the page names it, with only the figures recorded for it.
+/// </summary>
+public sealed record CoasterTrack(
+    int Index,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Name,
+    AttractionStats? Stats);
 
 /// <summary>What only a ride records (openapi RideDetail). The flags are stored only when set, so false is rare and absent is usual.</summary>
 public sealed record RideDetail

@@ -813,7 +813,53 @@
         "coaster": {
           "propulsion": "roller",
           "track_material": "steel",
-          "support_material": "steel"
+          "support_material": "steel",
+          "tracks": [
+            {
+              "index": 1,
+              "name": "Red",
+              "stats": {
+                "length": {
+                  "value": 410,
+                  "unit": "m",
+                  "entered": {
+                    "value": 410,
+                    "unit": "m"
+                  }
+                },
+                "speed": {
+                  "value": 60,
+                  "unit": "km/h",
+                  "entered": {
+                    "value": 60,
+                    "unit": "km/h"
+                  }
+                }
+              }
+            },
+            {
+              "index": 2,
+              "name": "Blue",
+              "stats": {
+                "length": {
+                  "value": 395,
+                  "unit": "m",
+                  "entered": {
+                    "value": 395,
+                    "unit": "m"
+                  }
+                },
+                "speed": {
+                  "value": 62,
+                  "unit": "km/h",
+                  "entered": {
+                    "value": 62,
+                    "unit": "km/h"
+                  }
+                }
+              }
+            }
+          ]
         },
         "history": {
           "locations": [

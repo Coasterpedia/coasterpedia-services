@@ -99,6 +99,12 @@ public class GoldenBatchTests
             LocationKind = "travelling", OnLoan = false, Park = "Travelling", Owner = "Hans Meier", Location = "Travelling",
             Restraints = "Lap-bars#Hip", Propulsion = "roller", TrackMaterial = "Steel", SupportMaterial = "Steel",
             OpenedEdtf = "[..2011]", OpenedLatest = "2011-12-31",
+            // Twin by name: two tracks, each with its own figures (Coaster_Tracks).
+            TrackRows =
+            [
+                new TrackRow { PageId = 9101, Ordering = 1, Name = "Red", Stats = new StatsRow { Units = "metric", Length = 410, LengthMetric = 410, Speed = 60, SpeedMetric = 60 } },
+                new TrackRow { PageId = 9101, Ordering = 2, Name = "Blue", Stats = new StatsRow { Units = "metric", Length = 395, LengthMetric = 395, Speed = 62, SpeedMetric = 62 } },
+            ],
             PastLocations =
             [
                 new PastLocationRow

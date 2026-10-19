@@ -140,6 +140,18 @@ public sealed record AttractionRow
 
     /// <summary>The page's name History rows (project 3): one set per location, LocationOrdering 0 the current one.</summary>
     public IReadOnlyList<HistoryRow> Names { get; init; } = [];
+
+    /// <summary>Coaster_Tracks rows, by Ordering: only a multitrack coaster with two or more tracks has any.</summary>
+    public IReadOnlyList<TrackRow> TrackRows { get; init; } = [];
+}
+
+/// <summary>One track of a multitrack coaster, with its own figures in the columns Roller_Coasters uses.</summary>
+public sealed record TrackRow
+{
+    public required int PageId { get; init; }
+    public int? Ordering { get; init; }
+    public string? Name { get; init; }
+    public StatsRow Stats { get; init; } = StatsRow.Empty;
 }
 
 /// <summary>One past stint. Every attraction type stores here, despite the table's name.</summary>
@@ -445,6 +457,14 @@ public sealed partial class CargoReader
     };
 
     /// <summary>
+    /// Coaster_Tracks' stat columns: Roller_Coasters' names, without the
+    /// figures that belong to the coaster rather than a track.
+    /// </summary>
+    internal static readonly Dictionary<string, string> TrackStatColumns = StatColumns["Roller_Coasters"]
+        .Where(c => c.Key is not ("RidersHour" or "RidersTrain" or "Tracks" or "Dimension1" or "Dimension2"))
+        .ToDictionary(c => c.Key, c => c.Value);
+
+    /// <summary>
     /// AttractionRow property → column, for the columns only some tables have.
     /// The rest of the row reads the same column on every table.
     /// </summary>
@@ -612,6 +632,9 @@ public sealed partial class CargoReader
         var elements = new List<ElementRow>();
         var components = new List<ComponentRow>();
         var names = new List<HistoryRow>();
+        var tracks = new List<TrackRow>();
+        // Until the wiki creates Coaster_Tracks, a query naming it would fail every pass.
+        var hasTracks = await TableExistsAsync(conn, tx, "Coaster_Tracks", ct);
         foreach (var ids in Chunks(pageIds))
         {
             past.AddRange(await QueryAsync<PastLocationRow>(conn, tx, $"""
@@ -646,6 +669,16 @@ public sealed partial class CargoReader
                 WHERE t._pageNamespace = 0 AND t.Type = 'name' AND t.LocationOrdering >= 0 {PageFilter("t._pageID", ids)}
                 ORDER BY t._pageID, t.LocationOrdering, t.Position, t._ID
                 """, new { ids }, ct));
+            if (hasTracks)
+            {
+                tracks.AddRange(await QueryAsync<TrackRow>(conn, tx, $"""
+                    SELECT t._pageID AS PageId, t.Ordering, CAST(t.Name AS CHAR) AS Name,
+                           {Select(StatProperties, TrackStatColumns)}
+                    FROM {Cargo("Coaster_Tracks")} t
+                    WHERE t._pageNamespace = 0 {PageFilter("t._pageID", ids)}
+                    ORDER BY t._pageID, t.Ordering, t._ID
+                    """, new { ids }, ct, (row, stats) => row with { Stats = stats }));
+            }
         }
 
         var pastByPage = past.ToLookup(r => r.PageId);
@@ -653,6 +686,7 @@ public sealed partial class CargoReader
         var elementsByPage = elements.GroupBy(r => r.PageId).ToDictionary(g => g.Key, g => g.First().Elements);
         var componentsByPage = components.ToLookup(r => r.PageId);
         var namesByPage = names.ToLookup(r => r.PageId);
+        var tracksByPage = tracks.ToLookup(r => r.PageId);
 
         foreach (var (type, table) in AttractionTables)
         {
@@ -695,6 +729,7 @@ public sealed partial class CargoReader
                     Elements = elementsByPage.GetValueOrDefault(r.PageId)?.Split('#').Select(e => e.Trim()).Where(e => e.Length > 0).ToList() ?? [],
                     Components = [.. componentsByPage[r.PageId]],
                     Names = [.. namesByPage[r.PageId]],
+                    TrackRows = [.. tracksByPage[r.PageId]],
                 }));
             }
         }
@@ -911,6 +946,12 @@ public sealed partial class CargoReader
 
         return result;
     }
+
+    /// <summary>Whether the Cargo database holds <paramref name="table"/> yet.</summary>
+    private async Task<bool> TableExistsAsync(MySqlConnection conn, MySqlTransaction? tx, string table, CancellationToken ct) =>
+        await conn.ExecuteScalarAsync<long>(new CommandDefinition(
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = @schema AND table_name = @table",
+            new { schema = _config.CargoDatabase, table }, tx, cancellationToken: ct)) > 0;
 
     /// <summary>
     /// Every main-namespace redirect and the page it points at, one hop, as

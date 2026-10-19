@@ -19,6 +19,16 @@ When we add a field, a record with an edit waiting to settle keeps its old
 shape in the settled view until that edit settles, up to seven days later.
 [Latest and settled](/docs/views/) explains why.
 
+## 1.0.0-beta.23 - 2026-10-19
+
+### Added
+
+- `coaster.tracks` on a coaster with two or more tracks that have their own
+  figures, such as a duelling coaster: each track's `index`, `name` and
+  `stats`. The record's `stats` still give each figure's largest across the
+  tracks, so rankings don't change, but its height and its speed can come
+  from different tracks. Read `coaster.tracks` for the figures of one track.
+
 ## 1.0.0-beta.22 - 2026-10-19
 
 ### Added

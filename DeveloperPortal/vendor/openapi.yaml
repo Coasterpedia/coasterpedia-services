@@ -1559,7 +1559,7 @@ components:
           type:
             - integer
             - "null"
-          description: Coasters only. The wiki records 1 unless the page says otherwise.
+          description: Coasters only. The wiki records 1 unless the page says otherwise. When the tracks have their own figures, coaster.tracks lists them.
         footprint:
           type:
             - object
@@ -1663,6 +1663,29 @@ components:
           items:
             $ref: "#/components/schemas/Ref"
           description: In layout order
+        tracks:
+          type: array
+          items:
+            $ref: "#/components/schemas/CoasterTrack"
+          description: A coaster with two or more tracks that have their own figures, such as a duelling coaster, lists each track here, numbered as the article numbers them. The record's stats give each figure's largest across the tracks, so its height and its speed can come from different tracks. Absent for a single track, whose figures are the record's stats. A coaster with identical tracks records only stats.tracks.
+    CoasterTrack:
+      type: object
+      required:
+        - index
+        - name
+      properties:
+        index:
+          type: integer
+          description: The track's number in the article, from 1. Numbers can skip, for example tracks 1 and 3
+        name:
+          type:
+            - string
+            - "null"
+          description: What the article calls the track, or null if it doesn't name it
+        stats:
+          allOf:
+            - $ref: "#/components/schemas/AttractionStats"
+          description: The figures recorded for this track. riders_per_hour, riders_per_train, tracks and footprint belong to the coaster and never appear here
     RideDetail:
       type:
         - object

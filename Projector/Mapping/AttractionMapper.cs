@@ -223,8 +223,35 @@ public static partial class AttractionMapper
             SupportMaterial = FieldMapper.Choice(r.PageId, "coaster.support_material", r.Type, "support_material", r.SupportMaterial, vocab, issues),
             TrainManufacturers = FieldMapper.Refs(r.PageId, "coaster.train_manufacturers", r.TrainManufacturer, resolved, issues),
             Elements = elements.Count == 0 ? null : elements,
+            Tracks = Tracks(r, issues),
         };
         return detail.IsEmpty ? null : detail;
+    }
+
+    /// <summary>
+    /// Coaster_Tracks, in the page's numbering. The infobox writes rows only
+    /// when two or more tracks show, so a single-track coaster has none and its
+    /// stats are the track's. Each track's figures go through the same rules as
+    /// the record's; an issue names the track it came from.
+    /// </summary>
+    private static List<CoasterTrack>? Tracks(AttractionRow r, List<DataIssue> issues)
+    {
+        var tracks = new List<CoasterTrack>();
+        foreach (var t in r.TrackRows.OrderBy(t => t.Ordering))
+        {
+            if (t.Ordering is not { } index)
+            {
+                issues.Add(new DataIssue(r.PageId, "coaster.tracks", Text(t.Name) ?? "", "a track with no Ordering"));
+                continue;
+            }
+
+            var own = new List<DataIssue>();
+            var stats = StatsMapper.Map(r.PageId, t.Stats with { Units = t.Stats.Units ?? r.Stats.Units }, own);
+            issues.AddRange(own.Select(i => i with { Field = $"coaster.tracks[{index}].{i.Field}" }));
+            tracks.Add(new CoasterTrack(index, Text(t.Name), stats));
+        }
+
+        return tracks.Count == 0 ? null : tracks;
     }
 
     private static RideDetail? Ride(AttractionRow r, List<DataIssue> issues)

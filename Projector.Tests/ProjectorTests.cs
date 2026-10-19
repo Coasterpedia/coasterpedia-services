@@ -120,6 +120,40 @@ public class ProjectorTests
         Assert.Equal("""[{"kind":"attraction","id":90956,"merged_into":10384}]""", batch["merge"]!.ToJsonString());
     }
 
+    [Fact]
+    public void A_multitrack_coaster_lists_each_tracks_own_figures_in_the_pages_numbering()
+    {
+        // Battlestar Galactica as the infobox stores it: the record takes each figure's largest.
+        var issues = new List<DataIssue>();
+        var row = Row() with
+        {
+            Stats = new StatsRow { Units = "metric", Height = 42.7, HeightMetric = 42.7, Length = 982, LengthMetric = 982, TrackInversions = 5, Tracks = 2 },
+            TrackRows =
+            [
+                new TrackRow { PageId = 171, Ordering = 2, Name = "Human", Stats = new StatsRow { Length = 982, LengthMetric = 982, TrackInversions = 0 } },
+                new TrackRow { PageId = 171, Ordering = 1, Name = "''Cylon''", Stats = new StatsRow { Units = "metric", Height = 42.7, HeightMetric = 42.7, Length = 971, LengthMetric = 971, TrackInversions = 5, Duration = "1:30" } },
+                new TrackRow { PageId = 171, Ordering = 3, Stats = new StatsRow { Height = -4 } },
+            ],
+        };
+        var tracks = Map(row, issues).Coaster!.Tracks!;
+
+        Assert.Equal([1, 2, 3], tracks.Select(t => t.Index));
+        Assert.Equal(["Cylon", "Human", null], tracks.Select(t => t.Name));
+        Assert.Equal(971, tracks[0].Stats!.Length!.Value);
+        Assert.Equal(new Inversions(0, null), tracks[1].Stats!.Inversions);
+        Assert.Null(tracks[1].Stats!.Height);
+        // A figure the rules refuse is reported against its track; the track stays, empty.
+        Assert.Null(tracks[2].Stats);
+        Assert.All(issues, i => Assert.StartsWith("coaster.tracks[3].", i.Field));
+        Assert.NotEmpty(issues);
+
+        // A single-track coaster has no rows, so no tracks: its stats are the track's.
+        Assert.Null(Map(Row()).Coaster?.Tracks);
+        // Name is always written, null included.
+        var track = Wire.Upsert(Map(row), 1, DateTimeOffset.UnixEpoch)["record"]!["coaster"]!["tracks"]![2]!.AsObject();
+        Assert.True(track.ContainsKey("name"));
+    }
+
     private static HistoryRow NameRow(string name, int position, int location, string? start = null, string? end = null) =>
         new()
         {
