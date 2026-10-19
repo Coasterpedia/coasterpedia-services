@@ -6,7 +6,7 @@ export const LICENCE = {
 	attribution: 'Coasterpedia contributors',
 } as const;
 
-export const SCHEMA_VERSION = '1.0.0-beta.21';
+export const SCHEMA_VERSION = '1.0.0-beta.22';
 
 /**
  * How far back /v1/changes reaches, published in /v1/meta. A daily prune keeps

@@ -122,6 +122,11 @@ public sealed record AttractionRow
     public double? MaxWeight { get; init; }
     public double? MaxWeightPerTube { get; init; }
 
+    /// <summary>YouTube video IDs, as the infobox validates them: Video, Video2, Video3 on every table.</summary>
+    public string? Video { get; init; }
+    public string? Video2 { get; init; }
+    public string? Video3 { get; init; }
+
     public StatsRow Stats { get; init; } = StatsRow.Empty;
 
     /// <summary>Roller_Coaster_Past_Locations rows on the page, newest stint first (Ordering 1).</summary>
@@ -364,6 +369,13 @@ public sealed record ResortMemberRow
     public string? Resort { get; init; }
     public string? Park { get; init; }
     public int? Ordering { get; init; }
+}
+
+/// <summary>A main-namespace redirect: its page ID and the page it points at.</summary>
+public sealed record RedirectRow
+{
+    public required int PageId { get; init; }
+    public required int Target { get; init; }
 }
 
 /// <summary>What the wiki's page table says about an ID that has no row of the kind being read.</summary>
@@ -670,6 +682,7 @@ public sealed partial class CargoReader
                            t.Min_Unaccompanied_Age AS MinAgeUnaccompanied, t.Max_Age_Without_Child AS MaxAgeWithoutChild,
                            t.Max_Age AS MaxAge, t.Children_Only AS ChildrenOnly, t.Adult_Only_With_Child AS AdultOnlyWithChild,
                            t.Min_Weight AS MinWeight, t.Max_Weight AS MaxWeight,
+                           t.Video, t.Video2, t.Video3,
                            {Select(ColumnProperties(typeof(AttractionRow), AttractionOptional), AttractionColumns[table])},
                            {Select(StatProperties, StatColumns[table])}
                     FROM {Cargo(table)} t
@@ -898,6 +911,18 @@ public sealed partial class CargoReader
 
         return result;
     }
+
+    /// <summary>
+    /// Every main-namespace redirect and the page it points at, one hop, as
+    /// Cargo's _pageData follows it (4,474 on 2026-10-19).
+    /// </summary>
+    public async Task<List<RedirectRow>> ReadRedirectsAsync(MySqlConnection conn, CancellationToken ct) =>
+        await QueryAsync<RedirectRow>(conn, null, $"""
+            SELECT d._pageID AS PageId, d._pageIDOrRedirect AS Target
+            FROM {Cargo("_pageData")} d
+            JOIN {Page} p ON p.page_id = d._pageID
+            WHERE d._pageNamespace = 0 AND p.page_is_redirect <> 0 AND d._pageIDOrRedirect <> d._pageID
+            """, null, ct);
 
     /// <summary>The page table's view of IDs that produced no row. An ID absent from the result no longer exists.</summary>
     public async Task<Dictionary<int, PageState>> ReadPageStatesAsync(MySqlConnection conn, IReadOnlyCollection<int> pageIds,

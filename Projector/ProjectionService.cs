@@ -57,9 +57,9 @@ public sealed class ProjectionService
         public int Batches { get; private set; }
 
         public JsonObject NewBatch(IEnumerable<JsonObject>? upsert = null, IEnumerable<JsonObject>? delete = null,
-            IEnumerable<JsonObject>? discard = null, IEnumerable<JsonObject>? promote = null)
+            IEnumerable<JsonObject>? discard = null, IEnumerable<JsonObject>? promote = null, IEnumerable<JsonObject>? merge = null)
         {
-            var batch = Wire.Batch(now, settleAfter, upsert, delete, promote, discard, unsentVocabulary);
+            var batch = Wire.Batch(now, settleAfter, upsert, delete, promote, discard, unsentVocabulary, merge);
             unsentVocabulary = null;
             Batches++;
             return batch;
@@ -78,11 +78,13 @@ public sealed class ProjectionService
             await _state.GetPushedVocabularyAsync() == vocabularyHash ? null : vocabulary);
 
         var established = await _state.GetEstablishedAsync();
+        // A sweep also records every redirect to a record as a merge (MergesAsync).
+        var redirects = pageIds == null ? await _reader.ReadRedirectsAsync(conn, ct) : null;
         var total = new ProjectionResult(0, 0, 0, 0);
         foreach (var kind in _kinds)
         {
             var r = await ProjectKindAsync(kind, conn, pageIds, vocab, pass,
-                Settling.IsBootstrap(kind.Kind, established), ct);
+                Settling.IsBootstrap(kind.Kind, established), redirects, ct);
             total = new ProjectionResult(total.Read + r.Read, total.Upserted + r.Upserted, total.Deleted + r.Deleted,
                 total.Issues + r.Issues);
         }
@@ -102,7 +104,8 @@ public sealed class ProjectionService
     }
 
     private async Task<ProjectionResult> ProjectKindAsync(IKindProjection projection, MySqlConnection conn,
-        IReadOnlyCollection<int>? pageIds, Vocabularies vocab, Pass pass, bool bootstrap, CancellationToken ct)
+        IReadOnlyCollection<int>? pageIds, Vocabularies vocab, Pass pass, bool bootstrap, IReadOnlyList<RedirectRow>? redirects,
+        CancellationToken ct)
     {
         var kind = projection.Kind;
         var sweep = pageIds == null;
@@ -211,6 +214,8 @@ public sealed class ProjectionService
                 chunk.Select(d => d.Id).ToList());
         }
 
+        var merged = redirects == null ? 0 : await MergesAsync(kind, redirects, found, pass);
+
         await _state.SaveAsync(kind, absorbed);
         await _state.SetIssuesAsync(kind, found, issues);
         if (sweep)
@@ -220,11 +225,41 @@ public sealed class ProjectionService
 
         var pending = upserts.Count(u => u.State.Pending);
         _logger.LogInformation(
-            "Projected {Kind}s, {Scope}{Bootstrap}: {Read} read, {Upserted} changed ({Pending} pending), {Promoted} promoted, {Discarded} reverted to settled, {Deleted} deleted, {Issues} issues",
+            "Projected {Kind}s, {Scope}{Bootstrap}: {Read} read, {Upserted} changed ({Pending} pending), {Promoted} promoted, {Discarded} reverted to settled, {Deleted} deleted, {Merged} redirects merged, {Issues} issues",
             kind, sweep ? "everything" : $"{pageIds!.Count} pages", bootstrap ? ", bootstrapping" : "", projected.Count,
-            upserts.Count, pending, promotes.Count, discards.Count, deletes.Count, issues.Count);
+            upserts.Count, pending, promotes.Count, discards.Count, deletes.Count, merged, issues.Count);
         return new ProjectionResult(projected.Count, upserts.Count, deletes.Count, issues.Count);
     }
+
+    /// <summary>
+    /// Every redirect to one of this kind's records becomes a merge, so its ID
+    /// answers 301. The delete path records a merge only when it sees a record
+    /// turn into a redirect; this also covers pages redirected before the API
+    /// existed, and a page dropped first ({{delete}}) and redirected later.
+    /// Only new or retargeted redirects are sent. A redirect that goes away
+    /// keeps its merge: the 301 still leads to a live record.
+    /// </summary>
+    /// <returns>Merges sent.</returns>
+    private async Task<int> MergesAsync(string kind, IReadOnlyList<RedirectRow> redirects, IReadOnlySet<int> records, Pass pass)
+    {
+        var due = DueMerges(redirects, records, await _state.GetMergesAsync(kind));
+        foreach (var chunk in due.Chunk(_config.BatchSize))
+        {
+            var batch = pass.NewBatch(merge: chunk.Select(m => Wire.Merge(m.PageId, m.Target, kind)));
+            await _state.CommitMergesAsync(kind, batch.ToJsonString(), chunk);
+        }
+
+        return due.Count;
+    }
+
+    /// <summary>Redirects to a record that the edge hasn't been sent, or was sent pointing elsewhere.</summary>
+    /// <param name="pushed">Redirect ID → the target last sent.</param>
+    public static List<RedirectRow> DueMerges(IEnumerable<RedirectRow> redirects, IReadOnlySet<int> records,
+        IReadOnlyDictionary<int, int> pushed) =>
+        redirects
+            .Where(r => records.Contains(r.Target) && !records.Contains(r.PageId)
+                && !(pushed.TryGetValue(r.PageId, out var target) && target == r.Target))
+            .ToList();
 
     /// <summary>
     /// Promote every pending run whose clock has run out (DR-010 §6.3). Hourly,

@@ -247,6 +247,17 @@ public static class Wire
         ["merged_into"] = mergedInto,
     };
 
+    /// <summary>
+    /// A redirect to a record, from the sweep: the edge answers its ID with a
+    /// 301 to the record, and logs nothing, as most were never records.
+    /// </summary>
+    public static JsonObject Merge(int id, int mergedInto, string kind = Attraction) => new()
+    {
+        ["kind"] = kind,
+        ["id"] = id,
+        ["merged_into"] = mergedInto,
+    };
+
     /// <summary>The latest version has settled: it joins the settled view, replacing what was there.</summary>
     public static JsonObject Promote(int id, string kind = Attraction) => new()
     {
@@ -262,13 +273,13 @@ public static class Wire
     };
 
     /// <summary>
-    /// One ingest request. The edge applies upserts, discards, promotes and
-    /// deletes in that order; a pass emits at most one item per record.
+    /// One ingest request. The edge applies upserts, discards, promotes,
+    /// deletes and merges in that order; a pass emits at most one item per record.
     /// </summary>
     /// <param name="vocabularies">/v1/vocabularies' document (VocabularyDocument), when it has changed.</param>
     public static JsonObject Batch(DateTimeOffset asOf, TimeSpan settleAfter, IEnumerable<JsonObject>? upserts = null,
         IEnumerable<JsonObject>? deletes = null, IEnumerable<JsonObject>? promotes = null, IEnumerable<JsonObject>? discards = null,
-        JsonObject? vocabularies = null)
+        JsonObject? vocabularies = null, IEnumerable<JsonObject>? merges = null)
     {
         var batch = new JsonObject
         {
@@ -279,6 +290,13 @@ public static class Wire
             ["promote"] = Array(promotes),
             ["discard"] = Array(discards),
         };
+        // Only when there are any, so every other batch keeps its shape.
+        var merge = Array(merges);
+        if (merge.Count > 0)
+        {
+            batch["merge"] = merge;
+        }
+
         if (vocabularies != null)
         {
             batch["vocabularies"] = vocabularies.DeepClone();

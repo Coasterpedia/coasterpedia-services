@@ -1,6 +1,6 @@
 import { env } from 'cloudflare:workers';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { encodeCursor, listQuery } from '../src/attractions';
+import { encodeCursor, idsQuery, listQuery, MAX_IDS } from '../src/attractions';
 import { facetQueries } from '../src/facets';
 import { FIRST_SEQ_SQL, pageQuery } from '../src/changes';
 import { resetData } from './reset';
@@ -56,6 +56,17 @@ describe('a page deep in the list reads its page, not the table before it', () =
 		// that walks the name index reads past the rows it skips (7 countries,
 		// 5 types), so the bound is per filter, well under the scan.
 		expect(read).toBeLessThan(url.includes('country=') || url.includes('type=') ? 1000 : 300);
+	});
+});
+
+describe('a batch read reads only the rows it names', () => {
+	it('reads each ID by key, however far apart', async () => {
+		const ids = Array.from({ length: MAX_IDS }, (_, i) => 100 + i * 97);
+		const { sql, binds } = idsQuery(ids);
+		const result = await env.DATA.prepare(sql).bind(...binds).all();
+		expect(result.results.length).toBe(MAX_IDS);
+		// Three per ID: each seek reads its row and one past it to stop (150 for 50, of N).
+		expect(result.meta.rows_read).toBeLessThanOrEqual(3 * MAX_IDS);
 	});
 });
 

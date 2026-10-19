@@ -20,7 +20,7 @@ beforeAll(async () => {
 		headers: { 'content-type': 'application/json', 'x-dev-ingest-token': 'test-ingest-token' },
 		body: JSON.stringify(batch),
 	}));
-	expect(await res.json()).toEqual({ upserted: 7, deleted: 1, promoted: 1, discarded: 1 });
+	expect(await res.json()).toEqual({ upserted: 7, deleted: 1, promoted: 1, discarded: 1, merged: 1 });
 });
 
 it('accepts the Projector batch and serves it in name order, accent-blind', async () => {
@@ -64,6 +64,18 @@ it('redirects the merged page', async () => {
 	const res = await get('/v1/attractions/170?view=latest');
 	expect(res.status).toBe(301);
 	expect(res.headers.get('location')).toBe(`${BASE}/v1/attractions/171?view=latest`);
+});
+
+it('redirects a page that was only ever a redirect, without logging it', async () => {
+	const res = await get('/v1/attractions/90956?view=settled');
+	expect(res.status).toBe(301);
+	expect(res.headers.get('location')).toBe(`${BASE}/v1/attractions/165?view=settled`);
+	const changes = await (await get('/v1/changes?view=latest&since=2026-10-01T00:00:00Z&limit=100')).json<any>();
+	expect(changes.data.some((c: any) => c.id === 90956)).toBe(false);
+});
+
+it('serves the videos as sent', async () => {
+	expect((await (await get('/v1/attractions/165?view=latest')).json<any>()).data.videos).toEqual(['kXHp3Ks2Xc4', 'Zr_9-wQ4bYc']);
 });
 
 it('ranks by a headline stat, leaving out what does not record it, and shows the figure', async () => {

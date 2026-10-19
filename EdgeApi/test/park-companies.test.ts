@@ -28,7 +28,7 @@ describe('the Projector park company batch', () => {
 	beforeAll(async () => {
 		await resetData();
 		await env.KEYS.put(`key:${await sha256Hex(KEY)}`, JSON.stringify({ account: 'park_companies', tier: 'beta', status: 'active' }));
-		expect(await (await ingest(batch)).json()).toEqual({ upserted: 5, deleted: 1, promoted: 1, discarded: 1 });
+		expect(await (await ingest(batch)).json()).toEqual({ upserted: 5, deleted: 1, promoted: 1, discarded: 1, merged: 0 });
 		expect((await ingest(parks)).status).toBe(200);
 	});
 

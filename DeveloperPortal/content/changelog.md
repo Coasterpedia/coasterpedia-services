@@ -19,6 +19,29 @@ When we add a field, a record with an edit waiting to settle keeps its old
 shape in the settled view until that edit settles, up to seven days later.
 [Latest and settled](/docs/views/) explains why.
 
+## 1.0.0-beta.22 - 2026-10-19
+
+### Added
+
+- `videos` on an attraction: the YouTube video IDs the article lists, at
+  most three. Watch one at `https://www.youtube.com/watch?v=` followed by
+  the ID. The videos belong to whoever uploaded them, so the data licence
+  doesn't cover them.
+- `ids` on `/v1/attractions`: up to 50 attraction IDs, separated by commas.
+  You get their full records in one request, with `meta.merged`,
+  `meta.missing` and `meta.not_settled` saying what happened to each ID you
+  didn't get as asked. It takes `view` and no other parameter, and needs an
+  API key.
+
+### Changed
+
+- An ID of any page that redirects to an attraction, park, manufacturer,
+  product or park company now answers `301` to that record. Before, a page
+  that someone redirected by hand answered `404` unless the API had held it
+  as a record when it became a redirect. These redirects don't appear in
+  `/v1/changes`, because most were never records. If you hold an ID that
+  answered `404`, ask again.
+
 ## 1.0.0-beta.21 - 2026-10-18
 
 ### Changed

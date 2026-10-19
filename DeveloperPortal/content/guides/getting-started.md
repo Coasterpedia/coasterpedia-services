@@ -84,8 +84,9 @@ A few things work the same way everywhere in the API.
 
 A record's `id` is the wiki's page ID, so it stays the same when the page is
 renamed or moved. If two records are merged, a request for the old ID gets a
-`301` redirect to the new one. Filters that take an ID, such as `park=`,
-follow the merge for you.
+`301` redirect to the new one. The same happens for any page on the wiki
+that redirects to a record, even one that was never in the API itself.
+Filters that take an ID, such as `park=`, follow the merge for you.
 
 If a field is missing, we don't know its value. A missing field and `null`
 mean the same thing. For example, if a coaster has no `inversions` field,

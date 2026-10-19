@@ -31,7 +31,7 @@ describe('the Projector product batch', () => {
 	beforeAll(async () => {
 		await resetData();
 		await env.KEYS.put(`key:${await sha256Hex(KEY)}`, JSON.stringify({ account: 'products', tier: 'beta', status: 'active' }));
-		expect(await (await ingest(batch)).json()).toEqual({ upserted: 8, deleted: 1, promoted: 1, discarded: 1 });
+		expect(await (await ingest(batch)).json()).toEqual({ upserted: 8, deleted: 1, promoted: 1, discarded: 1, merged: 0 });
 		// Attractions carry the vocabularies and link two of these products: Example Twin (pending) is a
 		// Boomerang, Élan is partly an AquaPlay. Manufacturers make /manufacturers/{id}/products answer.
 		// Vekoma (548) is one; Zamperla is not.
@@ -183,7 +183,7 @@ describe('the Projector product batch', () => {
 	it('counts products in /v1/meta, per view', async () => {
 		const latest = await (await exports.default.fetch(new Request(`${BASE}/v1/meta?view=latest`))).json<any>();
 		expect(latest.counts).toEqual({ attractions: 7, parks: 0, manufacturers: 7, products: 8, park_companies: 0 });
-		expect(latest.schema_version).toBe('1.0.0-beta.21');
+		expect(latest.schema_version).toBe('1.0.0-beta.22');
 		const settled = await (await exports.default.fetch(new Request(`${BASE}/v1/meta`))).json<any>();
 		expect(settled.counts.products).toBe(7);
 	});

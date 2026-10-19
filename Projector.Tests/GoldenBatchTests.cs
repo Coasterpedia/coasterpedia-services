@@ -52,6 +52,8 @@ public class GoldenBatchTests
             LocationKind = "park", OnLoan = false, Park = "[[Six Flags Magic Mountain]]", Location = "Valencia", State = "California",
             Section = "DC Universe", OpenedEdtf = "1994-03-26", OpenedEarliest = "1994-03-26", OpenedLatest = "1994-03-26",
             Restraints = "Over-the-shoulder", Propulsion = "roller", TrackMaterial = "Steel", MinHeight = 54,
+            // Invented IDs: two slots of three filled.
+            Video = "kXHp3Ks2Xc4", Video2 = "Zr_9-wQ4bYc",
             Elements = ["Chain lift", "Pre-Drop", "Vertical loop", "Zero-g roll", "Helix", "Corkscrew (element)"],
             Stats = new StatsRow
             {
@@ -573,12 +575,14 @@ public class GoldenBatchTests
         var issues = new List<DataIssue>();
         // 9101 is an untrusted change waiting to settle; the rest are settled. The
         // promote and discard name pages the edge has never seen, so they must be
-        // accepted and do nothing.
+        // accepted and do nothing. 90956 is a redirect to Batman The Ride that was
+        // never a record.
         var upserts = Rows.Select(r => Wire.Upsert(
             AttractionMapper.Map(r, vocab, Resolved, ProductIds, "https://coasterpedia.net", issues), r.Revision, at,
             r.PageId == 9101 ? at + TimeSpan.FromDays(7) : null));
         var batch = Wire.Batch(at, TimeSpan.FromDays(7), upserts, [Wire.Delete(170, 171)],
-            [Wire.Promote(9998)], [Wire.Discard(9999)], VocabularyDocument.Build(vocab, templates, [Wire.Park, Wire.Manufacturer, Wire.Product, Wire.ParkCompany]));
+            [Wire.Promote(9998)], [Wire.Discard(9999)], VocabularyDocument.Build(vocab, templates, [Wire.Park, Wire.Manufacturer, Wire.Product, Wire.ParkCompany]),
+            [Wire.Merge(90956, 165)]);
 
         Assert.Empty(issues);
         AssertGolden("projector-batch.json", batch);

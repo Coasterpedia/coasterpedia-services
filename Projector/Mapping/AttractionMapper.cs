@@ -9,7 +9,7 @@ namespace CoasterpediaServices.Projector.Mapping;
 /// testable from fixture rows. Each field the slice publishes is mapped here
 /// and nowhere else.
 /// </summary>
-public static class AttractionMapper
+public static partial class AttractionMapper
 {
     /// <summary>Every link target the rows cite, for one batched resolve.</summary>
     public static IEnumerable<string> LinkTargets(IEnumerable<AttractionRow> rows) =>
@@ -52,6 +52,7 @@ public static class AttractionMapper
             Restraints = FieldMapper.Choices(row.PageId, "restraints", row.Type, "restraints1", row.Restraints, vocab, issues),
             Replaced = FieldMapper.Refs(row.PageId, "replaced", row.Replaced, resolved, issues),
             ReplacedBy = FieldMapper.Refs(row.PageId, "replaced_by", row.Replacement, resolved, issues),
+            Videos = Videos(row, issues),
             Stats = StatsMapper.Map(row.PageId, row.Stats, issues),
             Restrictions = Restrictions(row, issues),
             Coaster = Coaster(row, vocab, resolved, issues),
@@ -60,6 +61,40 @@ public static class AttractionMapper
             History = History(row, vocab, resolved, issues),
         };
     }
+
+    /// <summary>
+    /// Each slot's YouTube ID, blanks dropped and repeats published once. The
+    /// infobox only embeds an 11-character ID, so anything else (a full URL) is
+    /// reported and left out: none was stored on 2026-10-19.
+    /// </summary>
+    private static List<string>? Videos(AttractionRow r, List<DataIssue> issues)
+    {
+        var videos = new List<string>();
+        foreach (var (slot, value) in new[] { ("video", r.Video), ("video2", r.Video2), ("video3", r.Video3) })
+        {
+            var id = value?.Trim();
+            if (string.IsNullOrEmpty(id))
+            {
+                continue;
+            }
+
+            if (!YouTubeId().IsMatch(id))
+            {
+                issues.Add(new DataIssue(r.PageId, $"videos.{slot}", id, "not a YouTube video ID"));
+                continue;
+            }
+
+            if (!videos.Contains(id))
+            {
+                videos.Add(id);
+            }
+        }
+
+        return videos.Count == 0 ? null : videos;
+    }
+
+    [System.Text.RegularExpressions.GeneratedRegex("^[A-Za-z0-9_-]{11}$")]
+    private static partial System.Text.RegularExpressions.Regex YouTubeId();
 
     private static AttractionDates? Dates(AttractionRow r, List<DataIssue> issues)
     {

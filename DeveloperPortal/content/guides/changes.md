@@ -41,6 +41,10 @@ Each entry names a record. If `op` is `upsert`, fetch the record and replace
 your copy of it. If `op` is `delete`, remove it. When a record was merged
 into another, `merged_into` gives the other record's ID.
 
+To fetch many attractions at once, pass up to 50 IDs to
+`/v1/attractions?ids=`, separated by commas. You get the full records, as
+`/v1/attractions/{id}` gives them, in one request.
+
 Every response has a `meta.next_cursor`. Pass it as `since` on your next
 call.
 
@@ -62,6 +66,10 @@ no harm.
 ## How far back it goes
 
 The feed keeps the last 90 days of changes (`changes_window` in `/v1/meta`).
+If you call it at least once every 90 days, your copy never falls further
+behind than the feed reaches, and you never need to rebuild it. Once a day is
+plenty.
+
 If your `since` is older than that, you get `410 cursor-expired`, because
 your copy has missed changes the feed can no longer tell you about. You also
 get it, rarely, if we've had to rebuild the log. Either way, rebuild your copy

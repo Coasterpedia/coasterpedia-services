@@ -27,7 +27,7 @@ describe('the Projector manufacturer batch', () => {
 	beforeAll(async () => {
 		await resetData();
 		await env.KEYS.put(`key:${await sha256Hex(KEY)}`, JSON.stringify({ account: 'manufacturers', tier: 'beta', status: 'active' }));
-		expect(await (await ingest(batch)).json()).toEqual({ upserted: 7, deleted: 1, promoted: 1, discarded: 1 });
+		expect(await (await ingest(batch)).json()).toEqual({ upserted: 7, deleted: 1, promoted: 1, discarded: 1, merged: 0 });
 		// The other kinds beside them, to show none touches another's rows.
 		expect((await ingest(attractions)).status).toBe(200);
 		expect((await ingest(parks)).status).toBe(200);
@@ -104,7 +104,7 @@ describe('the Projector manufacturer batch', () => {
 	it('counts manufacturers in /v1/meta, per view', async () => {
 		const latest = await (await exports.default.fetch(new Request(`${BASE}/v1/meta?view=latest`))).json<any>();
 		expect(latest.counts).toEqual({ attractions: 7, parks: 7, manufacturers: 7, products: 0, park_companies: 0 });
-		expect(latest.schema_version).toBe('1.0.0-beta.21');
+		expect(latest.schema_version).toBe('1.0.0-beta.22');
 		const settled = await (await exports.default.fetch(new Request(`${BASE}/v1/meta`))).json<any>();
 		expect(settled.counts).toEqual({ attractions: 6, parks: 6, manufacturers: 6, products: 0, park_companies: 0 });
 	});

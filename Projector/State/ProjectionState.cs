@@ -1,4 +1,5 @@
 using System.Text.Json;
+using CoasterpediaServices.Projector.Data;
 using CoasterpediaServices.Projector.Model;
 using StackExchange.Redis;
 
@@ -41,6 +42,7 @@ public sealed class ProjectionState
     private static string SettlingKey(string kind) => $"projector:{kind}:settling";
     private static string MissingKey(string kind) => $"projector:{kind}:missing";
     private static string IssuesKey(string kind) => $"projector:{kind}:issues";
+    private static string MergesKey(string kind) => $"projector:{kind}:merges";
 
     public async Task<Dictionary<int, RecordState>> GetStatesAsync(string kind, IReadOnlyCollection<int>? ids)
     {
@@ -122,6 +124,17 @@ public sealed class ProjectionState
         {
             await Db.SortedSetRemoveAsync(SettlingKey(kind), settled);
         }
+    }
+
+    /// <summary>Redirect page ID → the record it was last pushed as merging into.</summary>
+    public async Task<Dictionary<int, int>> GetMergesAsync(string kind) =>
+        (await Db.HashGetAllAsync(MergesKey(kind))).ToDictionary(e => (int)e.Name, e => (int)e.Value);
+
+    /// <summary>Queue a batch of merges, then record them so the next sweep sends only what changed.</summary>
+    public async Task CommitMergesAsync(string kind, string batchJson, IReadOnlyCollection<RedirectRow> merges)
+    {
+        await EnqueueAsync(batchJson);
+        await Db.HashSetAsync(MergesKey(kind), merges.Select(m => new HashEntry(m.PageId, m.Target)).ToArray());
     }
 
     /// <summary>Kinds a sweep has completed for (Settling.IsBootstrap).</summary>

@@ -246,6 +246,9 @@ public sealed record AttractionContent
 
     public IReadOnlyList<Ref>? ReplacedBy { get; init; }
 
+    /// <summary>YouTube video IDs, in the infobox's order (Video, Video2, Video3).</summary>
+    public IReadOnlyList<string>? Videos { get; init; }
+
     public AttractionStats? Stats { get; init; }
     public Restrictions? Restrictions { get; init; }
     public CoasterDetail? Coaster { get; init; }

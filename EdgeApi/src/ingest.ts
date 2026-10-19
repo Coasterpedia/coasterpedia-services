@@ -29,6 +29,12 @@ interface Item {
 	id: number;
 }
 
+interface Merge {
+	kind: string;
+	id: number;
+	merged_into: number;
+}
+
 /** One allowed value of a vocabulary field, as /v1/vocabularies serves it. */
 interface VocabularyValue {
 	value: string;
@@ -43,6 +49,11 @@ interface Batch {
 	delete: Delete[];
 	promote?: Item[];
 	discard?: Item[];
+	/**
+	 * Redirects to a record, from the nightly sweep: each ID answers 301 to its
+	 * record. Absent from batches queued before beta.22, and from any without one.
+	 */
+	merge?: Merge[];
 	/** API field → allowed values. Only on the first batch of a pass whose vocabularies changed. */
 	vocabularies?: Record<string, VocabularyValue[]>;
 }
@@ -217,6 +228,19 @@ export async function ingest(request: Request, env: Env): Promise<Response> {
 		);
 	}
 
+	// A redirect the sweep found. Most were never records, so nothing is logged:
+	// a delete line for an ID no client has seen would only be noise. The row
+	// is written only when it's new or the redirect now points elsewhere.
+	for (const m of batch.merge ?? []) {
+		statements.push(
+			db.prepare(
+				`INSERT INTO merges (kind, old_id, new_id, at) VALUES (?1, ?2, ?3, ?4)
+				 ON CONFLICT (kind, old_id) DO UPDATE SET new_id = excluded.new_id, at = excluded.at
+				 WHERE merges.new_id <> excluded.new_id`,
+			).bind(m.kind, m.id, m.merged_into, at),
+		);
+	}
+
 	// data_as_of only moves forward: a delayed batch from the outbox must not wind it back.
 	statements.push(
 		db.prepare(
@@ -243,7 +267,10 @@ export async function ingest(request: Request, env: Env): Promise<Response> {
 	}
 
 	await db.batch(statements);
-	return json({ upserted: batch.upsert.length, deleted: batch.delete.length, promoted: promote.length, discarded: discard.length });
+	return json({
+		upserted: batch.upsert.length, deleted: batch.delete.length, promoted: promote.length, discarded: discard.length,
+		merged: batch.merge?.length ?? 0,
+	});
 }
 
 function validate(b: Batch): string | null {
@@ -265,7 +292,15 @@ function validate(b: Batch): string | null {
 			if (!Number.isInteger(i.id)) return 'id must be an integer';
 		}
 	}
-	const count = b.upsert.length + b.delete.length + (b.promote?.length ?? 0) + (b.discard?.length ?? 0);
+	if (b.merge !== undefined) {
+		if (!Array.isArray(b.merge)) return 'merge must be an array';
+		for (const m of b.merge) {
+			if (!Object.hasOwn(KINDS, m?.kind)) return `Unknown kind ${String(m?.kind)}`;
+			if (!Number.isInteger(m.id) || !Number.isInteger(m.merged_into)) return 'Merge id and merged_into must be integers';
+			if (m.id === m.merged_into) return `Merge ${m.id}: a page can't merge into itself`;
+		}
+	}
+	const count = b.upsert.length + b.delete.length + (b.promote?.length ?? 0) + (b.discard?.length ?? 0) + (b.merge?.length ?? 0);
 	if (count > MAX_ITEMS) {
 		return `At most ${MAX_ITEMS} items per batch`;
 	}

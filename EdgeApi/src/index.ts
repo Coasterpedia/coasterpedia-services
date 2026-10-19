@@ -1,4 +1,4 @@
-import { getAttraction, listAttractions, meta } from './attractions';
+import { getAttraction, getAttractions, listAttractions, meta } from './attractions';
 import { authenticate, authenticateInternal, type Caller } from './auth';
 import { cacheKey, serveCached, type Served } from './cache';
 import { delayHours, listChanges, pruneChanges } from './changes';
@@ -138,6 +138,10 @@ function route(path: string, url: URL, env: Env, caller: Caller): Route | null {
 	}
 
 	if (path === '/v1/attractions') {
+		// Full records by ID: a route of its own, so a browser session (list only) is refused it.
+		if (url.searchParams.has('ids')) {
+			return { name: '/v1/attractions?ids', view: true, run: () => getAttractions(url, env) };
+		}
 		return { name: '/v1/attractions', view: true, run: () => listAttractions(url, env) };
 	}
 

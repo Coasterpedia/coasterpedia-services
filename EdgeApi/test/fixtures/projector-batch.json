@@ -357,6 +357,10 @@
             "name": "Z-Force"
           }
         ],
+        "videos": [
+          "kXHp3Ks2Xc4",
+          "Zr_9-wQ4bYc"
+        ],
         "stats": {
           "height": {
             "value": 32,
@@ -1395,6 +1399,13 @@
     {
       "kind": "attraction",
       "id": 9999
+    }
+  ],
+  "merge": [
+    {
+      "kind": "attraction",
+      "id": 90956,
+      "merged_into": 165
     }
   ],
   "vocabularies": {

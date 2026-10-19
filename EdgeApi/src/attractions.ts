@@ -430,6 +430,106 @@ export async function runAttractionList(query: ListQuery, env: Env): Promise<{ r
 	};
 }
 
+/** ids: the most a call names. Each costs three rows read at most, so a call's cost is bounded however it's used. */
+export const MAX_IDS = 50;
+
+/** Merges followed from a requested ID: a merge into a page that merged again, and so on. */
+const MERGE_HOPS = 3;
+
+/**
+ * ids: attraction IDs, comma-separated, each once, in the order given. It takes
+ * no filter, sort or cursor, which choose rows of the list: ids names them.
+ */
+export function idsParam(url: URL): number[] {
+	for (const name of url.searchParams.keys()) {
+		if (name !== 'ids' && name !== 'view') {
+			throw badRequest('parameter-invalid', `ids can't be used with ${name}`,
+				'ids fetches the attractions you name, so filters, sort, limit and cursor have nothing to choose from. Use view only.');
+		}
+	}
+	const raw = url.searchParams.getAll('ids').join(',').split(',').map((v) => v.trim()).filter((v) => v.length > 0);
+	const ids = [...new Set(raw.map(Number))];
+	if (raw.length === 0 || raw.some((v) => !/^\d+$/.test(v)) || ids.some((n) => !Number.isSafeInteger(n) || n < 1)
+		|| ids.length > MAX_IDS) {
+		throw badRequest('parameter-invalid', `ids takes 1 to ${MAX_IDS} attraction IDs, separated by commas`);
+	}
+	return ids;
+}
+
+/** Both views' rows for some attractions: one primary-key seek per ID (cost.test.ts). */
+export function idsQuery(ids: number[]): { sql: string; binds: number[] } {
+	return {
+		sql: `SELECT id, in_latest, in_settled, revision, settles_at, record FROM attractions WHERE id IN (${ids.map(() => '?').join(',')})`,
+		binds: ids,
+	};
+}
+
+/**
+ * GET /v1/attractions?ids= (DR-010 §9): the full records of up to 50
+ * attractions, as /v1/attractions/{id} serves each. A merged ID gives the
+ * record it merged into, once however many IDs lead there, and meta.merged
+ * says which. An ID with nothing in the view is in meta.missing, or in
+ * meta.not_settled when only the latest view has it yet; neither fails the call.
+ */
+export async function getAttractions(url: URL, env: Env): Promise<{ response: Response; rows: number }> {
+	const view = viewParam(url);
+	const ids = idsParam(url);
+
+	const rowsById = new Map<number, RecordRow[]>();
+	const read = async (wanted: number[]) => {
+		const { sql, binds } = idsQuery(wanted);
+		const { results } = await env.DATA.prepare(sql).bind(...binds).all<RecordRow & { id: number }>();
+		for (const r of results) rowsById.set(r.id, [...(rowsById.get(r.id) ?? []), r]);
+	};
+	await read(ids);
+
+	// Where each requested ID ends up: itself, or the record a merge leads to.
+	const target = new Map(ids.map((id) => [id, id]));
+	for (let hop = 0; hop < MERGE_HOPS; hop++) {
+		const unresolved = ids.filter((id) => !rowsById.has(target.get(id)!));
+		if (unresolved.length === 0) break;
+		const from = [...new Set(unresolved.map((id) => target.get(id)!))];
+		const { results: merges } = await env.DATA.prepare(
+			`SELECT old_id, new_id FROM merges WHERE kind = 'attraction' AND old_id IN (${from.map(() => '?').join(',')})`,
+		).bind(...from).all<{ old_id: number; new_id: number }>();
+		if (merges.length === 0) break;
+		const next = new Map(merges.map((m) => [m.old_id, m.new_id]));
+		for (const id of unresolved) {
+			const to = next.get(target.get(id)!);
+			if (to != null) target.set(id, to);
+		}
+		const unread = [...new Set(merges.map((m) => m.new_id))].filter((id) => !rowsById.has(id));
+		if (unread.length > 0) await read(unread);
+	}
+
+	const data: Record<string, unknown>[] = [];
+	const served = new Set<number>();
+	const merged: Record<string, number> = {};
+	const missing: number[] = [];
+	const notSettled: number[] = [];
+	for (const id of ids) {
+		const to = target.get(id)!;
+		const { record, pending } = inView(rowsById.get(to) ?? [], view);
+		if (!record) {
+			(pending ? notSettled : missing).push(id);
+			continue;
+		}
+		if (to !== id) merged[id] = to;
+		if (!served.has(to)) {
+			served.add(to);
+			data.push(record);
+		}
+	}
+
+	return {
+		rows: data.length,
+		response: json({
+			data,
+			meta: { data_as_of: await dataAsOf(env), view, licence: LICENCE, merged, missing, not_settled: notSettled },
+		}),
+	};
+}
+
 interface RecordRow {
 	in_latest: number;
 	in_settled: number;
@@ -454,6 +554,28 @@ export interface RecordKind {
 	decorate?: (record: Record<string, unknown>, id: number, view: View, env: Env) => Promise<void>;
 }
 
+/**
+ * One record's rows → the record the view serves, with its settlement, which
+ * reads the same in both views (DR-010 §6.3): a settled client can see the site
+ * already shows something newer, a latest one that nobody has vetted it.
+ * pending is the latest row when it hasn't settled, so a settled miss can say
+ * when it will.
+ */
+function inView(rows: RecordRow[], view: View): { record: Record<string, unknown> | null; pending?: RecordRow } {
+	const latest = rows.find((r) => r.in_latest === 1);
+	const settled = rows.find((r) => r.in_settled === 1);
+	const pending = latest && latest.in_settled === 0 ? latest : undefined;
+	const row = view === 'latest' ? latest : settled;
+	if (!row) return { record: null, pending };
+	const record = JSON.parse(row.record);
+	record.settlement = {
+		settled_revision: settled?.revision ?? null,
+		pending_revision: pending?.revision ?? null,
+		settles_at: pending?.settles_at ?? null,
+	};
+	return { record, pending };
+}
+
 /** One full record in the view asked for, with its settlement; the caller has checked its parameters. */
 export async function getRecord(url: URL, idText: string, env: Env, k: RecordKind): Promise<{ response: Response; rows: number }> {
 	const view = viewParam(url);
@@ -465,21 +587,10 @@ export async function getRecord(url: URL, idText: string, env: Env, k: RecordKin
 	const { results } = await env.DATA.prepare(
 		`SELECT in_latest, in_settled, revision, settles_at, record FROM ${k.table} WHERE id = ?`,
 	).bind(id).all<RecordRow>();
-	const latest = results.find((r) => r.in_latest === 1);
-	const settled = results.find((r) => r.in_settled === 1);
-	const pending = latest && latest.in_settled === 0 ? latest : undefined;
+	const { record, pending } = inView(results, view);
 
-	const row = view === 'latest' ? latest : settled;
-	if (row) {
-		// The same in both views (DR-010 §6.3): a settled client can see the site
-		// already shows something newer, a latest one that nobody has vetted it.
-		const record = JSON.parse(row.record);
+	if (record) {
 		if (k.decorate) await k.decorate(record, id, view, env);
-		record.settlement = {
-			settled_revision: settled?.revision ?? null,
-			pending_revision: pending?.revision ?? null,
-			settles_at: pending?.settles_at ?? null,
-		};
 		return {
 			rows: 1,
 			response: json({ data: record, meta: { data_as_of: await dataAsOf(env), view, licence: LICENCE } }),

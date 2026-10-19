@@ -81,6 +81,45 @@ public class ProjectorTests
         Assert.True(Wire.Upsert(placeholder, 1, DateTimeOffset.UnixEpoch)["summary"]!["name_is_placeholder"]!.GetValue<bool>());
     }
 
+    [Fact]
+    public void Videos_keep_the_slot_order_and_drop_blanks_repeats_and_anything_but_an_id()
+    {
+        var issues = new List<DataIssue>();
+        var c = Map(Row() with { Video = " kXHp3Ks2Xc4 ", Video2 = "https://youtu.be/kXHp3Ks2Xc4", Video3 = "Zr_9-wQ4bYc" }, issues);
+        Assert.Equal(["kXHp3Ks2Xc4", "Zr_9-wQ4bYc"], c.Videos);
+        Assert.Equal([new DataIssue(171, "videos.video2", "https://youtu.be/kXHp3Ks2Xc4", "not a YouTube video ID")], issues);
+
+        Assert.Equal(["kXHp3Ks2Xc4"], Map(Row() with { Video = "kXHp3Ks2Xc4", Video3 = "kXHp3Ks2Xc4" }).Videos);
+        // None recorded: absent, not an empty list.
+        Assert.Null(Map(Row() with { Video = "", Video2 = null }).Videos);
+        Assert.False(Wire.Upsert(Map(Row()), 1, DateTimeOffset.UnixEpoch)["record"]!.AsObject().ContainsKey("videos"));
+    }
+
+    [Fact]
+    public void A_sweep_merges_each_redirect_to_a_record_once_and_again_if_it_is_retargeted()
+    {
+        RedirectRow R(int id, int target) => new() { PageId = id, Target = target };
+        var records = new HashSet<int> { 10384, 10657, 14162 };
+        var redirects = new[]
+        {
+            R(90956, 10384), // new
+            R(88715, 10657), // sent already
+            R(76735, 14162), // sent pointing elsewhere: retargeted
+            R(70001, 55555), // to a page that is no record of this kind
+        };
+        var pushed = new Dictionary<int, int> { [88715] = 10657, [76735] = 99 };
+
+        Assert.Equal([90956, 76735], ProjectionService.DueMerges(redirects, records, pushed).Select(m => m.PageId));
+    }
+
+    [Fact]
+    public void A_batch_carries_merge_only_when_it_has_some()
+    {
+        Assert.False(Wire.Batch(DateTimeOffset.UnixEpoch, TimeSpan.FromDays(7)).ContainsKey("merge"));
+        var batch = Wire.Batch(DateTimeOffset.UnixEpoch, TimeSpan.FromDays(7), merges: [Wire.Merge(90956, 10384)]);
+        Assert.Equal("""[{"kind":"attraction","id":90956,"merged_into":10384}]""", batch["merge"]!.ToJsonString());
+    }
+
     private static HistoryRow NameRow(string name, int position, int location, string? start = null, string? end = null) =>
         new()
         {

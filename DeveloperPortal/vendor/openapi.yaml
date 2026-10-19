@@ -17,11 +17,22 @@ security:
 paths:
   /attractions:
     get:
-      summary: List attractions
+      summary: List attractions, or fetch some by ID
+      description: |
+        Without ids, a page of summaries, filtered and sorted. With ids, the full records of the attractions you name, as /attractions/{id} gives each one. ids takes no other parameter but view, and needs an API key.
       security:
         - apiKey: []
         - session: []
       parameters:
+        - name: ids
+          in: query
+          description: |
+            Up to 50 attraction IDs, separated by commas. You get each record once, in the order you asked. If an ID was merged into another attraction, you get that attraction's record, and meta.merged gives the new ID. An ID with no record in the view you asked for is listed in meta.not_settled if it's waiting to settle, or in meta.missing otherwise. Neither fails the request.
+          schema:
+            type: string
+            examples:
+              - 165,169,171
+          x-beta: Attractions only. The same parameter on the other kinds can follow if you need it.
         - name: type
           in: query
           schema:
@@ -104,7 +115,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AttractionList"
+                oneOf:
+                  - $ref: "#/components/schemas/AttractionList"
+                  - $ref: "#/components/schemas/AttractionRecords"
         "429":
           $ref: "#/components/responses/TooManyRequests"
         default:
@@ -1342,6 +1355,34 @@ components:
             $ref: "#/components/schemas/AttractionSummary"
         meta:
           $ref: "#/components/schemas/Meta"
+    AttractionRecords:
+      description: The answer to /attractions?ids=
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Attraction"
+        meta:
+          allOf:
+            - $ref: "#/components/schemas/Meta"
+            - type: object
+              properties:
+                merged:
+                  type: object
+                  additionalProperties:
+                    type: integer
+                  description: Each ID you asked for that was merged, and the ID of the record you got for it
+                missing:
+                  type: array
+                  items:
+                    type: integer
+                  description: "IDs with no attraction: deleted, never one, or not an attraction"
+                not_settled:
+                  type: array
+                  items:
+                    type: integer
+                  description: IDs that are in the latest view but haven't settled yet. Ask again with view=latest to get them now
     Attraction:
       allOf:
         - $ref: "#/components/schemas/Record"
@@ -1423,6 +1464,12 @@ components:
               allOf:
                 - $ref: "#/components/schemas/RefList"
               description: What replaced it
+            videos:
+              type: array
+              items:
+                type: string
+                pattern: ^[A-Za-z0-9_-]{11}$
+              description: YouTube video IDs, in the order the article lists them, at most three. Watch one at https://www.youtube.com/watch?v={id}. The videos belong to whoever uploaded them, not to Coasterpedia, so the data licence doesn't cover them. Absent when there are none.
             stats:
               $ref: "#/components/schemas/AttractionStats"
             restrictions:

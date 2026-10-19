@@ -223,12 +223,75 @@ describe('GET /v1/attractions/{id}', () => {
 			upsert: [],
 			delete: [{ kind: 'attraction', id: 169, merged_into: 171 }, { kind: 'attraction', id: 165, merged_into: null }],
 		});
-		expect(await res.json()).toEqual({ upserted: 0, deleted: 2, promoted: 0, discarded: 0 });
+		expect(await res.json()).toEqual({ upserted: 0, deleted: 2, promoted: 0, discarded: 0, merged: 0 });
 		const merged = await get('/v1/attractions/169?view=latest');
 		expect(merged.status).toBe(301);
 		expect(merged.headers.get('location')).toBe(`${BASE}/v1/attractions/171?view=latest`);
 		expect((await get('/v1/attractions/165?view=latest')).status).toBe(404);
 		expect((await get('/v1/attractions/abc?view=latest')).status).toBe(404);
+	});
+});
+
+describe('GET /v1/attractions?ids=', () => {
+	const ids = async (q: string) => (await get(`/v1/attractions?${q}`)).json<any>();
+
+	it('returns full records in the order asked, and says what it could not find', async () => {
+		const body = await ids('ids=19643,171,999999&view=latest');
+		expect(body.data.map((r: any) => r.id)).toEqual([19643, 171]);
+		expect(body.data[0]).toMatchObject({ title: 'Over the Hill 2', location: { country: UK } });
+		expect(body.data[0].settlement).toEqual({ settled_revision: 1, pending_revision: null, settles_at: null });
+		expect(body.meta).toMatchObject({ view: 'latest', merged: {}, missing: [999999], not_settled: [] });
+	});
+
+	it('follows a merge, serves a record once, and repeated ids= add up', async () => {
+		await ingest({ as_of: '2026-10-11T12:00:00Z', upsert: [], delete: [{ kind: 'attraction', id: 169, merged_into: 171 }] });
+		await ingest({ as_of: '2026-10-11T12:00:00Z', upsert: [], delete: [], merge: [{ kind: 'attraction', id: 90956, merged_into: 169 }] });
+		const body = await ids('ids=169,171&ids=90956,169&view=latest');
+		expect(body.data.map((r: any) => r.id)).toEqual([171]);
+		// 90956 → 169 → 171: two hops.
+		expect(body.meta.merged).toEqual({ 169: 171, 90956: 171 });
+	});
+
+	it('lists a record that has not settled apart from one that does not exist', async () => {
+		await ingest({ as_of: '2026-10-11T12:00:00Z', delete: [], upsert: [upsert(5, 'New Ride', 'ride', 'operating', UK, 2, '2026-10-18T12:00:00Z')] });
+		const settled = await ids('ids=5,165');
+		expect(settled.data.map((r: any) => r.id)).toEqual([165]);
+		expect(settled.meta).toMatchObject({ view: 'settled', missing: [], not_settled: [5] });
+		expect((await ids('ids=5&view=latest')).data[0].settlement.pending_revision).toBe(2);
+	});
+
+	it.each([
+		['ids=', 'empty'], ['ids=1,abc', 'not a number'], ['ids=0', 'not an ID'],
+		[`ids=${Array.from({ length: 51 }, (_, i) => i + 1).join(',')}`, 'too many'],
+		['ids=1&type=ride', 'with a filter'], ['ids=1&limit=5', 'with limit'],
+	])('refuses %s (%s)', async (q) => {
+		const res = await get(`/v1/attractions?${q}`);
+		expect(res.status).toBe(400);
+		expect((await res.json<any>()).type).toMatch(/parameter-invalid$/);
+	});
+});
+
+describe('merges from the sweep', () => {
+	const merge = (items: unknown[]) => ingest({ as_of: '2026-10-11T12:00:00Z', upsert: [], delete: [], merge: items });
+
+	it('answers a redirect with its record, follows a retarget, and leaves a live record alone', async () => {
+		expect(await (await merge([{ kind: 'attraction', id: 90956, merged_into: 165 }])).json()).toMatchObject({ merged: 1 });
+		expect((await get('/v1/attractions/90956?view=latest')).headers.get('location')).toBe(`${BASE}/v1/attractions/165?view=latest`);
+
+		await merge([{ kind: 'attraction', id: 90956, merged_into: 171 }]);
+		expect((await get('/v1/attractions/90956?view=latest')).headers.get('location')).toBe(`${BASE}/v1/attractions/171?view=latest`);
+
+		// A record still held wins over a merge naming it.
+		await merge([{ kind: 'attraction', id: 169, merged_into: 171 }]);
+		expect((await get('/v1/attractions/169?view=latest')).status).toBe(200);
+	});
+
+	it('refuses a merge that is not one', async () => {
+		for (const bad of [{ kind: 'attraction', id: 1, merged_into: 1 }, { kind: 'ride', id: 1, merged_into: 2 },
+			{ kind: 'attraction', id: 1, merged_into: null }]) {
+			expect((await merge([bad])).status).toBe(400);
+		}
+		expect((await ingest({ as_of: '2026-10-11T12:00:00Z', upsert: [], delete: [], merge: {} })).status).toBe(400);
 	});
 });
 
