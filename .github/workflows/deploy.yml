@@ -91,6 +91,7 @@ jobs:
             export PROJECTOR_DB_PASSWORD="${{secrets.PROJECTOR_DB_PASSWORD}}" &&
             export PROJECTOR_ACCESS_CLIENT_ID="${{secrets.PROJECTOR_ACCESS_CLIENT_ID}}" &&
             export PROJECTOR_ACCESS_CLIENT_SECRET="${{secrets.PROJECTOR_ACCESS_CLIENT_SECRET}}" &&
+            export REDIS_PASSWORD="${{secrets.REDIS_PASSWORD}}" &&
             if cd coasterpedia-services; then git pull; else git clone --depth 1 -b main https://github.com/${{ github.repository }} coasterpedia-services && cd coasterpedia-services; fi &&
             docker compose pull &&
             docker compose up -d -V &&
