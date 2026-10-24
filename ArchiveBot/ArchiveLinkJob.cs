@@ -4,6 +4,7 @@ using CoasterpediaServices.ArchiveBot.Clients.Archive;
 using CoasterpediaServices.ArchiveBot.Clients.Wayback;
 using CoasterpediaServices.ArchiveBot.Links;
 using CoasterpediaServices.ArchiveBot.Options;
+using CoasterpediaServices.ArchiveBot.Sweep;
 using CoasterpediaServices.Common.Wiki;
 using Hangfire;
 using MarketAlly.IronWiki.Analysis;
@@ -26,17 +27,22 @@ public partial class ArchiveLinkJob
     private readonly PacedArchiveClient _archiveClient;
     private readonly LinkChecker _linkChecker;
     private readonly BotConfigProvider _botConfigProvider;
+    private readonly IPageCheckStore _pageChecks;
+    private readonly TimeProvider _time;
     private readonly ILogger<ArchiveLinkJob> _logger;
     private readonly ArchiveBotConfig _archiveBotConfig;
 
     public ArchiveLinkJob(WikiSiteAccessor siteAccessor, IWaybackClient waybackClient, PacedArchiveClient archiveClient, LinkChecker linkChecker,
-        BotConfigProvider botConfigProvider, ILogger<ArchiveLinkJob> logger, IOptions<ArchiveBotConfig> archiveBotConfig)
+        BotConfigProvider botConfigProvider, IPageCheckStore pageChecks, TimeProvider time, ILogger<ArchiveLinkJob> logger,
+        IOptions<ArchiveBotConfig> archiveBotConfig)
     {
         _siteAccessor = siteAccessor;
         _waybackClient = waybackClient;
         _archiveClient = archiveClient;
         _linkChecker = linkChecker;
         _botConfigProvider = botConfigProvider;
+        _pageChecks = pageChecks;
+        _time = time;
         _logger = logger;
         _archiveBotConfig = archiveBotConfig.Value;
     }
@@ -44,6 +50,10 @@ public partial class ArchiveLinkJob
     // Jobs scheduled before the revision ID was passed in still name this overload.
     [Queue(ArchiveBotConfig.ArchiveQueue)]
     public Task Run(string pageName) => Run(pageName, null);
+
+    // The same run, queued by ArchiveSweepJob behind every edit-triggered one.
+    [Queue(ArchiveBotConfig.SweepQueue)]
+    public Task RunFromSweep(string pageName) => Run(pageName, null);
 
     [Queue(ArchiveBotConfig.ArchiveQueue)]
     public async Task Run(string pageName, long? revisionId)
@@ -70,16 +80,20 @@ public partial class ArchiveLinkJob
         if (newContent == page.Content)
         {
             _logger.LogInformation("No references edited");
-            return;
+        }
+        else
+        {
+            _logger.LogInformation("Saving page");
+            await page.EditAsync(new WikiPageEditOptions
+            {
+                Content = newContent,
+                Summary = "Add archive links",
+                Bot = true
+            });
         }
 
-        _logger.LogInformation("Saving page");
-        await page.EditAsync(new WikiPageEditOptions
-        {
-            Content = newContent,
-            Summary = "Add archive links",
-            Bot = true
-        });
+        // Only once the page is through: a run that fails is retried, so its check hasn't happened.
+        await _pageChecks.MarkChecked(page.Id, _time.GetUtcNow());
     }
 
     // Checks and archives every citation on the page, returning the new wikitext. Saves to the Wayback

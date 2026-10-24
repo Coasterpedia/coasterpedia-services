@@ -3,6 +3,7 @@ using CoasterpediaServices.ArchiveBot.Clients.Archive;
 using CoasterpediaServices.ArchiveBot.Clients.Wayback;
 using CoasterpediaServices.ArchiveBot.Links;
 using CoasterpediaServices.ArchiveBot.Options;
+using CoasterpediaServices.ArchiveBot.Sweep;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Refit;
@@ -102,6 +103,7 @@ public sealed class JobHarness
     public FakeArchive Archive { get; } = new();
     public FixedTime Time { get; } = new(DateTimeOffset.Parse("2026-10-24T12:00:00Z"));
     public InMemoryLinkStateStore Links { get; } = new();
+    public InMemoryPageCheckStore PageChecks { get; } = new();
 
     public BotConfig Config { get; } = new(
         ["cite web", "cite news"],
@@ -119,7 +121,7 @@ public sealed class JobHarness
     {
         var checker = new LinkChecker(new LinkWebClient(new HttpClient(Sites)), Links, Time, NullLogger<LinkChecker>.Instance);
         Job = new ArchiveLinkJob(null!, Wayback, new PacedArchiveClient(Archive, NullLogger<PacedArchiveClient>.Instance, TimeSpan.Zero),
-            checker, null!, NullLogger<ArchiveLinkJob>.Instance,
+            checker, null!, PageChecks, Time, NullLogger<ArchiveLinkJob>.Instance,
             Microsoft.Extensions.Options.Options.Create(new ArchiveBotConfig { BotUsername = "ArchiveBot", BotPassword = "unused" }));
     }
 

@@ -4,7 +4,9 @@ using CoasterpediaServices.ArchiveBot.Clients.Wayback;
 using CoasterpediaServices.ArchiveBot.Events;
 using CoasterpediaServices.ArchiveBot.Links;
 using CoasterpediaServices.ArchiveBot.Options;
+using CoasterpediaServices.ArchiveBot.Sweep;
 using CoasterpediaServices.Common;
+using Hangfire;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -23,8 +25,10 @@ public static class ArchiveBotServiceCollectionExtensions
         services.AddSingleton<BotConfigProvider>();
         services.AddSingleton<PacedArchiveClient>();
         services.AddSingleton<LinkChecker>();
-        // InternalApi's IConnectionMultiplexer; the local runner registers an in-memory store first.
+        services.AddSingleton<ArchiveSweepJob>();
+        // InternalApi's IConnectionMultiplexer; the local runner registers in-memory stores first.
         services.TryAddSingleton<ILinkStateStore, RedisLinkStateStore>();
+        services.TryAddSingleton<IPageCheckStore, RedisPageCheckStore>();
         services.TryAddSingleton(TimeProvider.System);
 
         services.AddOptions<ArchiveBotConfig>()
@@ -67,5 +71,17 @@ public static class ArchiveBotServiceCollectionExtensions
         services.AddSingleton<IEventSubscriber, ArchiveBotSubscriber>();
 
         return services;
+    }
+
+    // Turning the sweep off stops new batches; articles already queued still run.
+    public static void UseArchiveBotJobs(this IRecurringJobManager jobs, ArchiveBotConfig config)
+    {
+        if (!config.Sweep.Enabled)
+        {
+            jobs.RemoveIfExists("archive-sweep");
+            return;
+        }
+
+        jobs.AddOrUpdate<ArchiveSweepJob>("archive-sweep", j => j.Run(), Cron.MinuteInterval(config.Sweep.IntervalMinutes));
     }
 }

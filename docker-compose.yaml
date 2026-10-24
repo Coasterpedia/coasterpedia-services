@@ -12,6 +12,7 @@ services:
       CoasterpediaConfig__BaseUrl: http://coasterpedia-mediawiki-1
       ArchiveBotConfig__BotUsername: ArchiveBot
       ArchiveBotConfig__BotPassword: ${ARCHIVE_BOT_PASSWORD}
+      ArchiveBotConfig__Sweep__Enabled: ${ARCHIVE_SWEEP_ENABLED:-false}
       FlickrConfig__ApiKey: ${FLICKR_API_KEY}
       CommonsConfig__AccessToken: ${COMMONS_ACCESS_TOKEN}
       GeographConfig__ApiKey: ${GEOGRAPH_API_KEY}

@@ -1,3 +1,5 @@
+using CoasterpediaServices.ArchiveBot;
+using CoasterpediaServices.ArchiveBot.Options;
 using CoasterpediaServices.Projector;
 using CoasterpediaServices.Projector.Options;
 using Hangfire;
@@ -14,6 +16,7 @@ namespace CoasterpediaServices.InternalApi;
 public sealed class RecurringJobsRegistration(
     IRecurringJobManager jobs,
     IOptions<ProjectorConfig> projectorConfig,
+    IOptions<ArchiveBotConfig> archiveBotConfig,
     ILogger<RecurringJobsRegistration> logger) : BackgroundService
 {
     private static readonly TimeSpan MaxDelay = TimeSpan.FromSeconds(30);
@@ -26,6 +29,7 @@ public sealed class RecurringJobsRegistration(
             try
             {
                 jobs.UseProjectorJobs(projectorConfig.Value);
+                jobs.UseArchiveBotJobs(archiveBotConfig.Value);
                 if (attempt > 1)
                     logger.LogInformation("Registered recurring jobs after {Attempts} attempts", attempt);
                 return;
