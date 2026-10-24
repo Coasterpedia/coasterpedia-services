@@ -11,10 +11,15 @@
 
     <ItemGroup>
       <PackageReference Include="MarketAlly.IronWiki" Version="1.0.0" />
+      <PackageReference Include="StackExchange.Redis" Version="3.4.5" />
     </ItemGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\Common\Common.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <InternalsVisibleTo Include="ArchiveBot.Tests" />
     </ItemGroup>
 
 </Project>

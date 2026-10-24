@@ -1,4 +1,5 @@
 using CoasterpediaServices.ArchiveBot;
+using CoasterpediaServices.ArchiveBot.Links;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -23,6 +24,8 @@ var configuration = new ConfigurationBuilder()
 
 var services = new ServiceCollection();
 services.AddLogging(b => b.AddConsole().AddConfiguration(configuration.GetSection("Logging")));
+// No Redis here, so every link is checked fresh and the answers are forgotten on exit.
+services.AddSingleton<ILinkStateStore, InMemoryLinkStateStore>();
 services.AddArchiveBot(configuration);
 
 var provider = services.BuildServiceProvider();

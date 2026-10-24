@@ -4,6 +4,7 @@
     <File Path=".github/workflows/deploy.yml" />
   </Folder>
   <Project Path="ArchiveBot\ArchiveBot.csproj" />
+  <Project Path="ArchiveBot.Tests/ArchiveBot.Tests.csproj" />
   <Project Path="Common/Common.csproj" />
   <Project Path="ImageFetch\ImageFetch.csproj" />
   <Project Path="InternalApi\InternalApi.csproj" />

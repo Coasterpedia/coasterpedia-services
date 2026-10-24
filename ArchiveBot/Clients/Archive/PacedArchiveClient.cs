@@ -11,11 +11,19 @@ public class PacedArchiveClient
 {
     private readonly IArchiveClient _archiveClient;
     private readonly ILogger<PacedArchiveClient> _logger;
+    private readonly TimeSpan _saveInterval;
 
     public PacedArchiveClient(IArchiveClient archiveClient, ILogger<PacedArchiveClient> logger)
+        : this(archiveClient, logger, ArchiveBotConfig.SaveInterval)
+    {
+    }
+
+    // For tests, which save without pacing.
+    internal PacedArchiveClient(IArchiveClient archiveClient, ILogger<PacedArchiveClient> logger, TimeSpan saveInterval)
     {
         _archiveClient = archiveClient;
         _logger = logger;
+        _saveInterval = saveInterval;
     }
 
     public async Task<IApiResponse> SavePage(string url)
@@ -31,7 +39,7 @@ public class PacedArchiveClient
         }
 
         // Pace saves so a bulk upload doesn't trip archive.org's rate limiter.
-        await Task.Delay(ArchiveBotConfig.SaveInterval);
+        await Task.Delay(_saveInterval);
         return response;
     }
 }

@@ -2,10 +2,12 @@ using System.Text.Json;
 using CoasterpediaServices.ArchiveBot.Clients.Archive;
 using CoasterpediaServices.ArchiveBot.Clients.Wayback;
 using CoasterpediaServices.ArchiveBot.Events;
+using CoasterpediaServices.ArchiveBot.Links;
 using CoasterpediaServices.ArchiveBot.Options;
 using CoasterpediaServices.Common;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Refit;
 
 namespace CoasterpediaServices.ArchiveBot;
@@ -20,6 +22,10 @@ public static class ArchiveBotServiceCollectionExtensions
         services.AddSingleton<ArchiveFileSourceJob>();
         services.AddSingleton<BotConfigProvider>();
         services.AddSingleton<PacedArchiveClient>();
+        services.AddSingleton<LinkChecker>();
+        // InternalApi's IConnectionMultiplexer; the local runner registers an in-memory store first.
+        services.TryAddSingleton<ILinkStateStore, RedisLinkStateStore>();
+        services.TryAddSingleton(TimeProvider.System);
 
         services.AddOptions<ArchiveBotConfig>()
             .Bind(configuration.GetSection(nameof(ArchiveBotConfig)))

@@ -16,7 +16,7 @@ public class WebClient
         try
         {
             var response = await _httpClient.GetAsync(url);
-            if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized)
+            if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized or HttpStatusCode.TooManyRequests)
             {
                 return new StatusResponse(null, response);
             }
