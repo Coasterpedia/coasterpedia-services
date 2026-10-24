@@ -125,5 +125,7 @@ public sealed class JobHarness
             Microsoft.Extensions.Options.Options.Create(new ArchiveBotConfig { BotUsername = "ArchiveBot", BotPassword = "unused" }));
     }
 
-    public Task<string> Rewrite(string wikitext) => Job.RewriteReferences(wikitext, Config);
+    public async Task<string> Rewrite(string wikitext) => (await Job.RewriteReferences(wikitext, Config)).Content;
+
+    public async Task<string> Summary(string wikitext) => (await Job.RewriteReferences(wikitext, Config)).Changes.Summary();
 }

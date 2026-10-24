@@ -73,7 +73,7 @@ public partial class ArchiveFileSourceJob
             return;
         }
 
-        var statusOverride = botConfig.SiteConfig?.GetValueOrDefault(sourceUrl.Host);
+        var statusOverride = botConfig.SiteRule(sourceUrl.Host);
         if (statusOverride?.ToLower() is "ignore")
         {
             _logger.LogInformation("Skipping source {SourceUrl}, URL set to ignore", sourceUrl);

@@ -76,18 +76,19 @@ public partial class ArchiveLinkJob
         }
 
         var botConfig = await _botConfigProvider.Get(site);
-        var newContent = await RewriteReferences(page.Content, botConfig);
-        if (newContent == page.Content)
+        var result = await RewriteReferences(page.Content, botConfig);
+        if (result.Content == page.Content)
         {
             _logger.LogInformation("No references edited");
         }
         else
         {
-            _logger.LogInformation("Saving page");
+            var summary = result.Changes.Summary();
+            _logger.LogInformation("Saving page: {Summary}", summary);
             await page.EditAsync(new WikiPageEditOptions
             {
-                Content = newContent,
-                Summary = "Add archive links",
+                Content = result.Content,
+                Summary = summary,
                 Bot = true
             });
         }
@@ -96,9 +97,9 @@ public partial class ArchiveLinkJob
         await _pageChecks.MarkChecked(page.Id, _time.GetUtcNow());
     }
 
-    // Checks and archives every citation on the page, returning the new wikitext. Saves to the Wayback
-    // Machine as it goes, but never edits the wiki.
-    public async Task<string> RewriteReferences(string content, BotConfig botConfig)
+    // Checks and archives every citation on the page, returning the new wikitext and what changed. Saves
+    // to the Wayback Machine as it goes, but never edits the wiki.
+    public async Task<RewriteResult> RewriteReferences(string content, BotConfig botConfig)
     {
         var parser = new WikitextParser();
         var analyzer = new DocumentAnalyzer();
@@ -107,6 +108,7 @@ public partial class ArchiveLinkJob
         _logger.LogInformation("Found {ReferencesCount} references", metadata.References.Count);
 
         var newContent = content;
+        var changes = new CitationChanges();
         foreach (var reference in metadata.References)
         {
             var referenceMetadata = await parser.ParseAsync(reference.Content);
@@ -138,10 +140,9 @@ public partial class ArchiveLinkJob
                 continue;
             }
 
-            var statusOverride = botConfig.SiteConfig
-                ?.FirstOrDefault(x => x.Key == uri.Host && !x.Value.Equals("IgnoreRedirect", StringComparison.CurrentCultureIgnoreCase)).Value;
-            var ignoreRedirect =
-                botConfig.SiteConfig?.Any(x => x.Key == uri.Host && x.Value.Equals("IgnoreRedirect", StringComparison.CurrentCultureIgnoreCase)) ?? false;
+            var siteRule = botConfig.SiteRule(uri.Host);
+            var ignoreRedirect = "IgnoreRedirect".Equals(siteRule, StringComparison.OrdinalIgnoreCase);
+            var statusOverride = ignoreRedirect ? null : siteRule;
 
             if (statusOverride?.ToLower() is "ignore")
             {
@@ -168,6 +169,7 @@ public partial class ArchiveLinkJob
             var urlStatus = citationTemplate.Arguments.FirstOrDefault(x => x.Name?.ToString().ToLower() == "url-status")?.Value.ToString().Trim();
             var hasArchive = !string.IsNullOrWhiteSpace(citationTemplate.Arguments.FirstOrDefault(x => x.Name?.ToString().Trim().ToLower() == "archive-url")
                 ?.Value.ToString().Trim());
+            var hadArchive = hasArchive;
             // A manual status stands in for the check, and is treated as dead: nothing is saved or followed.
             var link = statusOverride == null ? await _linkChecker.Check(uri, ignoreRedirect) : null;
             bool? available = link?.Health switch
@@ -256,24 +258,52 @@ public partial class ArchiveLinkJob
             var newTemplate = citationTemplate.ToString();
             var referenceContent = reference.Content.Replace(originalTemplate, newTemplate);
             var taggedDead = DeadLinkRegex().IsMatch(referenceContent);
-            if (available == false && !hasArchive && !taggedDead)
+            var tagAdded = available == false && !hasArchive && !taggedDead;
+            var tagRemoved = !tagAdded && (available == true || hasArchive) && taggedDead;
+            if (tagAdded)
             {
                 _logger.LogInformation("Adding dead link template");
                 referenceContent = referenceContent.Replace(newTemplate, newTemplate + "{{Dead link}}");
             }
-            else if ((available == true || hasArchive) && taggedDead)
+            else if (tagRemoved)
             {
                 _logger.LogInformation("Removing dead link template");
                 referenceContent = DeadLinkRegex().Replace(referenceContent, "");
             }
 
-            if (referenceContent != reference.Content)
+            // A second ref with the same text was already rewritten along with the first, so it isn't counted twice.
+            if (referenceContent != reference.Content && newContent.Contains(reference.Content))
             {
                 newContent = newContent.Replace(reference.Content, referenceContent);
+                Tally(changes, urlStatus, GetArgument(citationTemplate, "url-status"), !hadArchive && hasArchive,
+                    tagAdded, tagRemoved && available == true);
             }
         }
 
-        return newContent;
+        return new RewriteResult(newContent, changes);
+    }
+
+    private static void Tally(CitationChanges changes, string? statusBefore, string? statusAfter, bool archived, bool tagAdded, bool revived)
+    {
+        if (archived)
+        {
+            changes.Archived++;
+        }
+
+        var dead = tagAdded || (statusAfter == "dead" && statusBefore != "dead");
+        var live = revived || (statusBefore == "dead" && statusAfter == "live");
+        if (dead)
+        {
+            changes.MarkedDead++;
+        }
+        else if (live)
+        {
+            changes.MarkedLive++;
+        }
+        else if (!archived)
+        {
+            changes.Updated++;
+        }
     }
 
     private static DateTime? ParseCitationDate(string? value) =>
