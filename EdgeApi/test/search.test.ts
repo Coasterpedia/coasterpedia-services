@@ -80,6 +80,26 @@ describe('GET /v1/search', () => {
 		expect((await get('/v1/search?q=bat&sort=name')).status).toBe(400);
 	});
 
+	it('finds initials written with full stops, as the letters in a row', async () => {
+		const name = 'Fami P.A.R.C Express';
+		const summary = { id: 95001, type: 'coaster', name, name_is_placeholder: false, manufacturers: [], products: [], updated_at: '2026-10-11T12:00:00Z' };
+		expect((await ingest({
+			as_of: '2026-10-24T12:00:00Z', delete: [],
+			upsert: [{
+				kind: 'attraction', id: 95001, revision: 1, updated_at: '2026-10-11T12:00:00Z', settled: true, settles_at: null,
+				sort_name: name.toLowerCase(), filters: { type: 'coaster', status: null, country: null }, summary,
+				record: { ...summary, title: name, url: 'https://coasterpedia.net/wiki/Fami', location: {}, revision: 1 },
+			}],
+		})).status).toBe(200);
+		const has = async (q: string) => (await found(q)).some((r: any) => r.id === 95001);
+		expect(await has('P.A.R.C')).toBe(true);
+		expect(await has('fami p.a.r.c.')).toBe(true);
+		expect(await has('P.A.R')).toBe(true); // the last letter is a prefix, as a word's is
+		expect(await has('P.R.A')).toBe(false); // in a row, in order
+		expect(await has('fami p.a.r.c batman')).toBe(false); // every word still counts
+		await ingest({ as_of: '2026-10-24T12:00:00Z', upsert: [], delete: [{ kind: 'attraction', id: 95001, merged_into: null }] });
+	});
+
 	it('reads the matches, not the names', async () => {
 		const { sql, binds } = searchQuery(new URL(`${BASE}/v1/search?q=bat`));
 		const plan = (await env.DATA.prepare(`EXPLAIN QUERY PLAN ${sql}`).bind(...binds).all<{ detail: string }>()).results

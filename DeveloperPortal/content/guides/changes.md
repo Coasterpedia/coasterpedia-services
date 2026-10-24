@@ -43,7 +43,8 @@ into another, `merged_into` gives the other record's ID.
 
 To fetch many attractions at once, pass up to 50 IDs to
 `/v1/attractions?ids=`, separated by commas. You get the full records, as
-`/v1/attractions/{id}` gives them, in one request.
+`/v1/attractions/{id}` gives them, in one request. `/v1/parks?ids=` does the
+same for parks.
 
 Every response has a `meta.next_cursor`. Pass it as `since` on your next
 call.

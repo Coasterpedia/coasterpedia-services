@@ -83,9 +83,16 @@ export function boxWhere(b: Box, lat: string, lon: string): { sql: string; binds
 const MAX_WORDS = 6;
 
 /**
+ * Initials written with full stops, "P.A.R.C" or "U.S.A.": the index splits
+ * them into one-letter words, so they are searched as those letters in a row.
+ */
+const INITIALS = /(?<![\p{L}\p{N}])(?:[\p{L}\p{N}]\.)+[\p{L}\p{N}](?![\p{L}\p{N}])\.?/gu;
+
+/**
  * q as an FTS5 query: each word of two or more letters a prefix, all of them
  * required ("bat ride" finds Batman The Ride). Case and accents are folded by
- * the index's tokenizer, so "elan" finds Élan. A one-letter word alone would
+ * the index's tokenizer, so "elan" finds Élan. Initials are a phrase, the last
+ * letter a prefix, so "P.A.R" finds P.A.R.C. A one-letter word alone would
  * match half the wiki, so it is refused.
  */
 export function searchMatch(url: URL, name = 'q', required = false): string | null {
@@ -94,10 +101,16 @@ export function searchMatch(url: URL, name = 'q', required = false): string | nu
 		if (required) throw badRequest('parameter-required', `${name} is required`);
 		return null;
 	}
-	const words = raw.normalize('NFKC').split(/[^\p{L}\p{N}]+/u).filter((w) => w.length >= 2).slice(0, MAX_WORDS);
+	const terms: string[] = [];
+	const rest = raw.normalize('NFKC').replace(INITIALS, (initials) => {
+		terms.push(initials.split('.').filter((l) => l.length > 0).join(' '));
+		return ' ';
+	});
+	terms.push(...rest.split(/[^\p{L}\p{N}]+/u).filter((w) => w.length >= 2));
+	const words = terms.slice(0, MAX_WORDS);
 	if (raw.length > 200 || words.length === 0) {
 		throw badRequest('parameter-invalid', `${name} needs a word of at least two letters`,
-			'Each word matches the start of a word in a current or past name, case- and accent-blind.');
+			'Each word matches the start of a word in a current or past name, case- and accent-blind. Initials such as P.A.R.C count as one word.');
 	}
 	return words.map((w) => `"${w.replace(/"/g, '""')}"*`).join(' ');
 }

@@ -437,47 +437,55 @@ export const MAX_IDS = 50;
 const MERGE_HOPS = 3;
 
 /**
- * ids: attraction IDs, comma-separated, each once, in the order given. It takes
- * no filter, sort or cursor, which choose rows of the list: ids names them.
+ * ids: record IDs, comma-separated, each once, in the order given. It takes no
+ * filter, sort or cursor, which choose rows of the list: ids names them.
+ * @param noun  what the IDs are, for the problem ("attraction", "park")
  */
-export function idsParam(url: URL): number[] {
+export function idsParam(url: URL, noun = 'attraction'): number[] {
 	for (const name of url.searchParams.keys()) {
 		if (name !== 'ids' && name !== 'view') {
 			throw badRequest('parameter-invalid', `ids can't be used with ${name}`,
-				'ids fetches the attractions you name, so filters, sort, limit and cursor have nothing to choose from. Use view only.');
+				`ids fetches the ${noun}s you name, so filters, sort, limit and cursor have nothing to choose from. Use view only.`);
 		}
 	}
 	const raw = url.searchParams.getAll('ids').join(',').split(',').map((v) => v.trim()).filter((v) => v.length > 0);
 	const ids = [...new Set(raw.map(Number))];
 	if (raw.length === 0 || raw.some((v) => !/^\d+$/.test(v)) || ids.some((n) => !Number.isSafeInteger(n) || n < 1)
 		|| ids.length > MAX_IDS) {
-		throw badRequest('parameter-invalid', `ids takes 1 to ${MAX_IDS} attraction IDs, separated by commas`);
+		throw badRequest('parameter-invalid', `ids takes 1 to ${MAX_IDS} ${noun} IDs, separated by commas`);
 	}
 	return ids;
 }
 
-/** Both views' rows for some attractions: one primary-key seek per ID (cost.test.ts). */
-export function idsQuery(ids: number[]): { sql: string; binds: number[] } {
+/** Both views' rows for some records of one kind: one primary-key seek per ID (cost.test.ts). */
+export function idsQuery(ids: number[], table = 'attractions'): { sql: string; binds: number[] } {
 	return {
-		sql: `SELECT id, in_latest, in_settled, revision, settles_at, record FROM attractions WHERE id IN (${ids.map(() => '?').join(',')})`,
+		sql: `SELECT id, in_latest, in_settled, revision, settles_at, record FROM ${table} WHERE id IN (${ids.map(() => '?').join(',')})`,
 		binds: ids,
 	};
 }
 
-/**
- * GET /v1/attractions?ids= (DR-010 §9): the full records of up to 50
- * attractions, as /v1/attractions/{id} serves each. A merged ID gives the
- * record it merged into, once however many IDs lead there, and meta.merged
- * says which. An ID with nothing in the view is in meta.missing, or in
- * meta.not_settled when only the latest view has it yet; neither fails the call.
- */
+export const ATTRACTION: RecordKind = { kind: 'attraction', table: 'attractions', path: '/v1/attractions', noun: 'attraction' };
+
+/** GET /v1/attractions?ids= (DR-010 §9, §12.24). */
 export async function getAttractions(url: URL, env: Env): Promise<{ response: Response; rows: number }> {
+	return getByIds(url, env, ATTRACTION);
+}
+
+/**
+ * ?ids= on a kind's list: the full records of up to 50, as `${path}/{id}`
+ * serves each. A merged ID gives the record it merged into, once however many
+ * IDs lead there, and meta.merged says which. An ID with nothing in the view is
+ * in meta.missing, or in meta.not_settled when only the latest view has it yet;
+ * neither fails the call.
+ */
+export async function getByIds(url: URL, env: Env, k: RecordKind): Promise<{ response: Response; rows: number }> {
 	const view = viewParam(url);
-	const ids = idsParam(url);
+	const ids = idsParam(url, k.noun);
 
 	const rowsById = new Map<number, RecordRow[]>();
 	const read = async (wanted: number[]) => {
-		const { sql, binds } = idsQuery(wanted);
+		const { sql, binds } = idsQuery(wanted, k.table);
 		const { results } = await env.DATA.prepare(sql).bind(...binds).all<RecordRow & { id: number }>();
 		for (const r of results) rowsById.set(r.id, [...(rowsById.get(r.id) ?? []), r]);
 	};
@@ -490,8 +498,8 @@ export async function getAttractions(url: URL, env: Env): Promise<{ response: Re
 		if (unresolved.length === 0) break;
 		const from = [...new Set(unresolved.map((id) => target.get(id)!))];
 		const { results: merges } = await env.DATA.prepare(
-			`SELECT old_id, new_id FROM merges WHERE kind = 'attraction' AND old_id IN (${from.map(() => '?').join(',')})`,
-		).bind(...from).all<{ old_id: number; new_id: number }>();
+			`SELECT old_id, new_id FROM merges WHERE kind = ? AND old_id IN (${from.map(() => '?').join(',')})`,
+		).bind(k.kind, ...from).all<{ old_id: number; new_id: number }>();
 		if (merges.length === 0) break;
 		const next = new Map(merges.map((m) => [m.old_id, m.new_id]));
 		for (const id of unresolved) {
@@ -520,6 +528,8 @@ export async function getAttractions(url: URL, env: Env): Promise<{ response: Re
 			data.push(record);
 		}
 	}
+	if (k.decorateAll) await k.decorateAll(data, view, env);
+	else if (k.decorate) for (const record of data) await k.decorate(record, record.id as number, view, env);
 
 	return {
 		rows: data.length,
@@ -540,7 +550,7 @@ interface RecordRow {
 
 export async function getAttraction(url: URL, idText: string, env: Env): Promise<{ response: Response; rows: number }> {
 	checkParams(url, ONE_PARAMS);
-	return getRecord(url, idText, env, { kind: 'attraction', table: 'attractions', path: '/v1/attractions', noun: 'attraction' });
+	return getRecord(url, idText, env, ATTRACTION);
 }
 
 /** Where one kind's full records live, and how its problems name it. */
@@ -552,6 +562,8 @@ export interface RecordKind {
 	noun: string;
 	/** What the edge adds to the stored record before it is served: one read at most. */
 	decorate?: (record: Record<string, unknown>, id: number, view: View, env: Env) => Promise<void>;
+	/** decorate for a batch (?ids=), sharing its reads, so 50 records don't cost 50 of them. */
+	decorateAll?: (records: Record<string, unknown>[], view: View, env: Env) => Promise<void>;
 }
 
 /**

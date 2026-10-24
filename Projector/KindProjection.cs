@@ -46,9 +46,10 @@ public sealed class AttractionProjection : IKindProjection
         var rows = await _reader.ReadAttractionsAsync(conn, pageIds, ct);
         var resolved = await _reader.ResolveTitlesAsync(conn, AttractionMapper.LinkTargets(rows).ToList(), ct);
         var productIds = await _reader.ReadProductIdsAsync(conn, ct);
+        var parkIds = await _reader.ReadParkIdsAsync(conn, ct);
         return rows.Select(r =>
         {
-            var content = AttractionMapper.Map(r, vocab, resolved, productIds, _config.PublicBaseUrl, issues);
+            var content = AttractionMapper.Map(r, vocab, resolved, productIds, parkIds, _config.PublicBaseUrl, issues);
             return new Projected(r.PageId, r.Revision, Wire.Hash(content),
                 (at, settlesAt) => Wire.Upsert(content, r.Revision, at, settlesAt));
         }).ToList();

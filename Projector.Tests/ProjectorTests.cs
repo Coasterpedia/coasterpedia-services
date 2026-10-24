@@ -31,6 +31,7 @@ public class ProjectorTests
     };
 
     private static readonly HashSet<int> ProductIds = [3213, 58664, 58307];
+    private static readonly HashSet<int> ParkIds = [67009];
 
     private static AttractionRow Row(string type = "coaster", int id = 171, string page = "Gold Rusher (Six Flags Magic Mountain)",
         string? name = "Gold Rusher", string? status = "operating", string? country = "USA",
@@ -44,7 +45,7 @@ public class ProjectorTests
         };
 
     private static AttractionContent Map(AttractionRow row, List<DataIssue>? issues = null) =>
-        AttractionMapper.Map(row, Vocab, Resolved, ProductIds, "https://coasterpedia.net", issues ?? []);
+        AttractionMapper.Map(row, Vocab, Resolved, ProductIds, ParkIds, "https://coasterpedia.net", issues ?? []);
 
     [Fact]
     public void Vocabularies_come_from_each_types_templates()
@@ -152,6 +153,35 @@ public class ProjectorTests
         // Name is always written, null included.
         var track = Wire.Upsert(Map(row), 1, DateTimeOffset.UnixEpoch)["record"]!["coaster"]!["tracks"]![2]!.AsObject();
         Assert.True(track.ContainsKey("name"));
+    }
+
+    [Fact]
+    public void A_park_link_keeps_its_id_only_when_the_page_is_a_park()
+    {
+        // Oktoberfest (13428) is an event page, not a park record.
+        var issues = new List<DataIssue>();
+        var row = Row(park: "[[Oktoberfest]]") with
+        {
+            PastLocations = [new PastLocationRow { PageId = 171, Ordering = 1, LocationKind = "park", Park = "[[Carnival Horizon]]" }],
+        };
+        var c = AttractionMapper.Map(row, Vocab, new Dictionary<string, int>(Resolved) { ["Oktoberfest"] = 13428 }, ProductIds, ParkIds,
+            "https://coasterpedia.net", issues);
+
+        Assert.Equal(new Ref(null, "Oktoberfest"), c.Location.Park);
+        Assert.Equal([new DataIssue(171, "location.park", "Oktoberfest", "links a page that is not a park")], issues);
+        // A real park keeps its id, now and in the past.
+        Assert.Equal(new Ref(67009, "Carnival Horizon"), c.History!.Locations![0].Park);
+        // No id, so the edge files it under no park.
+        Assert.Null(Wire.Upsert(c, 1, DateTimeOffset.UnixEpoch)["filters"]!["park"]);
+    }
+
+    [Fact]
+    public void Cost_is_published_as_written_with_markup_stripped()
+    {
+        Assert.Equal(new AttractionCost("$10,000,000 USD"), Map(Row() with { Cost = "$10,000,000 USD" }).Cost);
+        Assert.Equal(new AttractionCost("€15 million (2005)"), Map(Row() with { Cost = "''€15 million'' ([[2005]])" }).Cost);
+        Assert.Null(Map(Row() with { Cost = "Unknown" }).Cost);
+        Assert.Null(Map(Row() with { Cost = " " }).Cost);
     }
 
     private static HistoryRow NameRow(string name, int position, int location, string? start = null, string? end = null) =>
@@ -375,14 +405,27 @@ public class ProjectorTests
     }
 
     [Fact]
-    public void A_product_link_to_another_kind_of_page_keeps_its_id_and_is_reported_and_a_red_link_is_not()
+    public void A_product_link_to_another_kind_of_page_loses_its_id_and_is_reported_and_a_red_link_is_not()
     {
         var issues = new List<DataIssue>();
         var c = Map(Row(product: "[[Wild mouse]]#[[No Such Product]]#Play Structure Type A02"), issues);
-        Assert.Equal([new Ref(4100, "Wild mouse"), new Ref(null, "No Such Product"), new Ref(null, "Play Structure Type A02")],
+        // Wild mouse (4100) is the type article, not a product: named, with no id.
+        Assert.Equal([new Ref(null, "Wild mouse"), new Ref(null, "No Such Product"), new Ref(null, "Play Structure Type A02")],
             c.Products.Select(p => p.Product));
         // The red link is no issue: an article not written yet.
         Assert.Equal(new DataIssue(171, "products", "Wild mouse", "links a page that is not a product"), Assert.Single(issues));
+        // No id, so the edge counts it as no product's installation.
+        Assert.All(Wire.Upsert(c, 1, DateTimeOffset.UnixEpoch)["summary"]!["products"]!.AsArray(),
+            p => Assert.Null(p!["product"]!["id"]));
+
+        // A water slide's components follow the same rule, reported once.
+        issues.Clear();
+        var slide = Map(Row(type: "water_slide") with
+        {
+            Components = [new ComponentRow { PageId = 171, Ordering = 1, Product = "[[Wild mouse]]" }],
+        }, issues);
+        Assert.Equal(new Ref(null, "Wild mouse"), Assert.Single(slide.WaterSlide!.Components!).Product);
+        Assert.Single(issues);
     }
 
     [Fact]

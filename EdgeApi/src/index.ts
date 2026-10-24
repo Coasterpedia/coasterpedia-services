@@ -7,7 +7,7 @@ import { attractionFacets } from './facets';
 import { problem, ProblemError } from './http';
 import { ingest } from './ingest';
 import { getManufacturer, listManufacturers } from './manufacturers';
-import { getPark, listParks, parkAttractions } from './parks';
+import { getPark, getParks, listParks, parkAttractions } from './parks';
 import { getParkCompany, listParkCompanies, parkCompanyParks } from './park-companies';
 import { getProduct, listProducts, manufacturerProducts, productInstallations } from './products';
 import { search } from './search';
@@ -156,6 +156,10 @@ function route(path: string, url: URL, env: Env, caller: Caller): Route | null {
 	}
 
 	if (path === '/v1/parks') {
+		// Full records by ID: a route of its own, as for attractions, so a browser session is refused it.
+		if (url.searchParams.has('ids')) {
+			return { name: '/v1/parks?ids', view: true, run: () => getParks(url, env) };
+		}
 		return { name: '/v1/parks', view: true, run: () => listParks(url, env) };
 	}
 

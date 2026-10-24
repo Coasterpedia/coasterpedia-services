@@ -106,7 +106,7 @@ describe('the Projector park batch', () => {
 	it('counts parks in /v1/meta, per view', async () => {
 		const latest = await (await exports.default.fetch(new Request(`${BASE}/v1/meta?view=latest`))).json<any>();
 		expect(latest.counts).toEqual({ attractions: 7, parks: 7, manufacturers: 0, products: 0, park_companies: 0 });
-		expect(latest.schema_version).toBe('1.0.0-beta.23');
+		expect(latest.schema_version).toBe('1.0.0-beta.24');
 		const settled = await (await exports.default.fetch(new Request(`${BASE}/v1/meta`))).json<any>();
 		expect(settled.counts).toEqual({ attractions: 6, parks: 6, manufacturers: 0, products: 0, park_companies: 0 });
 	});
@@ -142,6 +142,25 @@ describe('the Projector park batch', () => {
 		const back = await (await get('/v1/parks/182?view=latest')).json<any>();
 		expect(back.data.name).toBe('Cedar Point');
 		expect(back.data.settlement).toEqual({ settled_revision: 501, pending_revision: null, settles_at: null });
+	});
+
+	it('fetches full records by ID, merges followed and resorts listed, and says what it could not find', async () => {
+		// Acushnet Park (65834) has settled by now; not_settled is pinned in api.test.ts.
+		const body = await (await get('/v1/parks?ids=2156,99001,123')).json<any>();
+		expect(body.data.map((p: any) => p.id)).toEqual([2156, 182]);
+		expect(body.meta).toMatchObject({ view: 'settled', merged: { 99001: 182 }, missing: [123], not_settled: [] });
+		// The same resort.parks /v1/parks/{id} gives.
+		expect(body.data[0].resort.parks).toEqual((await (await get('/v1/parks/2156')).json<any>()).data.resort.parks);
+		expect(body.data[0].settlement).toEqual({ settled_revision: expect.any(Number), pending_revision: null, settles_at: null });
+		expect((await (await get('/v1/parks?ids=65834&view=latest')).json<any>()).data.map((p: any) => p.id)).toEqual([65834]);
+	});
+
+	it('takes ids with view only, and at most 50', async () => {
+		for (const q of ['ids=182&country=US', 'ids=182&limit=5', 'ids=', `ids=${Array.from({ length: 51 }, (_, i) => i + 1).join(',')}`]) {
+			const res = await get(`/v1/parks?${q}`);
+			expect(res.status).toBe(400);
+			expect(JSON.stringify(await res.json<any>())).toMatch(/parks? /);
+		}
 	});
 });
 

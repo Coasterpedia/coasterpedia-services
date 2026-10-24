@@ -68,6 +68,15 @@ describe('a batch read reads only the rows it names', () => {
 		// Three per ID: each seek reads its row and one past it to stop (150 for 50, of N).
 		expect(result.meta.rows_read).toBeLessThanOrEqual(3 * MAX_IDS);
 	});
+
+	it('plans every kind the same way, by key', async () => {
+		for (const table of ['parks', 'manufacturers', 'products', 'park_companies']) {
+			const { sql, binds } = idsQuery([1, 2, 3], table);
+			const plan = (await env.DATA.prepare(`EXPLAIN QUERY PLAN ${sql}`).bind(...binds).all<{ detail: string }>()).results
+				.map((r) => r.detail).join('\n');
+			expect(plan, table).toMatch(/SEARCH \w+ USING (INDEX sqlite_autoindex|PRIMARY KEY)/);
+		}
+	});
 });
 
 describe('record counts follow the rows', () => {

@@ -19,6 +19,39 @@ When we add a field, a record with an edit waiting to settle keeps its old
 shape in the settled view until that edit settles, up to seven days later.
 [Latest and settled](/docs/views/) explains why.
 
+## 1.0.0-beta.24 - 2026-10-24
+
+### Added
+
+- `cost` on an attraction: `{ "text": "$10,000,000 USD" }`, what it cost
+  as the article writes it. We don't check the text, so the currency, year
+  and wording vary, and "$" alone doesn't say which dollar.
+
+- `ids` on `/v1/parks`: up to 50 park IDs, separated by commas. It works as
+  `ids` on `/v1/attractions` does. You get the full records, `resort.parks`
+  included, with `meta.merged`, `meta.missing` and `meta.not_settled` for the
+  IDs you didn't get as asked. It takes `view` and no other parameter, and
+  needs an API key.
+
+### Changed
+
+- `location.park.id`, and `park.id` on each of `history.locations`, are set
+  only when the page is a park record, so the ID always answers at
+  `/v1/parks/{id}`. A link to a page that isn't a park, such as a fair or an
+  event, now gives the park's name with `id: null`. Four attractions changed.
+  If you keep these IDs, expect `null` where the link isn't a park.
+- `products[].product.id` on an attraction, and on each of a water slide's
+  `water_slide.components`, follows the same rule: it's set only when the
+  page is a product, so it always answers at `/v1/products/{id}`. A link to
+  another kind of page, such as an article about a type of ride, now gives
+  the name with `id: null`, and the attraction no longer counts as one of
+  that page's installations.
+- `q` on `/v1/search` and on the lists now finds initials written with full
+  stops. "P.A.R.C" matches a name written P.A.R.C, and "P.A.R" matches it
+  too. Before, every one-letter part was dropped, so "P.A.R.C" alone was
+  refused and "Fami P.A.R.C" searched for "Fami" only. You no longer need to
+  strip the full stops first.
+
 ## 1.0.0-beta.23 - 2026-10-19
 
 ### Added

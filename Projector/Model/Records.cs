@@ -261,6 +261,9 @@ public sealed record AttractionContent
     /// <summary>YouTube video IDs, in the infobox's order (Video, Video2, Video3).</summary>
     public IReadOnlyList<string>? Videos { get; init; }
 
+    /// <summary>What it cost, as the article writes it.</summary>
+    public AttractionCost? Cost { get; init; }
+
     public AttractionStats? Stats { get; init; }
     public Restrictions? Restrictions { get; init; }
     public CoasterDetail? Coaster { get; init; }
@@ -268,6 +271,13 @@ public sealed record AttractionContent
     public WaterSlideDetail? WaterSlide { get; init; }
     public AttractionHistory? History { get; init; }
 }
+
+/// <summary>
+/// The Cost field as written, markup stripped (openapi AttractionCost). An
+/// object, so an amount and currency can sit beside the text if the field is
+/// ever typed.
+/// </summary>
+public sealed record AttractionCost(string Text);
 
 /// <summary>
 /// A date as the wiki knows it (openapi.yaml DateValue): EDTF, with the first

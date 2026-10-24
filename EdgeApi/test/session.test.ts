@@ -184,7 +184,7 @@ describe('a session', () => {
 	it.each([
 		'/v1/attractions/1?view=latest', '/v1/parks/1?view=latest', '/v1/parks/1/attractions?view=latest', '/v1/manufacturers?view=latest',
 		'/v1/products?view=latest', '/v1/products/1/installations?view=latest', '/v1/park-companies?view=latest',
-		'/v1/changes?view=latest', '/v1/search?q=ride&view=latest', '/v1/attractions?ids=1&view=latest',
+		'/v1/changes?view=latest', '/v1/search?q=ride&view=latest', '/v1/attractions?ids=1&view=latest', '/v1/parks?ids=1&view=latest',
 	])('needs a key for %s', async (path) => {
 		const res = await call(API + path, bearer(await session()));
 		expect(res.status).toBe(403);

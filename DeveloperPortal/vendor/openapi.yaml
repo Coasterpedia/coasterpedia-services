@@ -168,11 +168,21 @@ paths:
           $ref: "#/components/responses/TooManyRequests"
   /parks:
     get:
-      summary: List parks
+      summary: List parks, or fetch some by ID
+      description: |
+        Without ids, a page of summaries, filtered and sorted. With ids, the full records of the parks you name, as /parks/{id} gives each one, resort.parks included. ids takes no other parameter but view, and needs an API key.
       security:
         - apiKey: []
         - session: []
       parameters:
+        - name: ids
+          in: query
+          description: |
+            Up to 50 park IDs, separated by commas. It works as ids does on /attractions: each record once, in the order you asked, with meta.merged, meta.missing and meta.not_settled for the IDs you didn't get as asked.
+          schema:
+            type: string
+            examples:
+              - 182,2156
         - $ref: "#/components/parameters/status"
         - $ref: "#/components/parameters/country"
         - name: state
@@ -214,7 +224,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ParkList"
+                oneOf:
+                  - $ref: "#/components/schemas/ParkList"
+                  - $ref: "#/components/schemas/ParkRecords"
         "429":
           $ref: "#/components/responses/TooManyRequests"
   /parks/{id}:
@@ -958,7 +970,7 @@ components:
       name: q
       in: query
       description: |
-        Each word of two letters or more must match the start of a word in a name, ignoring case and accents, so "bat ride" finds Batman The Ride and "elan" finds Élan. We use the first six such words and ignore the rest, and we ignore one-letter words. If q has no word of two letters or more, it's refused. Attractions and parks are also found by their past names (history.names).
+        Each word of two letters or more must match the start of a word in a name, ignoring case and accents, so "bat ride" finds Batman The Ride and "elan" finds Élan. We use the first six such words and ignore the rest, and we ignore one-letter words. Initials written with full stops count as one word and match those letters in a row, so "P.A.R.C" finds a name written P.A.R.C, and "P.A.R" finds it too. If q has no word of two letters or more, it's refused. Attractions and parks are also found by their past names (history.names).
       schema:
         type: string
         maxLength: 200
@@ -1220,6 +1232,7 @@ components:
         park:
           allOf:
             - $ref: "#/components/schemas/Ref"
+          description: id is set only when the page is a park record, so it always answers at /parks/{id}. A link to a page that isn't a park, such as a fair or an event, gives the name with id null.
         owner:
           allOf:
             - $ref: "#/components/schemas/Ref"
@@ -1364,25 +1377,28 @@ components:
           items:
             $ref: "#/components/schemas/Attraction"
         meta:
-          allOf:
-            - $ref: "#/components/schemas/Meta"
-            - type: object
-              properties:
-                merged:
-                  type: object
-                  additionalProperties:
-                    type: integer
-                  description: Each ID you asked for that was merged, and the ID of the record you got for it
-                missing:
-                  type: array
-                  items:
-                    type: integer
-                  description: "IDs with no attraction: deleted, never one, or not an attraction"
-                not_settled:
-                  type: array
-                  items:
-                    type: integer
-                  description: IDs that are in the latest view but haven't settled yet. Ask again with view=latest to get them now
+          $ref: "#/components/schemas/RecordsMeta"
+    RecordsMeta:
+      description: Meta on an ids= answer
+      allOf:
+        - $ref: "#/components/schemas/Meta"
+        - type: object
+          properties:
+            merged:
+              type: object
+              additionalProperties:
+                type: integer
+              description: Each ID you asked for that was merged, and the ID of the record you got for it
+            missing:
+              type: array
+              items:
+                type: integer
+              description: "IDs with no record of this kind: deleted, never one, or another kind of page"
+            not_settled:
+              type: array
+              items:
+                type: integer
+              description: IDs that are in the latest view but haven't settled yet. Ask again with view=latest to get them now
     Attraction:
       allOf:
         - $ref: "#/components/schemas/Record"
@@ -1470,6 +1486,15 @@ components:
                 type: string
                 pattern: ^[A-Za-z0-9_-]{11}$
               description: YouTube video IDs, in the order the article lists them, at most three. Watch one at https://www.youtube.com/watch?v={id}. The videos belong to whoever uploaded them, not to Coasterpedia, so the data licence doesn't cover them. Absent when there are none.
+            cost:
+              type: object
+              required:
+                - text
+              properties:
+                text:
+                  type: string
+                  description: As the article writes it, with links and formatting removed
+              description: What it cost to build, as the article writes it, such as $10,000,000 USD or $1.5 million. We don't check the text, so the currency, the year and the wording vary, and $ alone doesn't say which dollar. Absent when the article gives none.
             stats:
               $ref: "#/components/schemas/AttractionStats"
             restrictions:
@@ -1491,7 +1516,7 @@ components:
         product:
           allOf:
             - $ref: "#/components/schemas/Ref"
-          description: The product's page. Its id works with /products/{id} when the page is a product.
+          description: The product's page. id is set only when the page is a product, so it always answers at /products/{id}. A link to another kind of page, such as an article about a type of ride, gives the name with id null.
         variant:
           type:
             - string
@@ -1912,6 +1937,16 @@ components:
             $ref: "#/components/schemas/ParkSummary"
         meta:
           $ref: "#/components/schemas/Meta"
+    ParkRecords:
+      description: The answer to /parks?ids=
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Park"
+        meta:
+          $ref: "#/components/schemas/RecordsMeta"
     Park:
       allOf:
         - $ref: "#/components/schemas/Record"

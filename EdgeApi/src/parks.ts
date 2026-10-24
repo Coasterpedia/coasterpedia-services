@@ -1,6 +1,6 @@
 import {
-	checkParams, dataAsOf, decodeCursor, encodeCursor, FLAG, followMerges, getRecord, limitParam, list, listQuery, runAttractionList,
-	stateParam, viewParam, type Include, type View,
+	checkParams, dataAsOf, decodeCursor, encodeCursor, FLAG, followMerges, getByIds, getRecord, limitParam, list, listQuery,
+	runAttractionList, stateParam, viewParam, type Include, type RecordKind, type View,
 } from './attractions';
 import type { Env } from './env';
 import { bboxParam, boxWhere, searchMatch, searchWhere, updatedSinceParam } from './filters';
@@ -131,22 +131,45 @@ export const resortParksSql = (view: View) => `SELECT summary FROM parks
 	WHERE ${FLAG[view]} = 1 AND resort = ?
 	ORDER BY resort_order IS NULL, resort_order, sort_name, id LIMIT ${MAX_RESORT_PARKS}`;
 
+type ResortPark = { id: number; name: string; status?: string };
+
+async function resortParks(resortId: number, view: View, env: Env): Promise<ResortPark[]> {
+	const { results } = await env.DATA.prepare(resortParksSql(view)).bind(resortId).all<{ summary: string }>();
+	return results.map((r) => {
+		const { id, name, status } = JSON.parse(r.summary);
+		return status == null ? { id, name } : { id, name, status };
+	});
+}
+
 async function withResortParks(record: Record<string, unknown>, _id: number, view: View, env: Env): Promise<void> {
 	const resort = record.resort as { id: number } | undefined;
 	if (resort == null) return;
-	const { results } = await env.DATA.prepare(resortParksSql(view)).bind(resort.id).all<{ summary: string }>();
-	record.resort = {
-		...resort,
-		parks: results.map((r) => {
-			const { id, name, status } = JSON.parse(r.summary);
-			return status == null ? { id, name } : { id, name, status };
-		}),
-	};
+	record.resort = { ...resort, parks: await resortParks(resort.id, view, env) };
 }
+
+/** The same for a batch: one read per resort, however many of its parks are in it. */
+async function withResortParksAll(records: Record<string, unknown>[], view: View, env: Env): Promise<void> {
+	const byResort = new Map<number, Promise<ResortPark[]>>();
+	for (const record of records) {
+		const resort = record.resort as { id: number } | undefined;
+		if (resort == null) continue;
+		if (!byResort.has(resort.id)) byResort.set(resort.id, resortParks(resort.id, view, env));
+		record.resort = { ...resort, parks: await byResort.get(resort.id)! };
+	}
+}
+
+const PARK: RecordKind = {
+	kind: 'park', table: 'parks', path: '/v1/parks', noun: 'park', decorate: withResortParks, decorateAll: withResortParksAll,
+};
 
 export async function getPark(url: URL, idText: string, env: Env): Promise<{ response: Response; rows: number }> {
 	checkParams(url, ONE_PARAMS, NOT_YET);
-	return getRecord(url, idText, env, { kind: 'park', table: 'parks', path: '/v1/parks', noun: 'park', decorate: withResortParks });
+	return getRecord(url, idText, env, PARK);
+}
+
+/** GET /v1/parks?ids= (DR-010 §12.26): up to 50 full park records, as /v1/attractions?ids= gives attractions. */
+export async function getParks(url: URL, env: Env): Promise<{ response: Response; rows: number }> {
+	return getByIds(url, env, PARK);
 }
 
 /**

@@ -122,6 +122,9 @@ public sealed record AttractionRow
     public double? MaxWeight { get; init; }
     public double? MaxWeightPerTube { get; init; }
 
+    /// <summary>Cost as written: free text on every table ("$10,000,000 USD", "$1.5 million").</summary>
+    public string? Cost { get; init; }
+
     /// <summary>YouTube video IDs, as the infobox validates them: Video, Video2, Video3 on every table.</summary>
     public string? Video { get; init; }
     public string? Video2 { get; init; }
@@ -716,7 +719,7 @@ public sealed partial class CargoReader
                            t.Min_Unaccompanied_Age AS MinAgeUnaccompanied, t.Max_Age_Without_Child AS MaxAgeWithoutChild,
                            t.Max_Age AS MaxAge, t.Children_Only AS ChildrenOnly, t.Adult_Only_With_Child AS AdultOnlyWithChild,
                            t.Min_Weight AS MinWeight, t.Max_Weight AS MaxWeight,
-                           t.Video, t.Video2, t.Video3,
+                           t.Video, t.Video2, t.Video3, t.Cost,
                            {Select(ColumnProperties(typeof(AttractionRow), AttractionOptional), AttractionColumns[table])},
                            {Select(StatProperties, StatColumns[table])}
                     FROM {Cargo(table)} t
@@ -902,6 +905,14 @@ public sealed partial class CargoReader
             $"SELECT t._pageID FROM {Cargo(p.Table)} t WHERE t._pageNamespace = 0"));
         return [.. await conn.QueryAsync<int>(new CommandDefinition(sql, cancellationToken: ct))];
     }
+
+    /// <summary>
+    /// Every park page's ID: about 2,200, read whole on every pass, so an
+    /// attraction's park link can be checked against them.
+    /// </summary>
+    public async Task<HashSet<int>> ReadParkIdsAsync(MySqlConnection conn, CancellationToken ct) =>
+        [.. await conn.QueryAsync<int>(new CommandDefinition(
+            $"SELECT t._pageID FROM {Cargo("Amusement_Parks")} t WHERE t._pageNamespace = 0", cancellationToken: ct))];
 
     /// <summary>
     /// Every resort membership: about 90 rows, read whole on every pass, since

@@ -54,6 +54,8 @@ public class GoldenBatchTests
             Restraints = "Over-the-shoulder", Propulsion = "roller", TrackMaterial = "Steel", MinHeight = 54,
             // Invented IDs: two slots of three filled.
             Video = "kXHp3Ks2Xc4", Video2 = "Zr_9-wQ4bYc",
+            // As written; live 2026-10-24.
+            Cost = "$20,000,000 USD",
             Elements = ["Chain lift", "Pre-Drop", "Vertical loop", "Zero-g roll", "Helix", "Corkscrew (element)"],
             Stats = new StatsRow
             {
@@ -211,6 +213,7 @@ public class GoldenBatchTests
     };
 
     private static readonly HashSet<int> ProductIds = [53318, 1498, 44361, 82994, 58307, 3213];
+    private static readonly HashSet<int> ParkIds = [163, 9136, 67009, 182];
 
     // Live Amusement_Parks rows, 2026-10-12 (revisions invented).
     private static readonly ParkRow[] ParkRows =
@@ -584,7 +587,7 @@ public class GoldenBatchTests
         // accepted and do nothing. 90956 is a redirect to Batman The Ride that was
         // never a record.
         var upserts = Rows.Select(r => Wire.Upsert(
-            AttractionMapper.Map(r, vocab, Resolved, ProductIds, "https://coasterpedia.net", issues), r.Revision, at,
+            AttractionMapper.Map(r, vocab, Resolved, ProductIds, ParkIds, "https://coasterpedia.net", issues), r.Revision, at,
             r.PageId == 9101 ? at + TimeSpan.FromDays(7) : null));
         var batch = Wire.Batch(at, TimeSpan.FromDays(7), upserts, [Wire.Delete(170, 171)],
             [Wire.Promote(9998)], [Wire.Discard(9999)], VocabularyDocument.Build(vocab, templates, [Wire.Park, Wire.Manufacturer, Wire.Product, Wire.ParkCompany]),

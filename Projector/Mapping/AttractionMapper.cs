@@ -24,8 +24,9 @@ public static partial class AttractionMapper
             .OfType<string>();
 
     /// <param name="productIds">Every product page's ID: a product link to any other page is reported.</param>
+    /// <param name="parkIds">Every park page's ID: a park link to any other page loses its id and is reported.</param>
     public static AttractionContent Map(AttractionRow row, Vocabularies vocab, IReadOnlyDictionary<string, int> resolved,
-        IReadOnlySet<int> productIds, string publicBaseUrl, List<DataIssue> issues)
+        IReadOnlySet<int> productIds, IReadOnlySet<int> parkIds, string publicBaseUrl, List<DataIssue> issues)
     {
         var title = row.PageName;
         return new AttractionContent
@@ -39,7 +40,7 @@ public static partial class AttractionMapper
             Url = Wikitext.ArticleUrl(publicBaseUrl, title),
             Status = FieldMapper.Status(row.PageId, row.Type, row.Status, vocab, issues),
             Dates = Dates(row, issues),
-            Location = Location(row, vocab, resolved, issues),
+            Location = Location(row, vocab, resolved, parkIds, issues),
             Manufacturers = Wikitext.Refs(row.Manufacturer)
                 .Select(x => x.Target != null && resolved.TryGetValue(x.Target, out var id) ? x.Ref with { Id = id } : x.Ref)
                 .ToList(),
@@ -53,12 +54,13 @@ public static partial class AttractionMapper
             Replaced = FieldMapper.Refs(row.PageId, "replaced", row.Replaced, resolved, issues),
             ReplacedBy = FieldMapper.Refs(row.PageId, "replaced_by", row.Replacement, resolved, issues),
             Videos = Videos(row, issues),
+            Cost = Text(row.Cost) is { } cost && !Wikitext.IsPlaceholder(cost) ? new AttractionCost(cost) : null,
             Stats = StatsMapper.Map(row.PageId, row.Stats, issues),
             Restrictions = Restrictions(row, issues),
             Coaster = Coaster(row, vocab, resolved, issues),
             Ride = Ride(row, issues),
-            WaterSlide = WaterSlide(row, vocab, resolved, issues),
-            History = History(row, vocab, resolved, issues),
+            WaterSlide = WaterSlide(row, vocab, resolved, productIds, issues),
+            History = History(row, vocab, resolved, parkIds, issues),
         };
     }
 
@@ -108,7 +110,7 @@ public static partial class AttractionMapper
     }
 
     private static AttractionLocation Location(AttractionRow r, Vocabularies vocab, IReadOnlyDictionary<string, int> resolved,
-        List<DataIssue> issues)
+        IReadOnlySet<int> parkIds, List<DataIssue> issues)
     {
         var kind = Kind(r.PageId, "location.kind", r.LocationKind, issues);
         var where = LocationMapper.Project(kind, r.OnLoan, r.Park, r.Owner, r.Location, r.Type, vocab, resolved);
@@ -117,7 +119,7 @@ public static partial class AttractionMapper
         {
             Kind = kind,
             OnLoan = r.OnLoan,
-            Park = where.Park,
+            Park = ParkRef(r.PageId, "location.park", where.Park, parkIds, issues),
             Owner = where.Owner,
             Place = where.Place,
             State = State(r.PageId, "location.state", r.Type, r.State, vocab, issues),
@@ -126,6 +128,24 @@ public static partial class AttractionMapper
             // A subsection with no section names nothing a reader can find.
             Area = section == null ? null : new Area(section, Text(r.Subsection)),
         };
+    }
+
+    /// <summary>
+    /// A park Ref keeps its id only when the page is a park record, so every
+    /// location.park.id answers at /v1/parks/{id}. A link to a fair, an event or
+    /// the attraction's own article keeps its name and is reported: four did on
+    /// 2026-10-24 (Oktoberfest, the Canadian National Exhibition twice,
+    /// Chiemgau Coaster linking itself). A red link has no id already.
+    /// </summary>
+    private static Ref? ParkRef(int pageId, string field, Ref? park, IReadOnlySet<int> parkIds, List<DataIssue> issues)
+    {
+        if (park?.Id is not { } id || parkIds.Contains(id))
+        {
+            return park;
+        }
+
+        issues.Add(new DataIssue(pageId, field, park.Name, "links a page that is not a park"));
+        return park with { Id = null };
     }
 
     /// <summary>LocationKind as Travelling.classify stored it. Open vocabulary: any value is published; a blank one is reported.</summary>
@@ -283,7 +303,7 @@ public static partial class AttractionMapper
     }
 
     private static WaterSlideDetail? WaterSlide(AttractionRow r, Vocabularies vocab, IReadOnlyDictionary<string, int> resolved,
-        List<DataIssue> issues)
+        IReadOnlySet<int> productIds, List<DataIssue> issues)
     {
         if (r.Type != "water_slide")
         {
@@ -291,12 +311,14 @@ public static partial class AttractionMapper
         }
 
         // One row per Product member (2,444 on 2026-10-12), in slot order; a slot names one product.
+        // The id is a product's only, as in products, which reports the same links.
         var components = r.Components
             .OrderBy(c => c.Ordering)
             .Select(c => (Ref: Wikitext.Refs(c.Product).FirstOrDefault(), Variant: Text(c.Variant)))
             .Where(c => c.Ref.Ref != null)
             .Select(c => new AttractionProduct(
-                c.Ref.Target != null && resolved.TryGetValue(c.Ref.Target, out var id) ? c.Ref.Ref with { Id = id } : c.Ref.Ref,
+                c.Ref.Target != null && resolved.TryGetValue(c.Ref.Target, out var id) && productIds.Contains(id)
+                    ? c.Ref.Ref with { Id = id } : c.Ref.Ref,
                 c.Variant))
             .ToList();
         var detail = new WaterSlideDetail
@@ -330,7 +352,7 @@ public static partial class AttractionMapper
 
     /// <summary>Past stints, oldest first: the page numbers them newest first (Ordering 1 is the latest before now).</summary>
     private static AttractionHistory? History(AttractionRow r, Vocabularies vocab, IReadOnlyDictionary<string, int> resolved,
-        List<DataIssue> issues)
+        IReadOnlySet<int> parkIds, List<DataIssue> issues)
     {
         var locations = new List<PastLocation>();
         foreach (var p in r.PastLocations.OrderByDescending(p => p.Ordering))
@@ -348,7 +370,7 @@ public static partial class AttractionMapper
                 Index = index,
                 Kind = kind,
                 OnLoan = p.OnLoan,
-                Park = where.Park,
+                Park = ParkRef(r.PageId, $"history.locations[{index}].park", where.Park, parkIds, issues),
                 Owner = where.Owner,
                 Place = where.Place,
                 State = State(r.PageId, $"history.locations[{index}].state", r.Type, p.State, vocab, issues),
@@ -485,7 +507,13 @@ public static partial class AttractionMapper
         return products;
     }
 
-    /// <summary>The Ref with its page's id. A red link is an article not written yet, not a problem: a Ref with no id.</summary>
+    /// <summary>
+    /// The Ref with its page's id when the page is a product, so every
+    /// products[].product.id answers at /v1/products/{id}, as a park id does
+    /// (DR-010 §12.26). A link to another kind of page, such as the "Wild
+    /// mouse" type article, keeps its name, loses its id and is reported. A red
+    /// link is an article not written yet, not a problem: a Ref with no id.
+    /// </summary>
     private static Ref Product(int pageId, string? target, Ref r, IReadOnlyDictionary<string, int> resolved,
         IReadOnlySet<int> productIds, List<DataIssue> issues)
     {
@@ -497,6 +525,7 @@ public static partial class AttractionMapper
         if (!productIds.Contains(id))
         {
             issues.Add(new DataIssue(pageId, "products", target, "links a page that is not a product"));
+            return r;
         }
 
         return r with { Id = id };
