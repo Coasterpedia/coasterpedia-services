@@ -25,6 +25,6 @@ public class ArchiveBotSubscriber : IEventSubscriber
             return;
         }
 
-        BackgroundJob.Schedule<ArchiveLinkJob>(job => job.Run(evt.PageTitle!), ArchiveBotConfig.Delay);
+        BackgroundJob.Schedule<ArchiveLinkJob>(job => job.Run(evt.PageTitle!, evt.RevisionId), ArchiveBotConfig.Delay);
     }
 }

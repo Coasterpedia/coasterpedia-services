@@ -9,6 +9,9 @@ public static class ArgumentUtilities
         return new TemplateArgument { Name = CreateDocument(key), Value = CreateDocument(value) };
     }
 
+    public static string? GetArgument(Template template, string key) =>
+        template.Arguments.FirstOrDefault(x => x.Name?.ToString().Trim().ToLower() == key)?.Value.ToString().Trim();
+
     public static void UpdateArgument(Template template, string key, string value)
     {
         var currentValue = template.Arguments.Where(x => x.Name?.ToString().Trim().ToLower() == key).ToList();

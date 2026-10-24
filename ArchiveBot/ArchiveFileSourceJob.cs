@@ -133,9 +133,6 @@ public partial class ArchiveFileSourceJob
         return null;
     }
 
-    private static string? GetArgument(Template template, string key) =>
-        template.Arguments.FirstOrDefault(x => x.Name?.ToString().Trim().ToLower() == key)?.Value.ToString().Trim();
-
     private static string NormaliseName(Template template) =>
         template.Name?.ToString().Trim().Replace('_', ' ').ToLower() ?? "";
 

@@ -4,6 +4,8 @@ namespace CoasterpediaServices.ArchiveBot.Clients.Wayback;
 
 public interface IWaybackClient
 {
-    [Get("/wayback/available?url={url}&timeout=60")]
-    public Task<AvailableResponse> GetAvailable(string url);
+    // Rows of [timestamp] after a header row. A negative limit returns the last captures rather than the first.
+    [Get("/cdx/search/cdx?output=json&fl=timestamp")]
+    public Task<List<List<string>>?> GetCaptures(string url, [AliasAs("from")] string? fromTimestamp, [AliasAs("to")] string? toTimestamp,
+        int limit, string filter);
 }

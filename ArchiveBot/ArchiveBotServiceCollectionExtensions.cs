@@ -40,7 +40,7 @@ public static class ArchiveBotServiceCollectionExtensions
             })
         }).ConfigureHttpClient(c =>
         {
-            c.BaseAddress = new Uri("https://archive.org");
+            c.BaseAddress = new Uri("https://web.archive.org");
             c.DefaultRequestHeaders.UserAgent.ParseAdd("CoasterpediaArchiveBot/1.0 (https://coasterpedia.net)");
             c.Timeout = TimeSpan.FromSeconds(65);
         });

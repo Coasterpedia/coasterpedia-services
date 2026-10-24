@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text.RegularExpressions;
 using CoasterpediaServices.ArchiveBot.Clients.Archive;
 using CoasterpediaServices.ArchiveBot.Clients.Wayback;
 using CoasterpediaServices.ArchiveBot.Clients.WebClient;
@@ -14,8 +16,11 @@ using static CoasterpediaServices.ArchiveBot.ArgumentUtilities;
 
 namespace CoasterpediaServices.ArchiveBot;
 
-public class ArchiveLinkJob
+public partial class ArchiveLinkJob
 {
+    private static readonly string[] CitationDateFormats =
+        ["yyyy-MM-dd", "d MMMM yyyy", "d MMM yyyy", "MMMM d, yyyy", "MMM d, yyyy", "yyyy-MM", "MMMM yyyy", "MMM yyyy", "yyyy"];
+
     private readonly WikiSiteAccessor _siteAccessor;
     private readonly IWaybackClient _waybackClient;
     private readonly PacedArchiveClient _archiveClient;
@@ -36,32 +41,52 @@ public class ArchiveLinkJob
         _archiveBotConfig = archiveBotConfig.Value;
     }
 
+    // Jobs scheduled before the revision ID was passed in still name this overload.
     [Queue(ArchiveBotConfig.ArchiveQueue)]
-    public async Task Run(string pageName)
+    public Task Run(string pageName) => Run(pageName, null);
+
+    [Queue(ArchiveBotConfig.ArchiveQueue)]
+    public async Task Run(string pageName, long? revisionId)
     {
         var site = await _siteAccessor.GetCoasterpedia(_archiveBotConfig.BotUsername, _archiveBotConfig.BotPassword);
 
         var page = new WikiPage(site, pageName);
         await page.RefreshAsync(PageQueryOptions.FetchContent | PageQueryOptions.ResolveRedirects);
-        if (page.LastRevision != null && page.LastRevision.TimeStamp > DateTime.UtcNow.Add(ArchiveBotConfig.Delay))
+        // A later edit scheduled its own run, which covers this one.
+        if (revisionId != null && page.LastRevisionId != revisionId)
         {
-            return;
-        }
-
-        var parser = new WikitextParser();
-        var analyzer = new DocumentAnalyzer();
-        var document = await parser.ParseAsync(page.Content);
-        var metadata = analyzer.Analyze(document);
-        _logger.LogInformation("Found {ReferencesCount} references", metadata.References.Count);
-        if (metadata.References.Count == 0)
-        {
+            _logger.LogInformation("{PageName} has been edited since revision {RevisionId}, skipping", pageName, revisionId);
             return;
         }
 
         var botConfig = await _botConfigProvider.Get(site);
+        var newContent = await RewriteReferences(page.Content, botConfig);
+        if (newContent == page.Content)
+        {
+            _logger.LogInformation("No references edited");
+            return;
+        }
 
-        var newContent = page.Content;
-        var editedReferences = false;
+        _logger.LogInformation("Saving page");
+        await page.EditAsync(new WikiPageEditOptions
+        {
+            Content = newContent,
+            Summary = "Add archive links",
+            Bot = true
+        });
+    }
+
+    // Checks and archives every citation on the page, returning the new wikitext. Saves to the Wayback
+    // Machine as it goes, but never edits the wiki.
+    public async Task<string> RewriteReferences(string content, BotConfig botConfig)
+    {
+        var parser = new WikitextParser();
+        var analyzer = new DocumentAnalyzer();
+        var document = await parser.ParseAsync(content);
+        var metadata = analyzer.Analyze(document);
+        _logger.LogInformation("Found {ReferencesCount} references", metadata.References.Count);
+
+        var newContent = content;
         foreach (var reference in metadata.References)
         {
             var referenceMetadata = await parser.ParseAsync(reference.Content);
@@ -69,6 +94,14 @@ public class ArchiveLinkJob
             if (citationTemplate?.Name == null || !botConfig.CitationTemplates.Contains(citationTemplate.Name.ToString().Trim().ToLower()))
             {
                 _logger.LogInformation("Citation invalid, skipping {CitationTemplate}", citationTemplate);
+                continue;
+            }
+
+            // The reference can hold text and other templates around the citation; only the citation is rewritten.
+            var originalTemplate = citationTemplate.ToString();
+            if (!reference.Content.Contains(originalTemplate))
+            {
+                _logger.LogWarning("Citation {CitationTemplate} did not round-trip, skipping", citationTemplate);
                 continue;
             }
 
@@ -103,7 +136,6 @@ public class ArchiveLinkJob
             {
                 citationTemplate.Arguments.Remove(oldArchiveFormat);
                 UpdateArgument(citationTemplate, "archive-url", oldArchiveFormat.Value.ToString());
-                editedReferences = true;
             }
 
             var oldArchiveDateFormat = citationTemplate.Arguments.FirstOrDefault(x => x.Name?.ToString().Trim().ToLower() == "archivedate");
@@ -111,7 +143,6 @@ public class ArchiveLinkJob
             {
                 citationTemplate.Arguments.Remove(oldArchiveDateFormat);
                 UpdateArgument(citationTemplate, "archive-date", oldArchiveDateFormat.Value.ToString());
-                editedReferences = true;
             }
 
             var urlStatus = citationTemplate.Arguments.FirstOrDefault(x => x.Name?.ToString().ToLower() == "url-status")?.Value.ToString().Trim();
@@ -119,32 +150,44 @@ public class ArchiveLinkJob
                 ?.Value.ToString().Trim());
             var urlAvailable = statusOverride == null ? await _webClient.CheckUrlAvailable(uri.ToString()) : new StatusResponse(false, null);
 
+            var redirectTarget = ignoreRedirect ? null : RedirectTarget(urlAvailable, uri);
+            // A page that now lands on the site's home page has usually been removed: neither the home
+            // page nor its archive stands in for it.
+            var redirectsToRoot = redirectTarget != null && IsSiteRoot(redirectTarget) && !IsSiteRoot(uri);
+
             if (!hasArchive)
             {
                 _logger.LogInformation("Reference does not currently contain archive link, checking web archive");
-                var availableResponse = await _waybackClient.GetAvailable(url);
-                hasArchive = availableResponse.ArchivedSnapshots?.Closest?.Available == true;
+                var accessDate = ParseCitationDate(GetArgument(citationTemplate, "access-date") ?? GetArgument(citationTemplate, "accessdate"));
+                var publishDate = ParseCitationDate(GetArgument(citationTemplate, "date"));
+                var snapshot = await _waybackClient.FindSnapshot(url, accessDate, publishDate);
 
-                var isRedirect = IsRedirect(urlAvailable, url, out var newUrl);
-                if (!hasArchive && isRedirect && statusOverride == null && !ignoreRedirect)
+                if (snapshot == null && redirectTarget != null && !redirectsToRoot)
                 {
                     _logger.LogInformation("Checking web archive for redirect link");
-                    availableResponse = await _waybackClient.GetAvailable(newUrl!);
-                    hasArchive = availableResponse.ArchivedSnapshots?.Closest?.Available == true;
+                    snapshot = await _waybackClient.FindSnapshot(redirectTarget.ToString(), accessDate, publishDate);
                 }
 
-                if (hasArchive)
+                if (snapshot != null)
                 {
                     _logger.LogInformation("Archive found, updating reference");
-                    UpdateArgument(citationTemplate, "archive-url", availableResponse.ArchivedSnapshots.Closest.Url);
-                    UpdateArgument(citationTemplate, "archive-date",
-                        DateTime.ParseExact(availableResponse.ArchivedSnapshots.Closest.Timestamp, "yyyyMMddHHmmss", null).ToString("yyyy-MM-dd"));
-                    editedReferences = true;
+                    UpdateArgument(citationTemplate, "archive-url", snapshot.Url);
+                    UpdateArgument(citationTemplate, "archive-date", snapshot.Captured.ToString("yyyy-MM-dd"));
+                    hasArchive = true;
                 }
-                else if (statusOverride == null)
+                else if (statusOverride != null)
+                {
+                    _logger.LogInformation("Archive not found and manual status set, skipping archive");
+                }
+                else if (urlAvailable.Available == false || redirectsToRoot)
+                {
+                    // Saving now would capture the error or the home page, not the cited page.
+                    _logger.LogInformation("Archive not found and URL is dead or redirects to the home page, not saving");
+                }
+                else
                 {
                     _logger.LogInformation("Archive not found, saving page");
-                    var saveResponse = await _archiveClient.SavePage(newUrl ?? url);
+                    var saveResponse = await _archiveClient.SavePage(redirectTarget?.ToString() ?? url);
                     var location = saveResponse.Headers?.Location;
 
                     if (location != null)
@@ -153,16 +196,11 @@ public class ArchiveLinkJob
                         UpdateArgument(citationTemplate, "archive-url", location.ToString());
                         UpdateArgument(citationTemplate, "archive-date", DateTime.UtcNow.ToString("yyyy-MM-dd"));
                         hasArchive = true;
-                        editedReferences = true;
                     }
                     else
                     {
                         _logger.LogInformation("Saving page failed");
                     }
-                }
-                else
-                {
-                    _logger.LogInformation("Archive not found and manual status set, skipping archive");
                 }
             }
 
@@ -170,63 +208,60 @@ public class ArchiveLinkJob
             {
                 _logger.LogInformation("URL status is manually overwritten, updating to {siteConfig}", statusOverride);
                 UpdateArgument(citationTemplate, "url-status", statusOverride.ToLower());
-                editedReferences = true;
             }
             else if (urlAvailable.Available == null && urlStatus == null)
             {
                 _logger.LogInformation("URL status is unknown, updating to live");
                 UpdateArgument(citationTemplate, "url-status", "live");
-                editedReferences = true;
             }
             else if (urlAvailable.Available == true && urlStatus != "live")
             {
                 _logger.LogInformation("Updating URL status to live");
                 UpdateArgument(citationTemplate, "url-status", "live");
-                editedReferences = true;
             }
             else if (urlAvailable.Available == false && urlStatus is null or "live")
             {
                 _logger.LogInformation("Updating URL status to dead");
                 UpdateArgument(citationTemplate, "url-status", "dead");
-                editedReferences = true;
             }
 
-            if (urlAvailable.Available == false && !hasArchive && !newContent.Contains(reference.Content + "{{Dead link}}"))
+            var newTemplate = citationTemplate.ToString();
+            var referenceContent = reference.Content.Replace(originalTemplate, newTemplate);
+            var taggedDead = DeadLinkRegex().IsMatch(referenceContent);
+            if (urlAvailable.Available == false && !hasArchive && !taggedDead)
             {
                 _logger.LogInformation("Adding dead link template");
-                newContent = newContent.Replace(reference.Content, citationTemplate + "{{Dead link}}");
-                editedReferences = true;
+                referenceContent = referenceContent.Replace(newTemplate, newTemplate + "{{Dead link}}");
             }
-            else if ((urlAvailable.Available == true || hasArchive) && newContent.Contains(reference.Content + "{{Dead link}}"))
+            else if ((urlAvailable.Available == true || hasArchive) && taggedDead)
             {
                 _logger.LogInformation("Removing dead link template");
-                newContent = newContent.Replace(reference.Content + "{{Dead link}}", citationTemplate.ToString());
-                editedReferences = true;
+                referenceContent = DeadLinkRegex().Replace(referenceContent, "");
             }
-            else
+
+            if (referenceContent != reference.Content)
             {
-                newContent = newContent.Replace(reference.Content, citationTemplate.ToString());
+                newContent = newContent.Replace(reference.Content, referenceContent);
             }
         }
 
-        if (!editedReferences)
-        {
-            _logger.LogInformation("No references edited");
-            return;
-        }
-
-        _logger.LogInformation("Saving page");
-        await page.EditAsync(new WikiPageEditOptions
-        {
-            Content = newContent,
-            Summary = "Add archive links",
-            Bot = true
-        });
+        return newContent;
     }
 
-    private bool IsRedirect(StatusResponse statusResponse, string originalUrl, out string? newUrl)
+    // Compared as URIs, so "https://example.com" and "https://example.com/" are not a redirect.
+    private static Uri? RedirectTarget(StatusResponse statusResponse, Uri original)
     {
-        newUrl = statusResponse.ResponseMessage?.RequestMessage?.RequestUri?.ToString();
-        return newUrl != null && originalUrl != newUrl;
+        var final = statusResponse.ResponseMessage?.RequestMessage?.RequestUri;
+        return final != null && final != original ? final : null;
     }
+
+    private static bool IsSiteRoot(Uri uri) => uri.AbsolutePath is "/" or "";
+
+    private static DateTime? ParseCitationDate(string? value) =>
+        DateTime.TryParseExact(value, CitationDateFormats, CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out var date)
+            ? date
+            : null;
+
+    [GeneratedRegex(@"\{\{\s*[Dd]ead[ _]link\s*(\|[^{}]*)?\}\}")]
+    private static partial Regex DeadLinkRegex();
 }
