@@ -3,6 +3,7 @@ using CoasterpediaServices.Common;
 using CoasterpediaServices.Common.Options;
 using CoasterpediaServices.Projector.Data;
 using CoasterpediaServices.Projector.Events;
+using CoasterpediaServices.Projector.Gaps;
 using CoasterpediaServices.Projector.Jobs;
 using CoasterpediaServices.Projector.Options;
 using CoasterpediaServices.Projector.Push;
@@ -53,6 +54,10 @@ public static class ProjectorServiceCollectionExtensions
         services.AddSingleton<ProjectorJobs>();
         services.AddSingleton<IEventSubscriber, ProjectorSubscriber>();
 
+        services.AddOptions<GapBotLogin>()
+            .Bind(configuration.GetSection("ArchiveBotConfig"));
+        services.AddSingleton<CargoGapRepair>();
+
         return services;
     }
 
@@ -64,11 +69,13 @@ public static class ProjectorServiceCollectionExtensions
             jobs.RemoveIfExists("projector-sweep");
             jobs.RemoveIfExists("projector-drain");
             jobs.RemoveIfExists("projector-settle");
+            jobs.RemoveIfExists("cargo-gaps");
             return;
         }
 
         jobs.AddOrUpdate<ProjectorJobs>("projector-sweep", j => j.Sweep(), config.SweepCron);
         jobs.AddOrUpdate<ProjectorJobs>("projector-drain", j => j.Drain(), "*/5 * * * *");
         jobs.AddOrUpdate<ProjectorJobs>("projector-settle", j => j.Settle(), "47 * * * *");
+        jobs.AddOrUpdate<CargoGapRepair>("cargo-gaps", j => j.Run(), config.Gaps.Cron);
     }
 }

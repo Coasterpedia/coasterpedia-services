@@ -37,6 +37,8 @@ public record ProjectorConfig
 
     public string SweepCron { get; init; } = "17 3 * * *";
 
+    public CargoGapOptions Gaps { get; init; } = new();
+
     /// <summary>How long an untrusted change stands unchanged before it settles (DR-010 §6.3). Published as settle_after.</summary>
     public TimeSpan SettleAfter { get; init; } = TimeSpan.FromDays(7);
 
