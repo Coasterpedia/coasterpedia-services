@@ -20,12 +20,16 @@ public class LinkChecker
         _logger = logger;
     }
 
-    public async Task<LinkState> Check(Uri uri)
+    // ignoreRedirects is for sites that redirect bots away from every page (Facebook to its login page):
+    // only the status counts, and no redirect is kept.
+    public async Task<LinkState> Check(Uri uri, bool ignoreRedirects = false)
     {
         var key = Key(uri);
         var previous = await _store.Get(key);
         var now = _time.GetUtcNow();
-        if (!LinkStates.IsDue(previous, now))
+        // A state saved before soft 404s were caught can hold one as alive; ask again rather than trust it.
+        var softNotFoundSaved = !ignoreRedirects && previous?.RedirectTarget is { } saved && SoftNotFound.IsSoftNotFound(uri, new Uri(saved));
+        if (!LinkStates.IsDue(previous, now) && !softNotFoundSaved)
         {
             _logger.LogInformation("{Url} checked {LastChecked}, still {Health}", key, previous!.LastChecked, previous.Health);
             return previous;
@@ -39,7 +43,14 @@ public class LinkChecker
             null => CheckResult.Inconclusive
         };
 
-        var state = LinkStates.Decide(previous, result, RedirectTarget(response, uri)?.ToString(), now);
+        var target = ignoreRedirects ? null : RedirectTarget(response, uri);
+        if (result == CheckResult.Success && target != null && SoftNotFound.IsSoftNotFound(uri, target))
+        {
+            _logger.LogInformation("{Url} redirects to {Target}, which isn't the cited page", key, target);
+            result = CheckResult.Failure;
+        }
+
+        var state = LinkStates.Decide(previous, result, target?.ToString(), now);
         _logger.LogInformation("{Url} check {Result}: {Previous} -> {Health}", key, result, previous?.Health, state.Health);
         await _store.Save(key, state);
         return state;

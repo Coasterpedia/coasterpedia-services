@@ -169,7 +169,7 @@ public partial class ArchiveLinkJob
             var hasArchive = !string.IsNullOrWhiteSpace(citationTemplate.Arguments.FirstOrDefault(x => x.Name?.ToString().Trim().ToLower() == "archive-url")
                 ?.Value.ToString().Trim());
             // A manual status stands in for the check, and is treated as dead: nothing is saved or followed.
-            var link = statusOverride == null ? await _linkChecker.Check(uri) : null;
+            var link = statusOverride == null ? await _linkChecker.Check(uri, ignoreRedirect) : null;
             bool? available = link?.Health switch
             {
                 null or LinkHealth.Dead => false,
@@ -179,10 +179,8 @@ public partial class ArchiveLinkJob
             // Unknown has never failed, so it can still be saved; dying failed its last check.
             var savable = link?.Health is LinkHealth.Alive or LinkHealth.Unknown;
 
+            // Only a live link keeps its redirect: one landing on a home or landing page is a failure.
             var redirectTarget = ignoreRedirect || link?.RedirectTarget == null ? null : new Uri(link.RedirectTarget);
-            // A page that now lands on the site's home page has usually been removed: neither the home
-            // page nor its archive stands in for it.
-            var redirectsToRoot = redirectTarget != null && IsSiteRoot(redirectTarget) && !IsSiteRoot(uri);
 
             if (!hasArchive)
             {
@@ -191,7 +189,7 @@ public partial class ArchiveLinkJob
                 var publishDate = ParseCitationDate(GetArgument(citationTemplate, "date"));
                 var snapshot = await _waybackClient.FindSnapshot(url, accessDate, publishDate);
 
-                if (snapshot == null && redirectTarget != null && !redirectsToRoot)
+                if (snapshot == null && redirectTarget != null)
                 {
                     _logger.LogInformation("Checking web archive for redirect link");
                     snapshot = await _waybackClient.FindSnapshot(redirectTarget.ToString(), accessDate, publishDate);
@@ -208,10 +206,10 @@ public partial class ArchiveLinkJob
                 {
                     _logger.LogInformation("Archive not found and manual status set, skipping archive");
                 }
-                else if (!savable || redirectsToRoot)
+                else if (!savable)
                 {
-                    // Saving now would capture the error or the home page, not the cited page.
-                    _logger.LogInformation("Archive not found and URL is failing or redirects to the home page, not saving");
+                    // Saving now would capture the error or the page it redirects to, not the cited page.
+                    _logger.LogInformation("Archive not found and URL is failing, not saving");
                 }
                 else
                 {
@@ -238,7 +236,8 @@ public partial class ArchiveLinkJob
                 _logger.LogInformation("URL status is manually overwritten, updating to {siteConfig}", statusOverride);
                 UpdateArgument(citationTemplate, "url-status", statusOverride.ToLower());
             }
-            else if (available == null && urlStatus == null)
+            // A dying link has failed, so it isn't called live while the checks decide.
+            else if (link?.Health == LinkHealth.Unknown && urlStatus == null)
             {
                 _logger.LogInformation("URL status is unknown, updating to live");
                 UpdateArgument(citationTemplate, "url-status", "live");
@@ -276,8 +275,6 @@ public partial class ArchiveLinkJob
 
         return newContent;
     }
-
-    private static bool IsSiteRoot(Uri uri) => uri.AbsolutePath is "/" or "";
 
     private static DateTime? ParseCitationDate(string? value) =>
         DateTime.TryParseExact(value, CitationDateFormats, CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out var date)

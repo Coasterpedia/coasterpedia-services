@@ -84,6 +84,42 @@ public class LinkCheckerTests
     }
 
     [Fact]
+    public async Task A_redirect_to_a_landing_page_counts_as_a_failure()
+    {
+        _sites.Answer("https://www.cedarpoint.com/play/rides/top-thrill-dragster", HttpStatusCode.OK, "https://www.sixflags.com/cedarpoint");
+
+        var state = await _checker.Check(new Uri("https://www.cedarpoint.com/play/rides/top-thrill-dragster"));
+
+        Assert.Equal(LinkHealth.Dying, state.Health);
+        Assert.Null(state.RedirectTarget);
+    }
+
+    [Fact]
+    public async Task Ignoring_redirects_judges_by_the_status_alone()
+    {
+        _sites.Answer("https://www.facebook.com/pg/park/photos/", HttpStatusCode.OK, "https://www.facebook.com/park");
+
+        var state = await _checker.Check(new Uri("https://www.facebook.com/pg/park/photos/"), ignoreRedirects: true);
+
+        Assert.Equal(LinkHealth.Alive, state.Health);
+        Assert.Null(state.RedirectTarget);
+    }
+
+    [Fact]
+    public async Task A_soft_404_saved_as_alive_is_checked_again_at_once()
+    {
+        // As the version before soft 404s left it.
+        const string url = "https://www.kingsdominion.com/blog/big-changes-coming-to-candy-apple-grove";
+        await _store.Save(url, new LinkState(LinkHealth.Alive, 0, _time.Now.AddDays(-1), "https://www.sixflags.com/blog"));
+        _sites.Answer(url, HttpStatusCode.OK, "https://www.sixflags.com/blog");
+
+        var state = await _checker.Check(new Uri(url));
+
+        Assert.Single(_sites.Requests);
+        Assert.Equal(LinkHealth.Dying, state.Health);
+    }
+
+    [Fact]
     public async Task A_trailing_slash_is_not_a_redirect()
     {
         _sites.Answer("https://park.example", HttpStatusCode.OK, "https://park.example/");

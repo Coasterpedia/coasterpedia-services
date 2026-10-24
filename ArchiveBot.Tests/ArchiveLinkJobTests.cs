@@ -179,6 +179,26 @@ public class ArchiveLinkJobTests
     }
 
     [Fact]
+    public async Task A_page_redirecting_to_a_landing_page_gets_its_own_archive_and_dies_on_the_third_check()
+    {
+        const string url = "https://www.cedarpoint.com/play/rides/top-thrill-dragster";
+        _h.Sites.Answer(url, HttpStatusCode.OK, "https://www.sixflags.com/cedarpoint");
+        _h.Wayback.Captured(url, "20190601000000", "20250101000000");
+        _h.Wayback.Captured("https://www.sixflags.com/cedarpoint", "20260101000000");
+        const string page = "A.<ref>{{cite web|url=" + url + "|title=Top Thrill Dragster|access-date=2019-07-01}}</ref>";
+
+        var first = await _h.Rewrite(page);
+        Assert.Contains("archive-url=https://web.archive.org/web/20190601000000/" + url, first);
+        Assert.DoesNotContain("url-status", first);
+
+        var third = await RewriteOnDays(first, 3);
+        Assert.Contains("url-status=dead", third);
+        Assert.DoesNotContain("Dead link", third);
+        Assert.Empty(_h.Archive.Saved);
+        Assert.DoesNotContain(_h.Wayback.Calls, c => c.Url.Contains("sixflags.com"));
+    }
+
+    [Fact]
     public async Task A_moved_page_uses_its_new_address()
     {
         _h.Sites.Answer("https://moved.example/old", HttpStatusCode.OK, "https://moved.example/new");
