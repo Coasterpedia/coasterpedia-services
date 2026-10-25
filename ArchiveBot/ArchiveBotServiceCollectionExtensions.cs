@@ -24,6 +24,7 @@ public static class ArchiveBotServiceCollectionExtensions
         services.AddSingleton<ArchiveFileSourceJob>();
         services.AddSingleton<BotConfigProvider>();
         services.AddSingleton<PacedArchiveClient>();
+        services.AddSingleton<PacedWaybackClient>();
         services.AddSingleton<LinkChecker>();
         services.AddSingleton<ArchiveSweepJob>();
         // InternalApi's IConnectionMultiplexer; the local runner registers in-memory stores first.

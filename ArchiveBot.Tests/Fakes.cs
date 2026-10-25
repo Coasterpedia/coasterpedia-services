@@ -120,7 +120,8 @@ public sealed class JobHarness
     public JobHarness()
     {
         var checker = new LinkChecker(new LinkWebClient(new HttpClient(Sites)), Links, Time, NullLogger<LinkChecker>.Instance);
-        Job = new ArchiveLinkJob(null!, Wayback, new PacedArchiveClient(Archive, NullLogger<PacedArchiveClient>.Instance, TimeSpan.Zero),
+        Job = new ArchiveLinkJob(null!, new PacedWaybackClient(Wayback, NullLogger<PacedWaybackClient>.Instance, TimeSpan.Zero, TimeSpan.Zero),
+            new PacedArchiveClient(Archive, NullLogger<PacedArchiveClient>.Instance, TimeSpan.Zero),
             checker, null!, PageChecks, Time, NullLogger<ArchiveLinkJob>.Instance,
             Microsoft.Extensions.Options.Options.Create(new ArchiveBotConfig { BotUsername = "ArchiveBot", BotPassword = "unused" }));
     }

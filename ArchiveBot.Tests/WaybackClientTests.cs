@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using System.Web;
 using CoasterpediaServices.ArchiveBot.Clients.Wayback;
+using Microsoft.Extensions.Logging.Abstractions;
 using Refit;
 using Xunit;
 
@@ -9,23 +10,24 @@ namespace CoasterpediaServices.ArchiveBot.Tests;
 
 public class WaybackClientTests
 {
-    private sealed class Capture(string body) : HttpMessageHandler
+    private sealed class Capture(string body, HttpStatusCode status = HttpStatusCode.OK) : HttpMessageHandler
     {
         public List<Uri> Requests { get; } = [];
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Requests.Add(request.RequestUri!);
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            return Task.FromResult(new HttpResponseMessage(status)
             {
+                RequestMessage = request,
                 Content = new StringContent(body, Encoding.UTF8, "application/json")
             });
         }
     }
 
-    private static (IWaybackClient Client, Capture Handler) Client(string body)
+    private static (IWaybackClient Client, Capture Handler) Client(string body, HttpStatusCode status = HttpStatusCode.OK)
     {
-        var handler = new Capture(body);
+        var handler = new Capture(body, status);
         var client = RestService.For<IWaybackClient>(new HttpClient(handler) { BaseAddress = new Uri("https://web.archive.org") });
         return (client, handler);
     }
@@ -60,5 +62,33 @@ public class WaybackClientTests
         Assert.Null(await client.FindSnapshot("https://example.com/", new DateTime(2016, 1, 1), null));
         // Before, then after.
         Assert.Equal(2, handler.Requests.Count);
+    }
+
+    private static PacedWaybackClient Paced(IWaybackClient client) =>
+        new(client, NullLogger<PacedWaybackClient>.Instance, TimeSpan.Zero, TimeSpan.Zero);
+
+    [Fact]
+    public async Task An_excluded_site_has_no_snapshot()
+    {
+        var (client, _) = Client("org.archive.wayback.exception.AdministrativeAccessControlException: Blocked Site Error",
+            HttpStatusCode.Forbidden);
+
+        Assert.Null(await Paced(client).FindSnapshot("https://excluded.example/", null, null));
+    }
+
+    [Fact]
+    public async Task Any_other_403_fails_the_job()
+    {
+        var (client, _) = Client("Forbidden", HttpStatusCode.Forbidden);
+
+        await Assert.ThrowsAsync<ApiException>(() => Paced(client).FindSnapshot("https://example.com/", null, null));
+    }
+
+    [Fact]
+    public async Task A_rate_limited_search_fails_the_job()
+    {
+        var (client, _) = Client("", HttpStatusCode.TooManyRequests);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Paced(client).FindSnapshot("https://example.com/", null, null));
     }
 }

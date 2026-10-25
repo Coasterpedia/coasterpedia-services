@@ -10,5 +10,7 @@ public record ArchiveBotConfig
     public const string SweepQueue = "archive-sweep";
     public ArchiveSweepOptions Sweep { get; init; } = new();
     public static readonly TimeSpan SaveInterval = TimeSpan.FromSeconds(10);
+    // 40 CDX searches a minute. Each citation without an archive takes up to four, back to back.
+    public static readonly TimeSpan SearchInterval = TimeSpan.FromSeconds(1.5);
     public static readonly TimeSpan RateLimitCooldown = TimeSpan.FromMinutes(5);
 }

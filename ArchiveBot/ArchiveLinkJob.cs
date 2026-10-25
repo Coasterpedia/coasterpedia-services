@@ -23,7 +23,7 @@ public partial class ArchiveLinkJob
         ["yyyy-MM-dd", "d MMMM yyyy", "d MMM yyyy", "MMMM d, yyyy", "MMM d, yyyy", "yyyy-MM", "MMMM yyyy", "MMM yyyy", "yyyy"];
 
     private readonly WikiSiteAccessor _siteAccessor;
-    private readonly IWaybackClient _waybackClient;
+    private readonly PacedWaybackClient _waybackClient;
     private readonly PacedArchiveClient _archiveClient;
     private readonly LinkChecker _linkChecker;
     private readonly BotConfigProvider _botConfigProvider;
@@ -32,7 +32,7 @@ public partial class ArchiveLinkJob
     private readonly ILogger<ArchiveLinkJob> _logger;
     private readonly ArchiveBotConfig _archiveBotConfig;
 
-    public ArchiveLinkJob(WikiSiteAccessor siteAccessor, IWaybackClient waybackClient, PacedArchiveClient archiveClient, LinkChecker linkChecker,
+    public ArchiveLinkJob(WikiSiteAccessor siteAccessor, PacedWaybackClient waybackClient, PacedArchiveClient archiveClient, LinkChecker linkChecker,
         BotConfigProvider botConfigProvider, IPageCheckStore pageChecks, TimeProvider time, ILogger<ArchiveLinkJob> logger,
         IOptions<ArchiveBotConfig> archiveBotConfig)
     {
@@ -223,7 +223,7 @@ public partial class ArchiveLinkJob
                     {
                         _logger.LogInformation("Saving page successful, updating reference");
                         UpdateArgument(citationTemplate, "archive-url", location.ToString());
-                        UpdateArgument(citationTemplate, "archive-date", DateTime.UtcNow.ToString("yyyy-MM-dd"));
+                        UpdateArgument(citationTemplate, "archive-date", _time.GetUtcNow().ToString("yyyy-MM-dd"));
                         hasArchive = true;
                     }
                     else
