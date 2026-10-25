@@ -213,6 +213,10 @@ public partial class ArchiveLinkJob
                     // Saving now would capture the error or the page it redirects to, not the cited page.
                     _logger.LogInformation("Archive not found and URL is failing, not saving");
                 }
+                else if (_waybackClient.IsExcluded(redirectTarget?.ToString() ?? url))
+                {
+                    _logger.LogInformation("Archive not found and URL is excluded from the Wayback Machine, not saving");
+                }
                 else
                 {
                     _logger.LogInformation("Archive not found, saving page");

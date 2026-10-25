@@ -10,10 +10,15 @@ namespace CoasterpediaServices.ArchiveBot.Clients.Wayback;
 // Only use from jobs on the single-worker archive queue, as with PacedArchiveClient.
 public class PacedWaybackClient : IWaybackClient
 {
+    // The CDX server sends an empty body and gives the reason here, e.g. "AdministrativeAccessControlException:
+    // Blocked Site Error", or "Blocked By Robots".
+    private const string RuntimeErrorHeader = "x-archive-wayback-runtime-error";
+
     private readonly IWaybackClient _waybackClient;
     private readonly ILogger<PacedWaybackClient> _logger;
     private readonly TimeSpan _searchInterval;
     private readonly TimeSpan _rateLimitCooldown;
+    private readonly HashSet<string> _excluded = [];
     private long _lastSearch;
 
     public PacedWaybackClient(IWaybackClient waybackClient, ILogger<PacedWaybackClient> logger)
@@ -31,8 +36,16 @@ public class PacedWaybackClient : IWaybackClient
         _rateLimitCooldown = rateLimitCooldown;
     }
 
+    // An excluded URL can't be saved either, so the job doesn't try.
+    public bool IsExcluded(string url) => _excluded.Contains(url);
+
     public async Task<List<List<string>>?> GetCaptures(string url, string? fromTimestamp, string? toTimestamp, int limit, string filter)
     {
+        if (IsExcluded(url))
+        {
+            return null;
+        }
+
         // Counted from the last search, so time spent checking links between searches counts towards the gap.
         var wait = _searchInterval - Stopwatch.GetElapsedTime(_lastSearch);
         if (wait > TimeSpan.Zero)
@@ -45,19 +58,23 @@ public class PacedWaybackClient : IWaybackClient
         {
             return await _waybackClient.GetCaptures(url, fromTimestamp, toTimestamp, limit, filter);
         }
-        // "Blocked Site Error" or "Blocked By Robots": the site asked to be left out, so there is nothing to find.
         // Any other 403 still fails the job, so a block on the bot itself isn't read as every link having no archive.
-        catch (ApiException e) when (e.StatusCode == HttpStatusCode.Forbidden && e.Content?.Contains("Blocked") == true)
+        catch (ApiException e) when (e.StatusCode == HttpStatusCode.Forbidden && IsBlocked(e))
         {
             _logger.LogInformation("{Url} is excluded from the Wayback Machine", url);
+            _excluded.Add(url);
             return null;
         }
         catch (ApiException e) when (e.StatusCode == HttpStatusCode.TooManyRequests)
         {
             // Throw after the pause so Hangfire retries the job, and the next job doesn't walk straight into the limiter.
-            _logger.LogWarning("Wayback rate limit hit on search, pausing for {Cooldown}", _rateLimitCooldown);
-            await Task.Delay(_rateLimitCooldown);
+            var cooldown = e.Headers.RetryAfter?.Delta ?? _rateLimitCooldown;
+            _logger.LogWarning("Wayback rate limit hit on search, pausing for {Cooldown}", cooldown);
+            await Task.Delay(cooldown);
             throw new InvalidOperationException($"Searching for captures of {url} was rate limited", e);
         }
     }
+
+    private static bool IsBlocked(ApiException e) =>
+        e.Headers.TryGetValues(RuntimeErrorHeader, out var values) && values.Any(v => v.Contains("Blocked"));
 }

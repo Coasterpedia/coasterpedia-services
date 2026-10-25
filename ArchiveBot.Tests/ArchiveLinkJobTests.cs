@@ -148,6 +148,19 @@ public class ArchiveLinkJobTests
     }
 
     [Fact]
+    public async Task A_link_excluded_from_the_Wayback_Machine_is_not_saved()
+    {
+        _h.Sites.Answer("https://excluded.example/a", HttpStatusCode.OK);
+        _h.Wayback.Excluded("https://excluded.example/a");
+
+        var output = await _h.Rewrite("A.<ref>{{cite web|url=https://excluded.example/a|title=A}}</ref>");
+
+        Assert.Empty(_h.Archive.Saved);
+        Assert.DoesNotContain("archive-url", output);
+        Assert.Contains("url-status=live", output);
+    }
+
+    [Fact]
     public async Task A_link_blocking_the_bot_is_still_saved()
     {
         _h.Sites.Answer("https://blocked.example/a", HttpStatusCode.Forbidden);

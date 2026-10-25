@@ -52,13 +52,26 @@ public sealed class FakeWayback : IWaybackClient
 {
     private readonly Dictionary<string, List<string>> _captures = new();
 
+    private readonly HashSet<string> _excluded = [];
+
     public List<(string Url, string? From, string? To, int Limit, string Filter)> Calls { get; } = [];
 
     public void Captured(string url, params string[] timestamps) => _captures[url] = timestamps.Order().ToList();
 
-    public Task<List<List<string>>?> GetCaptures(string url, string? fromTimestamp, string? toTimestamp, int limit, string filter)
+    // Answers as the CDX server does for a site that asked to be left out.
+    public void Excluded(string url) => _excluded.Add(url);
+
+    public async Task<List<List<string>>?> GetCaptures(string url, string? fromTimestamp, string? toTimestamp, int limit, string filter)
     {
         Calls.Add((url, fromTimestamp, toTimestamp, limit, filter));
+        if (_excluded.Contains(url))
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, "https://web.archive.org/cdx/search/cdx");
+            var response = new HttpResponseMessage(HttpStatusCode.Forbidden) { RequestMessage = request, Content = new StringContent("") };
+            response.Headers.Add("x-archive-wayback-runtime-error", "AdministrativeAccessControlException: Blocked Site Error");
+            throw await ApiException.Create(request, HttpMethod.Get, response, new RefitSettings());
+        }
+
         var from = fromTimestamp?.PadRight(14, '0');
         var to = toTimestamp?.PadRight(14, '9');
         var inWindow = _captures.GetValueOrDefault(url, [])
@@ -73,7 +86,7 @@ public sealed class FakeWayback : IWaybackClient
             rows.AddRange(picked.Select(t => new List<string> { t }));
         }
 
-        return Task.FromResult<List<List<string>>?>(rows);
+        return rows;
     }
 }
 

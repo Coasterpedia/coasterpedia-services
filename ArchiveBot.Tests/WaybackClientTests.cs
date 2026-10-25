@@ -10,24 +10,31 @@ namespace CoasterpediaServices.ArchiveBot.Tests;
 
 public class WaybackClientTests
 {
-    private sealed class Capture(string body, HttpStatusCode status = HttpStatusCode.OK) : HttpMessageHandler
+    private sealed class Capture(string body, HttpStatusCode status, (string Name, string Value)? header) : HttpMessageHandler
     {
         public List<Uri> Requests { get; } = [];
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Requests.Add(request.RequestUri!);
-            return Task.FromResult(new HttpResponseMessage(status)
+            var response = new HttpResponseMessage(status)
             {
                 RequestMessage = request,
                 Content = new StringContent(body, Encoding.UTF8, "application/json")
-            });
+            };
+            if (header is var (name, value))
+            {
+                response.Headers.Add(name, value);
+            }
+
+            return Task.FromResult(response);
         }
     }
 
-    private static (IWaybackClient Client, Capture Handler) Client(string body, HttpStatusCode status = HttpStatusCode.OK)
+    private static (IWaybackClient Client, Capture Handler) Client(string body, HttpStatusCode status = HttpStatusCode.OK,
+        (string Name, string Value)? header = null)
     {
-        var handler = new Capture(body, status);
+        var handler = new Capture(body, status, header);
         var client = RestService.For<IWaybackClient>(new HttpClient(handler) { BaseAddress = new Uri("https://web.archive.org") });
         return (client, handler);
     }
@@ -70,16 +77,20 @@ public class WaybackClientTests
     [Fact]
     public async Task An_excluded_site_has_no_snapshot()
     {
-        var (client, _) = Client("org.archive.wayback.exception.AdministrativeAccessControlException: Blocked Site Error",
-            HttpStatusCode.Forbidden);
+        var (client, handler) = Client("", HttpStatusCode.Forbidden,
+            ("x-archive-wayback-runtime-error", "AdministrativeAccessControlException: Blocked Site Error"));
+        var paced = Paced(client);
 
-        Assert.Null(await Paced(client).FindSnapshot("https://excluded.example/", null, null));
+        Assert.Null(await paced.FindSnapshot("https://excluded.example/", new DateTime(2016, 1, 1), null));
+        Assert.True(paced.IsExcluded("https://excluded.example/"));
+        // The second search, for a capture after the access date, isn't sent.
+        Assert.Single(handler.Requests);
     }
 
     [Fact]
     public async Task Any_other_403_fails_the_job()
     {
-        var (client, _) = Client("Forbidden", HttpStatusCode.Forbidden);
+        var (client, _) = Client("", HttpStatusCode.Forbidden);
 
         await Assert.ThrowsAsync<ApiException>(() => Paced(client).FindSnapshot("https://example.com/", null, null));
     }
