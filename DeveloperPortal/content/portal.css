@@ -728,6 +728,32 @@ code {
 	overflow-wrap: anywhere;
 }
 
+/* Accounts (reviewers): tables read row by row, so no frame. */
+.accounts__section {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.data-table .num {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.revoke-form {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-width: 16rem;
+	margin: 0;
+}
+
+.revoke-form__row {
+	display: flex;
+	gap: 8px;
+}
+
 /* ── Home ─────────────────────────────────────────────────────────────── */
 
 .hero {
@@ -801,6 +827,15 @@ code {
 	font-weight: var( --font-weight-bold );
 	font-variant-numeric: tabular-nums;
 	line-height: 1.2;
+}
+
+.count__label {
+	font-weight: var( --font-weight-bold );
+}
+
+.count__about {
+	margin: 4px 0 0;
+	color: var( --color-subtle );
 }
 
 .section {
@@ -940,7 +975,8 @@ code {
 	background-color: var( --color-surface-2 );
 }
 
-.prose table {
+.prose table,
+.data-table {
 	width: 100%;
 	border-collapse: collapse;
 	font-size: var( --font-size-medium );
@@ -951,14 +987,17 @@ code {
 }
 
 .prose th,
-.prose td {
+.prose td,
+.data-table th,
+.data-table td {
 	padding: 8px 12px 8px 0;
 	border-bottom: var( --border-subtle );
 	text-align: left;
 	vertical-align: top;
 }
 
-.prose th {
+.prose th,
+.data-table th {
 	color: var( --color-subtle );
 	font-size: var( --font-size-small );
 	font-weight: var( --font-weight-medium );

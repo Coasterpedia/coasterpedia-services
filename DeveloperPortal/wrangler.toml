@@ -26,7 +26,7 @@ WIKI_ORIGIN = "https://coasterpedia.net"
 PORTAL_ORIGIN = "https://developer.coasterpedia.net"
 # Set once the consumer is registered at Special:OAuthConsumerRegistration
 # (§7.2 step 2); OAUTH_CLIENT_SECRET is a Worker secret.
-OAUTH_CLIENT_ID = ""
+OAUTH_CLIENT_ID = "198d3893f33605af840ccc4d0462f625"
 # Wiki user IDs allowed to review listings, comma-separated (§13.5).
 SHOWCASE_REVIEWERS = "1,2123"
 # SES (§13.7). SES_ACCESS_KEY_ID and SES_SECRET_ACCESS_KEY are Worker secrets.

@@ -6,6 +6,7 @@ import { csrf } from 'hono/csrf';
 import { HTTPException } from 'hono/http-exception';
 import { secureHeaders } from 'hono/secure-headers';
 import { type AppEnv, message } from './app';
+import { accounts } from './accounts';
 import { auth } from './auth';
 import { daily } from './cron';
 import type { Env } from './env';
@@ -35,6 +36,7 @@ app.use('*', async (c, next) => csrf({ origin: c.env.PORTAL_ORIGIN })(c, next));
 app.route('/auth', auth);
 app.route('/account/keys/:id/listing', listings);
 app.route('/account/keys', keys);
+app.route('/review/accounts', accounts);
 app.route('/review', review);
 app.route('/', showcase);
 

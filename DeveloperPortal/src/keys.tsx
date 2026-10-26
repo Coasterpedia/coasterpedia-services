@@ -1,6 +1,7 @@
 // Your keys (DR-010 §7.2 steps 5–7, §13.3): create, list, revoke.
 import { Hono } from 'hono';
 import { ago, type AppEnv, ClosedBeta, type Ctx, isoNow, message, page, requireSession, shortDate } from './app';
+import { isBlocked } from './blocks';
 import { b64url, randomToken } from './cookies';
 import { FIX, HIDE_AFTER_DAYS, isVisible, type KeyRow, type ListingRow, MAX_KEYS, REQUESTS_PER_MINUTE, usesOf } from './data';
 import { apiAccount, type KeyEntry } from './env';
@@ -196,6 +197,9 @@ function newKeyPage(c: Ctx, props: { error?: string; name?: string; description?
 const termsClosed = (c: Ctx) =>
 	message(c, 503, 'You can’t create keys yet', <><p>The API terms aren’t in force yet.</p><ClosedBeta /></>, 'keys');
 
+const blockedNow = (c: Ctx) =>
+	message(c, 403, 'Blocked accounts can’t create keys', <p>Your wiki account is blocked, so you can’t create keys while the block lasts. If you think the block is wrong, you can appeal it on the wiki.</p>, 'keys');
+
 async function activeKeyCount(c: Ctx): Promise<number> {
 	const row = await c.env.ACCOUNTS.prepare(`SELECT COUNT(*) AS n FROM keys WHERE account_id = ? AND revoked_at IS NULL`).bind(c.get('session').sub).first<{ n: number }>();
 	return row?.n ?? 0;
@@ -203,6 +207,9 @@ async function activeKeyCount(c: Ctx): Promise<number> {
 
 keys.get('/new', async (c) => {
 	if (!TERMS_VERSION) return termsClosed(c);
+	// The form goes by the daily run's record; creating the key asks the wiki.
+	const stored = await c.env.ACCOUNTS.prepare(`SELECT blocked_at FROM accounts WHERE id = ?`).bind(c.get('session').sub).first<{ blocked_at: string | null }>();
+	if (stored?.blocked_at) return blockedNow(c);
 	if ((await activeKeyCount(c)) >= MAX_KEYS) {
 		return message(c, 409, `You already have ${MAX_KEYS} keys`, <p>To create another, revoke one you no longer use on <a href="/account/keys">Your keys</a>.</p>, 'keys');
 	}
@@ -223,6 +230,7 @@ keys.post('/', async (c) => {
 
 	const account = await c.env.ACCOUNTS.prepare(`SELECT tier FROM accounts WHERE id = ?`).bind(session.sub).first<{ tier: string }>();
 	if (!account) return c.redirect('/auth/sign-in?return=/account/keys/new', 303);
+	if (await isBlocked(c.env, session.sub)) return blockedNow(c);
 
 	// Usage is recorded by prefix, so a prefix is unique within the account.
 	let key = '';

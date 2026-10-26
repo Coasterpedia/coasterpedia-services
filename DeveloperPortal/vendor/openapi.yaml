@@ -32,7 +32,7 @@ paths:
             type: string
             examples:
               - 165,169,171
-          x-beta: Attractions only. The same parameter on the other kinds can follow if you need it.
+          x-beta: Attractions and parks only. The same parameter on the other kinds can follow if you need it.
         - name: type
           in: query
           schema:

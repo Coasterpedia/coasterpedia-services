@@ -90,3 +90,9 @@ never appears in it.
 We cache responses at each Cloudflare location for up to 30 seconds, so a
 response can be up to 30 seconds older than the data behind it.
 `meta.data_as_of` tells you when that data left the wiki.
+
+We also answer from the copy of our database nearest to you, and a copy can
+be a few seconds behind the newest one. If you make two requests in a row,
+they can come from different copies, so `meta.data_as_of` can go back by a
+few seconds between them. The change feed always reads the newest copy, so a
+`next_cursor` it gives you always works on your next request.

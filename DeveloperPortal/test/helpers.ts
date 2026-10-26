@@ -28,15 +28,33 @@ export function setAeRows(rows: { match: string; data: unknown[] }[]) {
 	aeRows = rows;
 }
 
+/** Wiki user IDs with a sitewide block, as list=users answers; null: the wiki is down. */
+export let wikiBlocked: Set<number> | null = new Set();
+export function setWikiBlocked(next: Set<number> | null) {
+	wikiBlocked = next;
+}
+
 /** The wiki, SES and the Cloudflare APIs, all stubbed. */
 export function stubOutbound() {
 	outbound.length = 0;
+	wikiBlocked = new Set();
 	vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
 		const request = input instanceof Request ? input : new Request(String(input), init);
 		const url = request.url;
 		outbound.push({ url, init: { method: request.method, headers: request.headers, body: init?.body ?? (await request.clone().text()) } });
 		if (url === `${WIKI}/w/rest.php/oauth2/access_token`) return Response.json({ access_token: 'wiki-access-token', token_type: 'Bearer' });
 		if (url === `${WIKI}/w/rest.php/oauth2/resource/profile`) return Response.json(profile);
+		if (url.startsWith(`${WIKI}/w/api.php?`) && new URL(url).searchParams.get('list') === 'users') {
+			if (!wikiBlocked) return new Response('Bad gateway', { status: 502 });
+			const ids = new URL(url).searchParams.get('ususerids')!.split('|').map(Number);
+			return Response.json({
+				query: {
+					users: ids.map((id) => (wikiBlocked!.has(id)
+						? { userid: id, name: `User ${id}`, blockid: 1, blockedby: 'Admin', blockreason: 'Vandalism', blockexpiry: 'infinite', blockpartial: false }
+						: { userid: id, name: `User ${id}` })),
+				},
+			});
+		}
 		if (url.includes('/analytics_engine/sql')) {
 			const sql = String(init?.body ?? (await request.clone().text()));
 			return Response.json({ data: aeRows.find((r) => sql.includes(r.match))?.data ?? [] });
@@ -53,12 +71,13 @@ export function stubOutbound() {
 export class Browser {
 	cookies = new Map<string, string>();
 
-	async fetch(path: string, init: RequestInit = {}): Promise<Response> {
+	/** bindings: env with some bindings changed, for one request. */
+	async fetch(path: string, init: RequestInit = {}, bindings: typeof env = env): Promise<Response> {
 		const headers = new Headers(init.headers);
 		if (this.cookies.size) headers.set('cookie', [...this.cookies].map(([k, v]) => `${k}=${v}`).join('; '));
 		if (init.method && init.method !== 'GET' && !headers.has('origin')) headers.set('origin', PORTAL);
 		const ctx = createExecutionContext();
-		const res = await worker.fetch(new Request(PORTAL + path, { ...init, headers, redirect: 'manual' }), env, ctx);
+		const res = await worker.fetch(new Request(PORTAL + path, { ...init, headers, redirect: 'manual' }), bindings, ctx);
 		await waitOnExecutionContext(ctx);
 		for (const line of res.headers.getSetCookie()) {
 			const [pair, ...attrs] = line.split(';');

@@ -76,6 +76,7 @@ function Footer({ apiVersion, viewer }: { apiVersion?: string; viewer?: Viewer }
 				<a href="/openapi.yaml">OpenAPI contract</a>
 				<a href="/llms.txt">llms.txt</a>
 				<a href="https://status.coasterpedia.net">Status</a>
+				<a href={`${WIKI}/wiki/Coasterpedia:About`}>About Coasterpedia</a>
 				<a href={WIKI}>coasterpedia.net</a>
 				{viewer && (
 					<form method="post" action="/auth/sign-out" class="portal-footer__signout">

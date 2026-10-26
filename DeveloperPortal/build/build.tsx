@@ -14,7 +14,7 @@ import { parse, stringify } from 'yaml';
 import { ClosedBeta } from '../src/app';
 import { PLATFORMS } from '../src/data';
 import { TERMS_VERSION } from '../src/terms-version';
-import { renderPage, type Section } from '../src/views/layout';
+import { renderPage, type Section, WIKI } from '../src/views/layout';
 import { buildCss } from './css';
 import { type Examples, loadSpec, ReferenceHtml, referenceMarkdown } from './openapi';
 
@@ -189,10 +189,17 @@ await page('terms/index.html', {
 
 // ── Home ──────────────────────────────────────────────────────────────────
 
-const COUNTED: [string, string][] = [['attractions', 'Attractions'], ['parks', 'Parks'], ['manufacturers', 'Manufacturers'], ['products', 'Products']];
+// Someone who has never heard of Coasterpedia lands here too, so each tile
+// says what the word means as well as how many there are.
+const COUNTED: { key: string; label: string; about: string }[] = [
+	{ key: 'attractions', label: 'Attractions', about: 'Roller coasters, other rides and water slides' },
+	{ key: 'parks', label: 'Parks', about: 'Theme parks, water parks and the other places rides stand' },
+	{ key: 'manufacturers', label: 'Manufacturers', about: 'The companies that build the rides' },
+	{ key: 'products', label: 'Products', about: 'Ride models a manufacturer sells, such as Vekoma’s Boomerang' },
+];
 
 const GETS = [
-	{ title: 'The wiki’s own records', body: 'The same data the wiki shows, updated by its editors every day, with stable IDs that survive renames and moves.' },
+	{ title: 'Written by volunteers', body: <>Coasterpedia is a wiki about rides that anyone can edit, started in 2009. Each record is <a href={WIKI}>an article there</a>, with a stable ID that survives renames and moves. To correct a record, edit its article.</> },
 	{ title: 'Current within minutes', body: <>An edit reaches the API in a couple of minutes. You can read edits as they happen, or <a href="/docs/views/">only those that have stood for a week</a>.</> },
 	{ title: 'A feed of what changed', body: <><code>/v1/changes</code> lists every record that changed since you last asked, so you only download what changed.</> },
 	{ title: 'Open licence', body: <>The data is CC BY-SA 4.0. Credit Coasterpedia wherever you show it, and <a href="/docs/attribution/">share alike</a>.</> },
@@ -219,19 +226,19 @@ function HomeCard({ p }: { p: Listed }) {
 
 await page('index.html', {
 	title: 'Coasterpedia for developers',
-	description: 'Coasterpedia’s ride data as an API: attractions, parks, manufacturers and products as JSON, with stable IDs and a change feed.',
+	description: 'An API for Coasterpedia, the volunteer-written wiki of amusement rides: roller coasters, other rides, water slides, parks and the companies behind them as JSON, with stable IDs and a change feed.',
 	section: 'home',
 	children: (
 		<>
 			<section class="wrap hero">
 				<div class="hero__text">
-					<h1>Coasterpedia’s ride data, as an API</h1>
-					<p class="lede">Every attraction, park, manufacturer and product on the wiki, as structured JSON with stable IDs and a change feed. Free for non-commercial projects.</p>
+					<h1>Amusement ride data, as an API</h1>
+					<p class="lede">Roller coasters, other rides and water slides around the world, open or long gone, with the parks and companies behind them. It comes from Coasterpedia, a wiki that volunteers have written since 2009. Free for non-commercial projects.</p>
 					<div class="hero__actions">
 						<a class="btn btn--primary" href="/account/keys">Get a free key</a>
 						<a class="btn" href="/docs/">Read the docs</a>
 					</div>
-					<p class="meta">Sign in with your wiki account. You don’t need a new password, and creating a key takes about a minute.</p>
+					<p class="meta">You sign in with a Coasterpedia account. If you don’t have one, <a href={`${WIKI}/wiki/Special:CreateAccount`}>create one on the wiki</a> and confirm your email address. Creating a key then takes about a minute.</p>
 				</div>
 				<div class="hero__sample">
 					<div class="sample">
@@ -243,19 +250,18 @@ await page('index.html', {
 				</div>
 			</section>
 
-			{meta && (
-				<section class="wrap section" aria-label="What the API holds">
-					<div class="counts">
-						{COUNTED.filter(([key]) => meta.counts[key] !== undefined).map(([key, label]) => (
-							<div class="card count">
-								<div class="count__number">{meta.counts[key].toLocaleString('en-GB')}</div>
-								<div>{label}</div>
-							</div>
-						))}
-					</div>
-					<p class="meta">We update these numbers daily from <a href="/docs/reference/#get-meta">/v1/meta</a>.</p>
-				</section>
-			)}
+			<section class="wrap section" aria-label="What the API holds">
+				<div class="counts">
+					{COUNTED.map(({ key, label, about }) => (
+						<div class="card count">
+							{meta?.counts[key] !== undefined && <div class="count__number">{meta.counts[key].toLocaleString('en-GB')}</div>}
+							<div class="count__label">{label}</div>
+							<p class="count__about">{about}</p>
+						</div>
+					))}
+				</div>
+				{meta && <p class="meta">We update these numbers daily from <a href="/docs/reference/#get-meta">/v1/meta</a>.</p>}
+			</section>
 
 			<section class="wrap section">
 				<h2>What you get</h2>
@@ -288,7 +294,7 @@ await page('index.html', {
 write('llms.txt', [
 	'# Coasterpedia API',
 	'',
-	'> Read-only JSON API over Coasterpedia, the amusement ride wiki: attractions, parks, park companies, manufacturers and products, with stable IDs and a change feed. Data is CC BY-SA 4.0.',
+	'> Read-only JSON API over Coasterpedia, the volunteer-written amusement ride wiki: attractions (roller coasters, other rides and water slides), parks, park companies, manufacturers and products (ride models), with stable IDs and a change feed. Data is CC BY-SA 4.0.',
 	'',
 	'Requests go to https://api.coasterpedia.net/v1 with `Authorization: Bearer cpk_…`. A person gets a key by signing in at https://developer.coasterpedia.net with a Coasterpedia account; free keys are for non-commercial projects. /v1/meta and /v1/vocabularies need no key.',
 	'',

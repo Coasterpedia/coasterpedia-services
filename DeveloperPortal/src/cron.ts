@@ -1,6 +1,8 @@
-// The daily run (DR-010 §13.10): roll Analytics Engine into D1, then check
-// yesterday's Worker requests against the alert threshold. The 90-day rule
-// needs no step of its own: the showcase reads last_used_at as it renders.
+// The daily run (DR-010 §13.10): roll Analytics Engine into D1, record wiki
+// blocks on accounts, then check yesterday's Worker requests against the
+// alert threshold. The 90-day rule needs no step of its own: the showcase
+// reads last_used_at as it renders.
+import { checkBlocks } from './blocks';
 import type { Env } from './env';
 import { reviewerAddresses, sendMail } from './mail';
 import { rollUp, workerRequests } from './usage';
@@ -11,6 +13,12 @@ export async function daily(env: Env, now = new Date()): Promise<void> {
 		console.log(`rollup: ${keys} keys updated`);
 	} catch (e) {
 		console.error(`rollup failed: ${(e as Error).message}`);
+	}
+
+	try {
+		console.log(`blocks: ${await checkBlocks(env)} accounts blocked`);
+	} catch (e) {
+		console.error(`block check failed: ${(e as Error).message}`);
 	}
 
 	const yesterday = new Date(now.getTime() - 86400_000).toISOString().slice(0, 10);

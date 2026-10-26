@@ -1,21 +1,23 @@
 // The reviewer's queue (DR-010 §13.4, §13.5): new listings and edits to
 // listed ones. Three checks: it works, the credit is where the form says,
 // and the screenshot is fine.
-import { Hono } from 'hono';
+import { Hono, type MiddlewareHandler } from 'hono';
 import { type AppEnv, type Ctx, isoNow, isReviewer, message, page, requireSession, shortDate } from './app';
 import { type ListingFields, type ListingRow, pendingOf, platformLabel, usesOf } from './data';
 import { CREDIT_LINE, shotUrl } from './listings';
 import { sendMail } from './mail';
 import { WIKI } from './views/layout';
 
-export const review = new Hono<AppEnv>();
-review.use('*', requireSession);
-review.use('*', async (c, next) => {
+/** After requireSession: the review queue and the accounts page. */
+export const reviewersOnly: MiddlewareHandler<AppEnv> = async (c, next) => {
 	if (!isReviewer(c.env, c.get('session').sub)) {
 		return message(c, 403, 'Reviewers only', <p>Only showcase reviewers can see this page.</p>);
 	}
 	await next();
-});
+};
+
+export const review = new Hono<AppEnv>();
+review.use('*', requireSession, reviewersOnly);
 
 type QueueRow = ListingRow & { prefix: string; uses: string | null; last_used_at: string | null; username: string; email: string };
 
@@ -71,6 +73,7 @@ review.get('/', async (c) => {
 				<div class="page__intro">
 					<h1>Review</h1>
 					<p>Check that each project works, that the credit is where it says, and that the screenshot is fine.</p>
+					<p><a href="/review/accounts">Accounts and usage</a></p>
 				</div>
 				{results.length === 0 ? <p>Nothing is waiting.</p> : <div class="review-list">{results.map((row) => <Entry row={row} />)}</div>}
 			</div>

@@ -5,15 +5,36 @@ description: Get a key, make your first request, and read what comes back.
 
 # Getting started
 
-The Coasterpedia API gives you the wiki's records on attractions, parks, park
-companies, manufacturers and products as JSON. You can read records through
-it, but not change them.
+[Coasterpedia](https://coasterpedia.net) is a wiki about amusement rides
+that anyone can edit. Volunteers have written it since 2009. It covers rides
+around the world, whether they're open, closed, demolished or not built yet,
+including travelling fairground rides.
+
+The Coasterpedia API gives you the wiki's records as JSON. You can read
+records through it, but not change them. To correct a record, edit its
+article on the wiki. The API shows the edit once it has stood for a week, or
+within a couple of minutes if you ask for the [latest](/docs/views/) version.
+
+## What the records are
+
+- Attractions are roller coasters, other rides such as flat rides and dark
+  rides, and water slides. `type` says which.
+- Parks are theme parks, water parks and the other places rides stand.
+- Park companies own or operate parks.
+- Manufacturers are the companies that build rides.
+- Products are the ride models a manufacturer sells, such as Vekoma's
+  Boomerang. A product lists every attraction built as one.
+
+Each record is one article on the wiki, so you can open the article to read
+more or see who edited it.
 
 ## Get a key
 
-Sign in at [Your keys](/account/keys) with your Coasterpedia account, then
-create a key. Your wiki account needs a confirmed email address, because we
-email you if the API changes or something goes wrong with one of your keys.
+Sign in at [Your keys](/account/keys) with a Coasterpedia account, then
+create a key. If you don't have an account,
+[create one on the wiki](https://coasterpedia.net/wiki/Special:CreateAccount).
+It's free. Your account needs a confirmed email address, because we email
+you if the API changes or something goes wrong with one of your keys.
 
 We show you the key once, when you create it, so copy it straight away. We
 only keep its first eight characters. If you lose it, revoke it and create
@@ -48,6 +69,40 @@ who has the page or the app can read the key and use it.
 
 You can call `/v1/meta` and `/v1/vocabularies` without a key. That's a quick
 way to check the API is up before you sign in.
+
+## Fetching a lot of records
+
+If you need many full records, ask for up to 50 in each request instead of
+one. Your account can make 60 requests a minute, so fetching 1,200 parks one
+at a time takes about 20 minutes. Fetching them 50 at a time takes 24
+requests, and less than a minute.
+
+To build your own copy of the data:
+
+1. Page through the list, for example `/v1/parks?limit=100`, to collect the
+   IDs. The list gives a short summary of each record, up to 100 a page.
+   [Paging](/docs/paging/) explains how to get each next page.
+2. Pass the IDs to `/v1/parks?ids=`, up to 50 at a time, separated by
+   commas. You get the full records, as `/v1/parks/{id}` gives them.
+3. Follow [the change feed](/docs/changes/) to keep your copy up to date, so
+   you never need to fetch everything again.
+
+```sh
+curl -H "Authorization: Bearer $COASTERPEDIA_KEY" \
+  -H "User-Agent: RideCounter/1.2 (https://ridecounter.example; you@example.com)" \
+  "https://api.coasterpedia.net/v1/parks?ids=182,2156,99001"
+```
+
+`ids=` works on `/v1/attractions` and `/v1/parks`. The only parameter you can
+add to it is `view`, because a filter or a sort would have nothing to choose
+from.
+
+You get each record once, in the order you asked for them. If an ID was
+merged into another record, you get that record instead, and `meta.merged`
+gives you its ID. If an ID has no record, it's listed in `meta.missing`. If
+its record hasn't settled yet, it's listed in `meta.not_settled`, and you can
+ask again with `view=latest` to get it now. None of these make the request
+fail, so check them rather than the status code.
 
 ## Using the API from an app
 

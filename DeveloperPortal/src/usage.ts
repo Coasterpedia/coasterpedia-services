@@ -83,6 +83,61 @@ export async function liveUsage(env: Env, account: string, now = new Date()): Pr
 }
 
 /**
+ * Any account the API has seen: u<id> from the portal, a name from the
+ * closed beta's hand-made keys, or "browser". Quoted only if it can't break
+ * out of the literal.
+ */
+export function anyAccountLiteral(account: string): string {
+	if (!/^[A-Za-z0-9_.-]{1,64}$/.test(account)) throw new Error(`not an account name: ${account}`);
+	return `'${account}'`;
+}
+
+export interface UsageRow {
+	account: string;
+	/** "2026-10-26": a UTC day. */
+	day: string;
+	status: string;
+	requests: number;
+	/** ISO. */
+	last: string;
+}
+
+/** For the accounts page: every account's requests by UTC day and status. */
+export async function accountsUsage(env: Env, days: number): Promise<UsageRow[]> {
+	const rows = await sql<{ account: string; day: string; status: string; requests: number | string; last: string }>(env,
+		`SELECT blob1 AS account, toStartOfInterval(timestamp, INTERVAL '1' DAY) AS day, blob4 AS status,
+			SUM(_sample_interval) AS requests, MAX(timestamp) AS last
+		FROM ${env.USAGE_DATASET} WHERE timestamp > NOW() - INTERVAL '${days}' DAY
+		GROUP BY account, day, status LIMIT 10000`);
+	return rows.map((r) => ({ account: r.account, day: aeTime(r.day).slice(0, 10), status: r.status, requests: Number(r.requests), last: aeTime(r.last) }));
+}
+
+export interface KeyRouteRow {
+	prefix: string;
+	route: string;
+	status: string;
+	requests: number;
+}
+
+/** For one account: each key's requests by route and status. */
+export async function accountRoutes(env: Env, account: string, days: number): Promise<KeyRouteRow[]> {
+	const rows = await sql<{ prefix: string; route: string; status: string; requests: number | string }>(env,
+		`SELECT blob2 AS prefix, blob3 AS route, blob4 AS status, SUM(_sample_interval) AS requests
+		FROM ${env.USAGE_DATASET} WHERE blob1 = ${anyAccountLiteral(account)} AND timestamp > NOW() - INTERVAL '${days}' DAY
+		GROUP BY prefix, route, status LIMIT 10000`);
+	return rows.map((r) => ({ ...r, requests: Number(r.requests) }));
+}
+
+/** For one account: its requests by UTC day and status. */
+export async function accountDays(env: Env, account: string, days: number): Promise<UsageRow[]> {
+	const rows = await sql<{ day: string; status: string; requests: number | string; last: string }>(env,
+		`SELECT toStartOfInterval(timestamp, INTERVAL '1' DAY) AS day, blob4 AS status, SUM(_sample_interval) AS requests, MAX(timestamp) AS last
+		FROM ${env.USAGE_DATASET} WHERE blob1 = ${anyAccountLiteral(account)} AND timestamp > NOW() - INTERVAL '${days}' DAY
+		GROUP BY day, status LIMIT 10000`);
+	return rows.map((r) => ({ account, day: aeTime(r.day).slice(0, 10), status: r.status, requests: Number(r.requests), last: aeTime(r.last) }));
+}
+
+/**
  * The daily rollup: each key's last use (kept if older than Analytics
  * Engine's reach) and the kinds it read with a 200 over 30 days.
  */
