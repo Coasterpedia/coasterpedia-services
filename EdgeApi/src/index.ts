@@ -61,13 +61,15 @@ export default {
 				return problem(405, 'method', 'Method not allowed', 'The API is read-only.');
 			}
 
+			const reads = replicaReads(env);
+
 			// Open: no key needed (DR-010 §6), and no limit, so the cache is what
 			// keeps a client hammering them off D1.
 			if (path === '/v1/meta') {
-				return (await serveCached(cacheKey(url, path, true), env, ctx, false, async () => ({ response: await meta(url, env), rows: 0 }))).response;
+				return (await serveCached(cacheKey(url, path, true), env, ctx, false, async () => ({ response: await meta(url, reads), rows: 0 }))).response;
 			}
 			if (path === '/v1/vocabularies') {
-				return (await serveCached(cacheKey(url, path, false), env, ctx, false, async () => ({ response: await vocabularies(url, env), rows: 0 }))).response;
+				return (await serveCached(cacheKey(url, path, false), env, ctx, false, async () => ({ response: await vocabularies(url, reads), rows: 0 }))).response;
 			}
 
 			if (!path.startsWith('/v1/')) {
@@ -87,7 +89,7 @@ export default {
 				}
 			}
 
-			const matched = route(path, url, env, caller);
+			const matched = route(path, url, env, reads, caller);
 			if (!matched) {
 				record(env, caller, 'unknown', 404, 0, false);
 				return withPolicy(problem(404, 'not-found', 'Not found'));
@@ -123,7 +125,12 @@ export default {
 	},
 } satisfies ExportedHandler<Env>;
 
-function route(path: string, url: URL, env: Env, caller: Caller): Route | null {
+/**
+ * reads: env with DATA on a session, for every route but /v1/changes. The feed
+ * stays on the primary: a replica a few seconds behind would refuse a cursor a
+ * fresher one issued, as if the log had been restored (seq > log.max).
+ */
+function route(path: string, url: URL, env: Env, reads: Env, caller: Caller): Route | null {
 	if (path === '/v1/changes') {
 		return {
 			name: '/v1/changes', view: true,
@@ -134,88 +141,98 @@ function route(path: string, url: URL, env: Env, caller: Caller): Route | null {
 	}
 
 	if (path === '/v1/search') {
-		return { name: '/v1/search', view: true, run: () => search(url, env) };
+		return { name: '/v1/search', view: true, run: () => search(url, reads) };
 	}
 
 	if (path === '/v1/attractions') {
 		// Full records by ID: a route of its own, so a browser session (list only) is refused it.
 		if (url.searchParams.has('ids')) {
-			return { name: '/v1/attractions?ids', view: true, run: () => getAttractions(url, env) };
+			return { name: '/v1/attractions?ids', view: true, run: () => getAttractions(url, reads) };
 		}
-		return { name: '/v1/attractions', view: true, run: () => listAttractions(url, env) };
+		return { name: '/v1/attractions', view: true, run: () => listAttractions(url, reads) };
 	}
 
 	// Before {id}, which would otherwise take "facets" for an ID.
 	if (path === '/v1/attractions/facets') {
-		return { name: '/v1/attractions/facets', view: true, run: () => attractionFacets(url, env) };
+		return { name: '/v1/attractions/facets', view: true, run: () => attractionFacets(url, reads) };
 	}
 
 	const one = /^\/v1\/attractions\/([^/]+)$/.exec(path);
 	if (one) {
-		return { name: '/v1/attractions/{id}', view: true, run: () => getAttraction(url, one[1], env) };
+		return { name: '/v1/attractions/{id}', view: true, run: () => getAttraction(url, one[1], reads) };
 	}
 
 	if (path === '/v1/parks') {
 		// Full records by ID: a route of its own, as for attractions, so a browser session is refused it.
 		if (url.searchParams.has('ids')) {
-			return { name: '/v1/parks?ids', view: true, run: () => getParks(url, env) };
+			return { name: '/v1/parks?ids', view: true, run: () => getParks(url, reads) };
 		}
-		return { name: '/v1/parks', view: true, run: () => listParks(url, env) };
+		return { name: '/v1/parks', view: true, run: () => listParks(url, reads) };
 	}
 
 	const at = /^\/v1\/parks\/([^/]+)\/attractions$/.exec(path);
 	if (at) {
-		return { name: '/v1/parks/{id}/attractions', view: true, run: () => parkAttractions(url, at[1], env) };
+		return { name: '/v1/parks/{id}/attractions', view: true, run: () => parkAttractions(url, at[1], reads) };
 	}
 
 	const park = /^\/v1\/parks\/([^/]+)$/.exec(path);
 	if (park) {
-		return { name: '/v1/parks/{id}', view: true, run: () => getPark(url, park[1], env) };
+		return { name: '/v1/parks/{id}', view: true, run: () => getPark(url, park[1], reads) };
 	}
 
 	if (path === '/v1/manufacturers') {
-		return { name: '/v1/manufacturers', view: true, run: () => listManufacturers(url, env) };
+		return { name: '/v1/manufacturers', view: true, run: () => listManufacturers(url, reads) };
 	}
 
 	const made = /^\/v1\/manufacturers\/([^/]+)\/products$/.exec(path);
 	if (made) {
-		return { name: '/v1/manufacturers/{id}/products', view: true, run: () => manufacturerProducts(url, made[1], env) };
+		return { name: '/v1/manufacturers/{id}/products', view: true, run: () => manufacturerProducts(url, made[1], reads) };
 	}
 
 	const manufacturer = /^\/v1\/manufacturers\/([^/]+)$/.exec(path);
 	if (manufacturer) {
-		return { name: '/v1/manufacturers/{id}', view: true, run: () => getManufacturer(url, manufacturer[1], env) };
+		return { name: '/v1/manufacturers/{id}', view: true, run: () => getManufacturer(url, manufacturer[1], reads) };
 	}
 
 	if (path === '/v1/park-companies') {
-		return { name: '/v1/park-companies', view: true, run: () => listParkCompanies(url, env) };
+		return { name: '/v1/park-companies', view: true, run: () => listParkCompanies(url, reads) };
 	}
 
 	const owned = /^\/v1\/park-companies\/([^/]+)\/parks$/.exec(path);
 	if (owned) {
-		return { name: '/v1/park-companies/{id}/parks', view: true, run: () => parkCompanyParks(url, owned[1], env) };
+		return { name: '/v1/park-companies/{id}/parks', view: true, run: () => parkCompanyParks(url, owned[1], reads) };
 	}
 
 	const company = /^\/v1\/park-companies\/([^/]+)$/.exec(path);
 	if (company) {
-		return { name: '/v1/park-companies/{id}', view: true, run: () => getParkCompany(url, company[1], env) };
+		return { name: '/v1/park-companies/{id}', view: true, run: () => getParkCompany(url, company[1], reads) };
 	}
 
 	if (path === '/v1/products') {
-		return { name: '/v1/products', view: true, run: () => listProducts(url, env) };
+		return { name: '/v1/products', view: true, run: () => listProducts(url, reads) };
 	}
 
 	const built = /^\/v1\/products\/([^/]+)\/installations$/.exec(path);
 	if (built) {
-		return { name: '/v1/products/{id}/installations', view: true, run: () => productInstallations(url, built[1], env) };
+		return { name: '/v1/products/{id}/installations', view: true, run: () => productInstallations(url, built[1], reads) };
 	}
 
 	const product = /^\/v1\/products\/([^/]+)$/.exec(path);
 	if (product) {
-		return { name: '/v1/products/{id}', view: true, run: () => getProduct(url, product[1], env) };
+		return { name: '/v1/products/{id}', view: true, run: () => getProduct(url, product[1], reads) };
 	}
 
 	return null;
+}
+
+/**
+ * env for a request's reads: DATA as a D1 session, so with read replication on
+ * they go to the nearest replica, and to the primary while it is off (DR-010
+ * §12.27). One session per request keeps its reads in order. A session takes
+ * prepare and batch only, all the routes use, hence the cast.
+ */
+function replicaReads(env: Env): Env {
+	return { ...env, DATA: env.DATA.withSession('first-unconstrained') as unknown as D1Database };
 }
 
 /** One Analytics Engine point per keyed request: usage pages and, later, billing (DR-010 §7.3). */
