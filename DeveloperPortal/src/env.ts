@@ -3,8 +3,11 @@ export interface Env {
 	ACCOUNTS: D1Database;
 	/** The API's key namespace (DR-010 §7.3 step 2): key:<sha256> → KeyEntry. */
 	KEYS: KVNamespace;
+	/** Showcase screenshots, plus build/home.json for the home page's build. */
 	SHOTS: R2Bucket;
 	IMAGES?: ImagesBinding;
+	/** The API Worker, reached without passing through the zone's firewall. */
+	API: Fetcher;
 
 	WIKI_ORIGIN: string;
 	PORTAL_ORIGIN: string;

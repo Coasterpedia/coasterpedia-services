@@ -4,6 +4,7 @@
 // at most a day old.
 //
 //   npm run build
+import { execFileSync } from 'node:child_process';
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,6 +14,7 @@ import { Marked } from 'marked';
 import { parse, stringify } from 'yaml';
 import { ClosedBeta } from '../src/app';
 import { PLATFORMS } from '../src/data';
+import { HOME_DATA_KEY, type HomeData } from '../src/home-data';
 import { TERMS_VERSION } from '../src/terms-version';
 import { renderPage, type Section, WIKI } from '../src/views/layout';
 import { buildCss } from './css';
@@ -47,8 +49,35 @@ async function fetchJson<T>(url: string): Promise<T | null> {
 interface Meta { schema_version: string; counts: Record<string, number> }
 interface Listed { name: string; description: string; url: string; platform: string; screenshot: string | null; uses: string[]; maker: string | null }
 
-const meta = await fetchJson<Meta>(`${API}/v1/meta`);
-const listed = (await fetchJson<{ data: Listed[] }>(`${PORTAL}/showcase.json`))?.data ?? [];
+/**
+ * In CI, what the daily run wrote to R2, read with the deploy job's token:
+ * Bot Fight Mode refuses GitHub's runners on our own hosts. A local build
+ * reads the public endpoints; `CI=1 npm run build` tries R2 with your login.
+ */
+function readHomeData(): { meta: Meta | null; listed: Listed[] } | null {
+	if (!process.env.CI) return null;
+	try {
+		const body = execFileSync(join(root, 'node_modules/.bin/wrangler'), ['r2', 'object', 'get', `coasterpedia-showcase/${HOME_DATA_KEY}`, '--remote', '--pipe'], {
+			cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 60_000,
+		});
+		const home = JSON.parse(body) as HomeData;
+		const age = (Date.now() - Date.parse(home.written_at)) / 86400_000;
+		if (age > 2) console.warn(`build: ${HOME_DATA_KEY} is ${age.toFixed(1)} days old; is the daily run failing?`);
+		console.log(`build: home data from R2, written ${home.written_at}`);
+		return { meta: home.meta as Meta | null, listed: (home.showcase.data as Listed[]) ?? [] };
+	} catch (e) {
+		const { stdout = '', stderr = '' } = e as { stdout?: string; stderr?: string };
+		const lines = `${stdout}\n${stderr}\n${(e as Error).message}`.replace(/\x1b\[[0-9;]*m/g, '').split('\n').map((l) => l.trim()).filter(Boolean);
+		const why = lines.find((l) => l.includes('[ERROR]')) ?? lines.at(-1);
+		console.warn(`build: ${HOME_DATA_KEY} unavailable from R2 (${why}); trying the public endpoints`);
+		return null;
+	}
+}
+
+const { meta, listed } = readHomeData() ?? {
+	meta: await fetchJson<Meta>(`${API}/v1/meta`),
+	listed: (await fetchJson<{ data: Listed[] }>(`${PORTAL}/showcase.json`))?.data ?? [],
+};
 const apiVersion = meta?.schema_version;
 
 async function page(path: string, props: { title: string; description?: string; section: Section; markdown?: string; children: Child }) {

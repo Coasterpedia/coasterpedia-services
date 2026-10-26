@@ -100,22 +100,25 @@ showcase.get('/showcase', async (c) => {
 	});
 });
 
-/** Public, no key (§13.5): what the home page and, later, the wiki read. */
-showcase.get('/showcase.json', async (c) => {
-	const rows = await visibleListings(c.env);
-	return c.json({
+/** showcase.json's body, which the daily run also hands to the home page's build. */
+export async function showcaseJson(env: Env, now = Date.now()) {
+	const rows = await visibleListings(env, now);
+	return {
 		data: rows.map((r) => ({
 			name: r.name,
 			description: r.description,
 			url: r.link,
 			platform: r.platform,
-			screenshot: r.screenshot ? `${c.env.PORTAL_ORIGIN}${shotUrl(r.screenshot)}` : null,
+			screenshot: r.screenshot ? `${env.PORTAL_ORIGIN}${shotUrl(r.screenshot)}` : null,
 			uses: usesOf(r),
 			maker: r.show_maker === 1 ? r.username : null,
 			listed_at: r.listed_at,
 		})),
-	}, 200, { 'cache-control': 'public, max-age=300' });
-});
+	};
+}
+
+/** Public, no key (§13.5): what the wiki can read later. */
+showcase.get('/showcase.json', async (c) => c.json(await showcaseJson(c.env), 200, { 'cache-control': 'public, max-age=300' }));
 
 /** Screenshot names are random and change with every upload, so they never go stale. */
 showcase.get('/showcase/shots/:name', async (c) => {

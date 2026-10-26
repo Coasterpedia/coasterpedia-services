@@ -18,6 +18,10 @@ export default defineConfig({
 					CF_ACCOUNT_ID: 'test-account',
 					ANALYTICS_TOKEN: 'test-analytics-token',
 				},
+				// The API Worker isn't here; this stands in for its /v1/meta.
+				serviceBindings: {
+					API: () => Response.json({ schema_version: '1.0.0-test', counts: { attractions: 3, parks: 2 } }),
+				},
 			},
 		})),
 	],

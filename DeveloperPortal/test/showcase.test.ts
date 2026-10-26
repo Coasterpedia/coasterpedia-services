@@ -2,6 +2,7 @@ import { env } from 'cloudflare:workers';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { daily } from '../src/cron';
 import { FIX } from '../src/data';
+import { HOME_DATA_KEY, type HomeData } from '../src/home-data';
 import { Browser, outbound, resetAccounts, setAeRows, stubOutbound } from './helpers';
 
 // DR-010 §13.4–13.5, §13.7, §13.10.
@@ -174,6 +175,30 @@ describe('the daily run', () => {
 		setAeRows([]);
 		await daily(env, new Date('2026-10-17T04:45:00Z'));
 		expect(await env.ACCOUNTS.prepare('SELECT last_used_at FROM keys').first('last_used_at')).toBe('2026-10-15T21:04:00Z');
+	});
+
+	it('writes the home page’s data to R2, keeping the last meta when the API fails', async () => {
+		await submit();
+		await reviewer.post(`/review/${keyId}/approve`, {});
+		await env.SHOTS.delete(HOME_DATA_KEY);
+
+		await daily(env, new Date('2026-10-16T04:45:00Z'));
+		const first = await (await env.SHOTS.get(HOME_DATA_KEY))!.json<HomeData>();
+		expect(first.written_at).toBe('2026-10-16T04:45:00.000Z');
+		expect(first.meta).toMatchObject({ schema_version: '1.0.0-test', counts: { attractions: 3 } });
+		expect(first.showcase.data.map((p) => p.name)).toEqual(['Statbot']);
+
+		const down = { ...env, API: { fetch: async () => new Response('Bad gateway', { status: 502 }) } as unknown as Fetcher };
+		await daily(down, new Date('2026-10-17T04:45:00Z'));
+		const second = await (await env.SHOTS.get(HOME_DATA_KEY))!.json<HomeData>();
+		expect(second.written_at).toBe('2026-10-17T04:45:00.000Z');
+		expect(second.meta).toEqual(first.meta);
+	});
+
+	it('never serves the home page’s data', async () => {
+		await env.SHOTS.put(HOME_DATA_KEY, '{}');
+		expect((await new Browser().fetch(`/showcase/shots/${HOME_DATA_KEY}`)).status).toBe(404);
+		expect((await new Browser().fetch('/showcase/shots/home.json')).status).toBe(404);
 	});
 
 	it('asks the GraphQL API for yesterday, across every Worker', async () => {

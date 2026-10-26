@@ -53,9 +53,16 @@ binding = "KEYS"
 id = "c51bbf45a14f4fbbb57dd3a5cc08011d"
 
 # Showcase screenshots, re-encoded at upload; the original is never kept.
+# Also build/home.json, which the daily run writes for the home page's build.
 [[r2_buckets]]
 binding = "SHOTS"
 bucket_name = "coasterpedia-showcase"
+
+# The API Worker, for /v1/meta in the daily run. A service binding never
+# passes through the zone, whose Bot Fight Mode challenges cloud IPs.
+[[services]]
+binding = "API"
+service = "coasterpedia-api"
 
 [images]
 binding = "IMAGES"

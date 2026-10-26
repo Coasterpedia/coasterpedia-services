@@ -51,6 +51,9 @@ jobs:
     if: github.event_name != 'pull_request'
     permissions:
       contents: read
+    # The token also needs Workers R2 Storage Read: the build reads the home
+    # page's data from R2, because Bot Fight Mode refuses this runner on our
+    # own hosts (DR-010 §13.9).
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
