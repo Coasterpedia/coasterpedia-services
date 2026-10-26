@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "aws4fetch": "1.0.20",
-    "hono": "4.13.13"
+    "hono": "4.13.14"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.23.0",
