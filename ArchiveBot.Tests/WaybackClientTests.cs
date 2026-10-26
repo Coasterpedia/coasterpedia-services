@@ -71,8 +71,8 @@ public class WaybackClientTests
         Assert.Equal(2, handler.Requests.Count);
     }
 
-    private static PacedWaybackClient Paced(IWaybackClient client) =>
-        new(client, NullLogger<PacedWaybackClient>.Instance, TimeSpan.Zero, TimeSpan.Zero);
+    private static PacedWaybackClient Paced(IWaybackClient client, FakePlayback? playback = null) =>
+        new(client, (playback ?? new FakePlayback()).Client(), NullLogger<PacedWaybackClient>.Instance, TimeSpan.Zero, TimeSpan.Zero);
 
     [Fact]
     public async Task An_excluded_site_has_no_snapshot()
@@ -85,6 +85,52 @@ public class WaybackClientTests
         Assert.True(paced.IsExcluded("https://excluded.example/"));
         // The second search, for a capture after the access date, isn't sent.
         Assert.Single(handler.Requests);
+    }
+
+    private const string Restricted = """
+        <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+        <title>403 Forbidden</title>
+        <h1>Forbidden</h1>
+        <p>This type of CDX query requires authorization.</p>
+        """;
+
+    [Fact]
+    public async Task A_site_closed_to_search_is_found_through_playback()
+    {
+        var (client, handler) = Client(Restricted, HttpStatusCode.Forbidden);
+        var playback = new FakePlayback();
+        playback.Captured("https://www.theguardian.com/media/2001/jan/18/broadcasting7", "20241225200006");
+        var paced = Paced(client, playback);
+
+        var snapshot = await paced.FindSnapshot("https://www.theguardian.com/media/2001/jan/18/broadcasting7", new DateTime(2024, 8, 3), null);
+
+        Assert.Equal("https://web.archive.org/web/20241225200006/https://www.theguardian.com/media/2001/jan/18/broadcasting7", snapshot!.Url);
+        Assert.False(paced.IsExcluded("https://www.theguardian.com/media/2001/jan/18/broadcasting7"));
+        Assert.Single(handler.Requests);
+        Assert.Equal("/web/20240803235959id_/https://www.theguardian.com/media/2001/jan/18/broadcasting7", playback.Requests[0].PathAndQuery);
+        Assert.Equal(2, playback.Requests.Count);
+
+        // The rest of the site goes straight to playback.
+        await paced.FindSnapshot("https://www.theguardian.com/uk", null, null);
+        Assert.Single(handler.Requests);
+    }
+
+    [Fact]
+    public async Task A_redirect_capture_from_playback_is_no_snapshot()
+    {
+        var (client, _) = Client(Restricted, HttpStatusCode.Forbidden);
+        var playback = new FakePlayback();
+        playback.Captured("https://closed.example/a", "20200101000000", redirect: true);
+
+        Assert.Null(await Paced(client, playback).FindSnapshot("https://closed.example/a", null, null));
+    }
+
+    [Fact]
+    public async Task No_capture_in_playback_is_no_snapshot()
+    {
+        var (client, _) = Client(Restricted, HttpStatusCode.Forbidden);
+
+        Assert.Null(await Paced(client).FindSnapshot("https://closed.example/a", null, null));
     }
 
     [Fact]

@@ -54,12 +54,17 @@ public sealed class FakeWayback : IWaybackClient
 
     private readonly HashSet<string> _excluded = [];
 
+    private readonly HashSet<string> _restrictedHosts = [];
+
     public List<(string Url, string? From, string? To, int Limit, string Filter)> Calls { get; } = [];
 
     public void Captured(string url, params string[] timestamps) => _captures[url] = timestamps.Order().ToList();
 
     // Answers as the CDX server does for a site that asked to be left out.
     public void Excluded(string url) => _excluded.Add(url);
+
+    // Answers as the CDX server does for a site closed to public searches. Its captures still play back.
+    public void Restricted(string host) => _restrictedHosts.Add(host);
 
     public async Task<List<List<string>>?> GetCaptures(string url, string? fromTimestamp, string? toTimestamp, int limit, string filter)
     {
@@ -69,6 +74,17 @@ public sealed class FakeWayback : IWaybackClient
             var request = new HttpRequestMessage(HttpMethod.Get, "https://web.archive.org/cdx/search/cdx");
             var response = new HttpResponseMessage(HttpStatusCode.Forbidden) { RequestMessage = request, Content = new StringContent("") };
             response.Headers.Add("x-archive-wayback-runtime-error", "AdministrativeAccessControlException: Blocked Site Error");
+            throw await ApiException.Create(request, HttpMethod.Get, response, new RefitSettings());
+        }
+
+        if (_restrictedHosts.Contains(new Uri(url).Host))
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, "https://web.archive.org/cdx/search/cdx");
+            var response = new HttpResponseMessage(HttpStatusCode.Forbidden)
+            {
+                RequestMessage = request,
+                Content = new StringContent("<title>403 Forbidden</title>\n<h1>Forbidden</h1>\n<p>This type of CDX query requires authorization.</p>")
+            };
             throw await ApiException.Create(request, HttpMethod.Get, response, new RefitSettings());
         }
 
@@ -88,6 +104,46 @@ public sealed class FakeWayback : IWaybackClient
 
         return rows;
     }
+}
+
+// Wayback playback without following redirects: the nearest capture to any timestamp is the one set, or none.
+public sealed class FakePlayback : HttpMessageHandler
+{
+    private readonly Dictionary<string, (string Timestamp, bool Redirect)> _nearest = new();
+
+    public List<Uri> Requests { get; } = [];
+
+    public void Captured(string url, string timestamp, bool redirect = false) => _nearest[url] = (timestamp, redirect);
+
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        Requests.Add(request.RequestUri!);
+        var path = request.RequestUri!.PathAndQuery;
+        var timestamp = path[5..19];
+        var url = path[23..];
+        if (!_nearest.TryGetValue(url, out var nearest))
+        {
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+        }
+
+        var response = new HttpResponseMessage(HttpStatusCode.Found);
+        if (timestamp != nearest.Timestamp)
+        {
+            response.Headers.Location = new Uri($"https://web.archive.org/web/{nearest.Timestamp}id_/{url}");
+        }
+        else if (nearest.Redirect)
+        {
+            response.Headers.Location = new Uri($"https://web.archive.org/web/{nearest.Timestamp}id_/https://elsewhere.example/");
+        }
+        else
+        {
+            response.StatusCode = HttpStatusCode.OK;
+        }
+
+        return Task.FromResult(response);
+    }
+
+    public WaybackPlayback Client() => new(new HttpClient(this) { BaseAddress = new Uri("https://web.archive.org") });
 }
 
 public sealed class FakeArchive : IArchiveClient
@@ -113,6 +169,7 @@ public sealed class JobHarness
 {
     public FakeSites Sites { get; } = new();
     public FakeWayback Wayback { get; } = new();
+    public FakePlayback Playback { get; } = new();
     public FakeArchive Archive { get; } = new();
     public FixedTime Time { get; } = new(DateTimeOffset.Parse("2026-10-24T12:00:00Z"));
     public InMemoryLinkStateStore Links { get; } = new();
@@ -133,7 +190,7 @@ public sealed class JobHarness
     public JobHarness()
     {
         var checker = new LinkChecker(new LinkWebClient(new HttpClient(Sites)), Links, Time, NullLogger<LinkChecker>.Instance);
-        Job = new ArchiveLinkJob(null!, new PacedWaybackClient(Wayback, NullLogger<PacedWaybackClient>.Instance, TimeSpan.Zero, TimeSpan.Zero),
+        Job = new ArchiveLinkJob(null!, new PacedWaybackClient(Wayback, Playback.Client(), NullLogger<PacedWaybackClient>.Instance, TimeSpan.Zero, TimeSpan.Zero),
             new PacedArchiveClient(Archive, NullLogger<PacedArchiveClient>.Instance, TimeSpan.Zero),
             checker, null!, PageChecks, Time, NullLogger<ArchiveLinkJob>.Instance,
             Microsoft.Extensions.Options.Options.Create(new ArchiveBotConfig { BotUsername = "ArchiveBot", BotPassword = "unused" }));

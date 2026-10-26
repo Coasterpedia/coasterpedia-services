@@ -232,7 +232,7 @@ public partial class ArchiveLinkJob
                     }
                     else
                     {
-                        _logger.LogInformation("Saving page failed");
+                        _logger.LogInformation("Saving page failed with {Reason}", PacedArchiveClient.FailureReason(saveResponse));
                     }
                 }
             }

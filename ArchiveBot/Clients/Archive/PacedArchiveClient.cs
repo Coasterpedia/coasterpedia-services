@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.RegularExpressions;
 using CoasterpediaServices.ArchiveBot.Options;
 using Microsoft.Extensions.Logging;
 using Refit;
@@ -7,7 +8,7 @@ namespace CoasterpediaServices.ArchiveBot.Clients.Archive;
 
 // Wraps Wayback saves with pacing and a pause on 429. Only use from jobs on the single-worker archive
 // queue: holding that worker is what holds back every other queued save.
-public class PacedArchiveClient
+public partial class PacedArchiveClient
 {
     private readonly IArchiveClient _archiveClient;
     private readonly ILogger<PacedArchiveClient> _logger;
@@ -42,4 +43,16 @@ public class PacedArchiveClient
         await Task.Delay(_saveInterval);
         return response;
     }
+
+    // Save Page Now answers a capture it couldn't make with a 52x and gives the reason on the page, e.g. "Cannot
+    // resolve host" (523), or a timeout or the site's own error (520).
+    public static string FailureReason(IApiResponse response)
+    {
+        var match = (response.Error as ApiException)?.Content is { } content ? SorryMessage().Match(content) : null;
+        var reason = match is { Success: true } ? WebUtility.HtmlDecode(match.Groups[1].Value).Trim() : null;
+        return $"status {(int)response.StatusCode}" + (string.IsNullOrEmpty(reason) ? "" : $": {reason}");
+    }
+
+    [GeneratedRegex(@"<h2>Sorry</h2>\s*<p>(.*?)</p>", RegexOptions.Singleline)]
+    private static partial Regex SorryMessage();
 }

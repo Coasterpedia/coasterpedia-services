@@ -56,6 +56,15 @@ public static class ArchiveBotServiceCollectionExtensions
             c.Timeout = TimeSpan.FromSeconds(65);
         });
 
+        services.AddHttpClient<WaybackPlayback>()
+            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false })
+            .ConfigureHttpClient(c =>
+            {
+                c.BaseAddress = new Uri("https://web.archive.org");
+                c.DefaultRequestHeaders.UserAgent.ParseAdd("CoasterpediaArchiveBot/1.0 (https://coasterpedia.net)");
+                c.Timeout = TimeSpan.FromSeconds(65);
+            });
+
         services.AddRefitGeneratedClient<IArchiveClient>(new RefitSettings
         {
             HttpMessageHandlerFactory = () => new HttpClientHandler

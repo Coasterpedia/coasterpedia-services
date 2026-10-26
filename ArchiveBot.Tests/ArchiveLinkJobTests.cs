@@ -161,6 +161,30 @@ public class ArchiveLinkJobTests
     }
 
     [Fact]
+    public async Task A_link_on_a_site_closed_to_search_gets_its_playback_capture()
+    {
+        _h.Sites.Answer("https://www.theguardian.com/a", HttpStatusCode.OK);
+        _h.Wayback.Restricted("www.theguardian.com");
+        _h.Playback.Captured("https://www.theguardian.com/a", "20241225200006");
+
+        var output = await _h.Rewrite("A.<ref>{{cite web|url=https://www.theguardian.com/a|title=A|access-date=2024-08-03}}</ref>");
+
+        Assert.Empty(_h.Archive.Saved);
+        Assert.Contains("archive-url=https://web.archive.org/web/20241225200006/https://www.theguardian.com/a", output);
+    }
+
+    [Fact]
+    public async Task A_link_on_a_site_closed_to_search_with_no_capture_is_saved()
+    {
+        _h.Sites.Answer("https://www.theguardian.com/a", HttpStatusCode.OK);
+        _h.Wayback.Restricted("www.theguardian.com");
+
+        await _h.Rewrite("A.<ref>{{cite web|url=https://www.theguardian.com/a|title=A}}</ref>");
+
+        Assert.Equal(["https://www.theguardian.com/a"], _h.Archive.Saved);
+    }
+
+    [Fact]
     public async Task A_link_blocking_the_bot_is_still_saved()
     {
         _h.Sites.Answer("https://blocked.example/a", HttpStatusCode.Forbidden);

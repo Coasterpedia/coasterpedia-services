@@ -34,7 +34,10 @@ public partial class ArchiveFileSourceJob
         _archiveBotConfig = archiveBotConfig.Value;
     }
 
+    // Over about three days rather than Hangfire's default seven hours: a site can turn Save Page Now away for
+    // hours at a time (Wikimapia has), and a requeue days later then succeeds.
     [Queue(ArchiveBotConfig.ArchiveQueue)]
+    [AutomaticRetry(Attempts = 10, DelaysInSeconds = [300, 900, 1800, 3600, 7200, 14400, 28800, 43200, 86400, 86400])]
     public async Task Run(string pageName)
     {
         var site = await _siteAccessor.GetCoasterpedia(_archiveBotConfig.BotUsername, _archiveBotConfig.BotPassword);
@@ -94,7 +97,7 @@ public partial class ArchiveFileSourceJob
         {
             // Throw rather than skip so Hangfire retries: the snapshot is only useful while the source still
             // shows the licence the file was uploaded under.
-            throw new InvalidOperationException($"Saving {sourceUrl} failed with status {saveResponse.StatusCode}");
+            throw new InvalidOperationException($"Saving {sourceUrl} failed with {PacedArchiveClient.FailureReason(saveResponse)}");
         }
 
         // Keep block-formatted templates ({{Information\n|a=\n|b=\n}}) one argument per line.
