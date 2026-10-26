@@ -37,9 +37,13 @@ interface Row {
 	summary: string;
 }
 
-export async function dataAsOf(env: Env): Promise<string | null> {
-	const row = await env.DATA.prepare(`SELECT value FROM state WHERE key = 'data_as_of'`).first<{ value: string }>();
-	return row?.value ?? null;
+/**
+ * A statement's rows and data_as_of in one batch, so one round trip to D1 and
+ * one transaction. Each trip is about 60ms even from London to WEUR (2026-10-26).
+ */
+export async function withDataAsOf<T>(env: Env, statement: D1PreparedStatement): Promise<{ results: T[]; asOf: string | null }> {
+	const [main, asOf] = await env.DATA.batch<any>([statement, env.DATA.prepare(`SELECT value FROM state WHERE key = 'data_as_of'`)]);
+	return { results: main.results as T[], asOf: (asOf.results[0] as { value: string } | undefined)?.value ?? null };
 }
 
 export type View = 'latest' | 'settled';
@@ -415,7 +419,7 @@ export async function listAttractions(url: URL, env: Env): Promise<{ response: R
 /** One page of attraction summaries, with the cursor for the next. */
 export async function runAttractionList(query: ListQuery, env: Env): Promise<{ response: Response; rows: number }> {
 	const { sql, binds, limit, view, sort } = query;
-	const { results } = await env.DATA.prepare(sql).bind(...binds).all<Row>();
+	const { results, asOf } = await withDataAsOf<Row>(env, env.DATA.prepare(sql).bind(...binds));
 
 	const page = results.slice(0, limit);
 	const last = page[page.length - 1];
@@ -425,7 +429,7 @@ export async function runAttractionList(query: ListQuery, env: Env): Promise<{ r
 		rows: page.length,
 		response: json({
 			data: page.map((r) => JSON.parse(r.summary)),
-			meta: { data_as_of: await dataAsOf(env), next_cursor: next, view, licence: LICENCE },
+			meta: { data_as_of: asOf, next_cursor: next, view, licence: LICENCE },
 		}),
 	};
 }
@@ -484,12 +488,15 @@ export async function getByIds(url: URL, env: Env, k: RecordKind): Promise<{ res
 	const ids = idsParam(url, k.noun);
 
 	const rowsById = new Map<number, RecordRow[]>();
-	const read = async (wanted: number[]) => {
-		const { sql, binds } = idsQuery(wanted, k.table);
-		const { results } = await env.DATA.prepare(sql).bind(...binds).all<RecordRow & { id: number }>();
+	const keep = (results: (RecordRow & { id: number })[]) => {
 		for (const r of results) rowsById.set(r.id, [...(rowsById.get(r.id) ?? []), r]);
 	};
-	await read(ids);
+	const statement = (wanted: number[]) => {
+		const { sql, binds } = idsQuery(wanted, k.table);
+		return env.DATA.prepare(sql).bind(...binds);
+	};
+	const { results: first, asOf } = await withDataAsOf<RecordRow & { id: number }>(env, statement(ids));
+	keep(first);
 
 	// Where each requested ID ends up: itself, or the record a merge leads to.
 	const target = new Map(ids.map((id) => [id, id]));
@@ -507,7 +514,7 @@ export async function getByIds(url: URL, env: Env, k: RecordKind): Promise<{ res
 			if (to != null) target.set(id, to);
 		}
 		const unread = [...new Set(merges.map((m) => m.new_id))].filter((id) => !rowsById.has(id));
-		if (unread.length > 0) await read(unread);
+		if (unread.length > 0) keep((await statement(unread).all<RecordRow & { id: number }>()).results);
 	}
 
 	const data: Record<string, unknown>[] = [];
@@ -535,7 +542,7 @@ export async function getByIds(url: URL, env: Env, k: RecordKind): Promise<{ res
 		rows: data.length,
 		response: json({
 			data,
-			meta: { data_as_of: await dataAsOf(env), view, licence: LICENCE, merged, missing, not_settled: notSettled },
+			meta: { data_as_of: asOf, view, licence: LICENCE, merged, missing, not_settled: notSettled },
 		}),
 	};
 }
@@ -596,16 +603,16 @@ export async function getRecord(url: URL, idText: string, env: Env, k: RecordKin
 		return { rows: 0, response: problem(404, 'not-found', `No such ${k.noun}`) };
 	}
 
-	const { results } = await env.DATA.prepare(
+	const { results, asOf } = await withDataAsOf<RecordRow>(env, env.DATA.prepare(
 		`SELECT in_latest, in_settled, revision, settles_at, record FROM ${k.table} WHERE id = ?`,
-	).bind(id).all<RecordRow>();
+	).bind(id));
 	const { record, pending } = inView(results, view);
 
 	if (record) {
 		if (k.decorate) await k.decorate(record, id, view, env);
 		return {
 			rows: 1,
-			response: json({ data: record, meta: { data_as_of: await dataAsOf(env), view, licence: LICENCE } }),
+			response: json({ data: record, meta: { data_as_of: asOf, view, licence: LICENCE } }),
 		};
 	}
 
@@ -631,17 +638,18 @@ export async function getRecord(url: URL, idText: string, env: Env, k: RecordKin
 export async function meta(url: URL, env: Env): Promise<Response> {
 	checkParams(url, META_PARAMS);
 	const view = viewParam(url);
-	// Kept by triggers (migrations 0002, 0006, 0007, 0009, 0013); never COUNT(*) here, as this needs no key.
-	const { results: counts } = await env.DATA.prepare(`SELECT key, value FROM state WHERE key IN (?1, ?2, ?3, ?4, ?5)`)
-		.bind(`count_${view}`, `count_parks_${view}`, `count_manufacturers_${view}`, `count_products_${view}`,
-			`count_park_companies_${view}`)
+	// Counts kept by triggers (migrations 0002, 0006, 0007, 0009, 0013); never COUNT(*) here, as this needs no key.
+	// One query, so one round trip: the cache holds 30s, so a monitor misses every time.
+	const { results: rows } = await env.DATA.prepare(`SELECT key, value FROM state WHERE key IN (?1, ?2, ?3, ?4, ?5, ?6, ?7)`)
+		.bind('data_as_of', 'settle_after', `count_${view}`, `count_parks_${view}`, `count_manufacturers_${view}`,
+			`count_products_${view}`, `count_park_companies_${view}`)
 		.all<{ key: string; value: string }>();
-	const count = (key: string) => Number(counts.find((c) => c.key === key)?.value ?? 0);
-	const settleAfter = await env.DATA.prepare(`SELECT value FROM state WHERE key = 'settle_after'`).first<{ value: string }>();
+	const value = (key: string) => rows.find((r) => r.key === key)?.value ?? null;
+	const count = (key: string) => Number(value(key) ?? 0);
 	return json({
-		data_as_of: await dataAsOf(env),
+		data_as_of: value('data_as_of'),
 		schema_version: SCHEMA_VERSION,
-		settle_after: settleAfter?.value ?? null,
+		settle_after: value('settle_after'),
 		// How long a /v1/changes cursor stays good: how long a client can be offline.
 		changes_window: CHANGES_WINDOW,
 		view,

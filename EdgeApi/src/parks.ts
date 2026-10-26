@@ -1,6 +1,6 @@
 import {
-	checkParams, dataAsOf, decodeCursor, encodeCursor, FLAG, followMerges, getByIds, getRecord, limitParam, list, listQuery,
-	runAttractionList, stateParam, viewParam, type Include, type RecordKind, type View,
+	checkParams, decodeCursor, encodeCursor, FLAG, followMerges, getByIds, getRecord, limitParam, list, listQuery,
+	runAttractionList, stateParam, viewParam, withDataAsOf, type Include, type RecordKind, type View,
 } from './attractions';
 import type { Env } from './env';
 import { bboxParam, boxWhere, searchMatch, searchWhere, updatedSinceParam } from './filters';
@@ -103,7 +103,7 @@ export function parkListQuery(url: URL): ListQuery {
 
 export async function listParks(url: URL, env: Env): Promise<{ response: Response; rows: number }> {
 	const { sql, binds, limit, view } = parkListQuery(url);
-	const { results } = await env.DATA.prepare(sql).bind(...binds).all<Row>();
+	const { results, asOf } = await withDataAsOf<Row>(env, env.DATA.prepare(sql).bind(...binds));
 
 	const page = results.slice(0, limit);
 	const last = page[page.length - 1];
@@ -113,7 +113,7 @@ export async function listParks(url: URL, env: Env): Promise<{ response: Respons
 		rows: page.length,
 		response: json({
 			data: page.map((r) => JSON.parse(r.summary)),
-			meta: { data_as_of: await dataAsOf(env), next_cursor: next, view, licence: LICENCE },
+			meta: { data_as_of: asOf, next_cursor: next, view, licence: LICENCE },
 		}),
 	};
 }

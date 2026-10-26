@@ -1,4 +1,4 @@
-import { checkParams, dataAsOf, FLAG, limitParam, list, viewParam } from './attractions';
+import { checkParams, FLAG, limitParam, list, viewParam, withDataAsOf } from './attractions';
 import type { Env } from './env';
 import { searchMatch } from './filters';
 import { badRequest, json, LICENCE } from './http';
@@ -58,7 +58,7 @@ export function searchQuery(url: URL): { sql: string; binds: (string | number)[]
  */
 export async function search(url: URL, env: Env): Promise<{ response: Response; rows: number }> {
 	const { sql, binds, limit } = searchQuery(url);
-	const { results } = await env.DATA.prepare(sql).bind(...binds).all<Row>();
+	const { results, asOf } = await withDataAsOf<Row>(env, env.DATA.prepare(sql).bind(...binds));
 
 	const seen = new Set<string>();
 	const data: Record<string, unknown>[] = [];
@@ -72,6 +72,6 @@ export async function search(url: URL, env: Env): Promise<{ response: Response; 
 
 	return {
 		rows: data.length,
-		response: json({ data, meta: { data_as_of: await dataAsOf(env), view: viewParam(url), licence: LICENCE } }),
+		response: json({ data, meta: { data_as_of: asOf, view: viewParam(url), licence: LICENCE } }),
 	};
 }

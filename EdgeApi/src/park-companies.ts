@@ -1,5 +1,5 @@
 import {
-	checkParams, dataAsOf, decodeCursor, encodeCursor, FLAG, getRecord, limitParam, list, viewParam, type View,
+	checkParams, decodeCursor, encodeCursor, FLAG, getRecord, limitParam, list, viewParam, withDataAsOf, type View,
 } from './attractions';
 import type { Env } from './env';
 import { searchMatch, searchWhere, updatedSinceParam } from './filters';
@@ -80,7 +80,7 @@ export function parkCompanyListQuery(url: URL): ListQuery {
 
 export async function listParkCompanies(url: URL, env: Env): Promise<{ response: Response; rows: number }> {
 	const { sql, binds, limit, view } = parkCompanyListQuery(url);
-	const { results } = await env.DATA.prepare(sql).bind(...binds).all<Row>();
+	const { results, asOf } = await withDataAsOf<Row>(env, env.DATA.prepare(sql).bind(...binds));
 
 	const page = results.slice(0, limit);
 	const last = page[page.length - 1];
@@ -90,7 +90,7 @@ export async function listParkCompanies(url: URL, env: Env): Promise<{ response:
 		rows: page.length,
 		response: json({
 			data: page.map((r) => JSON.parse(r.summary)),
-			meta: { data_as_of: await dataAsOf(env), next_cursor: next, view, licence: LICENCE },
+			meta: { data_as_of: asOf, next_cursor: next, view, licence: LICENCE },
 		}),
 	};
 }
@@ -160,7 +160,7 @@ export async function parkCompanyParks(url: URL, idText: string, env: Env): Prom
 		return { rows: 0, response: problem(404, 'not-found', 'No such park company') };
 	}
 
-	const { results } = await env.DATA.prepare(sql).bind(...binds).all<LinkRow>();
+	const { results, asOf } = await withDataAsOf<LinkRow>(env, env.DATA.prepare(sql).bind(...binds));
 	return {
 		rows: results.length,
 		response: json({
@@ -171,7 +171,7 @@ export async function parkCompanyParks(url: URL, idText: string, env: Env): Prom
 				end: r.end == null ? null : JSON.parse(r.end),
 				current: r.current === 1,
 			})),
-			meta: { data_as_of: await dataAsOf(env), view, licence: LICENCE },
+			meta: { data_as_of: asOf, view, licence: LICENCE },
 		}),
 	};
 }

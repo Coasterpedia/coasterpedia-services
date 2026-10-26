@@ -1,6 +1,6 @@
 import {
-	checkParams, dataAsOf, decodeCursor, encodeCursor, FLAG, followMerges, getRecord, limitParam, list, listQuery,
-	manufacturerParam, NOT_YET as ATTRACTION_NOT_YET, runAttractionList, viewParam, type View,
+	checkParams, decodeCursor, encodeCursor, FLAG, followMerges, getRecord, limitParam, list, listQuery,
+	manufacturerParam, NOT_YET as ATTRACTION_NOT_YET, runAttractionList, viewParam, withDataAsOf, type View,
 } from './attractions';
 import type { Env } from './env';
 import { searchMatch, searchWhere, updatedSinceParam } from './filters';
@@ -108,7 +108,7 @@ export function productListQuery(url: URL, manufacturer: number | null): ListQue
 
 async function runList(query: ListQuery, env: Env): Promise<{ response: Response; rows: number }> {
 	const { sql, binds, limit, view } = query;
-	const { results } = await env.DATA.prepare(sql).bind(...binds).all<Row>();
+	const { results, asOf } = await withDataAsOf<Row>(env, env.DATA.prepare(sql).bind(...binds));
 
 	const page = results.slice(0, limit);
 	const last = page[page.length - 1];
@@ -118,7 +118,7 @@ async function runList(query: ListQuery, env: Env): Promise<{ response: Response
 		rows: page.length,
 		response: json({
 			data: page.map((r) => withInstallations(JSON.parse(r.summary), r.installations)),
-			meta: { data_as_of: await dataAsOf(env), next_cursor: next, view, licence: LICENCE },
+			meta: { data_as_of: asOf, next_cursor: next, view, licence: LICENCE },
 		}),
 	};
 }

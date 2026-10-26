@@ -1,4 +1,4 @@
-import { dataAsOf, FLAG, limitParam, list, viewParam, type View } from './attractions';
+import { FLAG, limitParam, list, viewParam, withDataAsOf, type View } from './attractions';
 import type { Env } from './env';
 import { badRequest, CHANGES_WINDOW_DAYS, decodeOpaque, encodeOpaque, isoSeconds, json, LICENCE, problem } from './http';
 
@@ -173,14 +173,14 @@ export async function listChanges(url: URL, env: Env, delay: number, now = new D
 	const upper = Math.min(head, after + SCAN);
 
 	const { sql, binds } = pageQuery(after, upper, view, kinds, limit);
-	const { results } = await env.DATA.prepare(sql).bind(...binds).all<ChangeRow>();
+	const { results, asOf: stored } = await withDataAsOf<ChangeRow>(env, env.DATA.prepare(sql).bind(...binds));
 
 	const page = results.slice(0, limit);
 	const full = results.length > limit;
 	// Past the last line returned when the page is full; otherwise past every line scanned.
 	const next = full ? page[page.length - 1].seq : Math.max(after, upper);
 
-	let asOf = await dataAsOf(env);
+	let asOf = stored;
 	if (visibleBefore && (asOf == null || asOf > visibleBefore)) asOf = visibleBefore;
 
 	return {

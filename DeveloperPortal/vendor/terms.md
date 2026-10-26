@@ -56,7 +56,8 @@ portal.
 
 **A project is commercial if it earns money, or if a business uses it in its
 work.** Earning money includes charging for the project or any part of it,
-showing adverts in it, and selling access to features. A project that earns
+charging a membership fee, showing adverts in it, and selling access to
+features. A project that earns
 money is commercial even if it makes a loss. Taking donations is fine, as
 long as donors get nothing extra.
 
@@ -73,6 +74,7 @@ is commercial.
 | A school project, a student's thesis, or university research | Yes |
 | A registered charity's or a museum's own project | Yes |
 | A Patreon tier that unlocks features built on our data | No |
+| A website that charges a membership fee | No |
 | A free app that shows adverts | No |
 | A paid app, or one with in-app purchases, even if the part using our data is free | No |
 | A tool used inside a park, manufacturer, travel company or consultancy, even if it's never sold | No |
@@ -82,10 +84,10 @@ If you're not sure, ask us before you build on it. If a non-commercial
 project is going to become commercial, tell us before it does. We won't
 charge you for the time it was non-commercial.
 
-There's no paid tier yet. Until there is, if your project is commercial,
-email developer@coasterpedia.net and tell us what it is, and we'll agree how
-you can use the API. To agree commercial use with us, you must be 18 or
-over, or have a parent's or guardian's permission.
+There's no paid tier yet. If your project is commercial, don't use a free
+key for it. Email us at developer@coasterpedia.net and tell us what the
+project is. To use the API commercially, you must be 18 or over, or have a
+parent's or guardian's permission.
 
 We trust what you tell us. If a free key is being used in a way that looks
 like a business, we may ask about it.
@@ -106,6 +108,22 @@ or one you made from it, you must license that dataset under CC BY-SA 4.0
 too. Your own code, design and other content around it can use any licence
 you like. This is a summary. Where it differs from the licence, the licence
 applies.
+
+You can use the name Coasterpedia to credit us and to say where your data
+comes from. Don't use our logo, or a name or design that makes your project
+look like it's run or endorsed by Coasterpedia.
+
+## Photos
+
+Photos belong to the people who took them, and each has its own licence,
+shown on its file page on the wiki. Some aren't freely licensed at all.
+
+If you use a photo, follow its own licence. For most photos, that means
+naming the photographer and the licence, and linking to the photo's file
+page. Crediting Coasterpedia isn't enough.
+
+A key doesn't cover downloading photos from the wiki's pages in bulk, and
+we may block it.
 
 ## Limits
 
@@ -145,12 +163,22 @@ working. If we need a change that would break it, we'll put the change in
 `/v2`, and keep `/v1` working for at least six months after `/v2` arrives.
 
 While the API is in beta, its version contains `beta`, such as
-`1.0.0-beta.19`. Until then, we may change fields without notice. The
+`1.0.0-beta.19`. While it does, we may change fields without notice. The
 [changelog](https://developer.coasterpedia.net/changelog/) lists each change.
 
 We can change, limit or stop the service, including the free tier. If we
 stop the service or the free tier, we'll give you at least 30 days' notice by
 email, unless something outside our control makes that impossible.
+
+## When we remove data
+
+When something is deleted from the wiki, the change feed lists it as a
+delete. Keeping your copy up to date is your responsibility, and that
+includes removing what we've deleted. If you keep something we've deleted,
+such as a photo that broke someone's copyright, you're responsible for it.
+
+We'll only email you about a removal if the law requires us to. If we do,
+you must remove it from your copy within 14 days of our email.
 
 ## When we can suspend or revoke a key
 
@@ -162,8 +190,30 @@ We can suspend or revoke a key, or every key on an account, if:
 - it's used in a way that breaks these terms, the wiki's Terms of use, or the
   law;
 - its use harms the service or other people's use of it;
+- the project doesn't credit Coasterpedia as the licence requires, and you
+  don't fix that within 30 days of us telling you;
+- the project presents itself as run or endorsed by Coasterpedia;
+- you gave us false information about yourself or the project;
+- the account belongs to someone whose access we've already ended;
+- it's used to supply our data to other people in bulk, such as in a dump, a
+  mirror, another API or a website that's mostly a copy of ours, and we think
+  that harms Coasterpedia, for example by taking the place of our own API or
+  the wiki;
+- the law requires us to, for example because of a court order;
 - the account is blocked on the wiki. A block doesn't suspend your keys by
   itself, but we may suspend them because of it.
+
+Building your own site or app on our data is what the API is for. A site
+with a page for every ride is fine when it adds its own work, such as
+rankings or reviews, alongside our figures. The bulk-supply reason is for
+copies that would take Coasterpedia's place.
+
+On the free tier, we can also end an account's access for any other reason.
+If we do, we'll email you at least 30 days before.
+
+If we revoke your keys, you keep every right the licence gives you over data
+you've already received. You can still republish it under CC BY-SA 4.0. We
+only stop sending you more.
 
 Where we can, we'll email you first and give you time to fix it. If we need
 to stop something straight away, such as a leaked key or traffic that's
@@ -171,6 +221,18 @@ affecting the site, we'll act first and email you afterwards. If you think we
 got it wrong, reply to that email.
 
 You can stop using the API, and revoke your keys, at any time.
+
+## Reporting a security problem
+
+If you find a security problem in the API, the portal or the wiki, email
+developer@coasterpedia.net and tell us what you found. Don't use it to see
+or change anyone else's data, and give us 90 days to fix it before you tell
+anyone else. If you report a problem in good faith and follow these steps,
+we won't revoke your keys or take any other action against you because you
+found it.
+
+This covers problems you come across. It doesn't allow testing that could
+harm the service, such as load tests or automated scans.
 
 ## How we contact you
 
@@ -198,6 +260,11 @@ We publish your listing and screenshot, and your username if you choose to
 show it. Each listing also shows which kinds of record your key requested
 over the last 30 days, such as attractions or parks, taken from the key's
 traffic. The privacy policy has the details.
+
+When you send a listing, you give us permission to publish it and its
+screenshot on the portal and in the showcase feed, for as long as it's
+listed. You also confirm that you have the right to give that permission,
+including for everything shown in the screenshot.
 
 ## No warranty
 
@@ -233,8 +300,18 @@ of this page.
   the API and revoke your keys. The portal will ask you to accept the new
   version before you create another key.
 
+## If someone else runs Coasterpedia
+
+If another person or organisation takes over running Coasterpedia, these
+terms, your account and your keys move to them, and they take on everything
+these terms say we'll do. We'll email you at least 30 days before it
+happens.
+
 ## Law
 
 These terms are governed by the law of England and Wales, and the courts of
 England and Wales deal with any dispute. If you live in Scotland or Northern
 Ireland, you can also bring a claim in your own courts.
+
+If a court decides that part of these terms can't be enforced, the rest
+still applies.

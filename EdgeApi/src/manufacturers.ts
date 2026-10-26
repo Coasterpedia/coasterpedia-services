@@ -1,5 +1,5 @@
 import {
-	checkParams, dataAsOf, decodeCursor, encodeCursor, FLAG, getRecord, limitParam, list, viewParam, type View,
+	checkParams, decodeCursor, encodeCursor, FLAG, getRecord, limitParam, list, viewParam, withDataAsOf, type View,
 } from './attractions';
 import type { Env } from './env';
 import { searchMatch, searchWhere, updatedSinceParam } from './filters';
@@ -76,7 +76,7 @@ export function manufacturerListQuery(url: URL): ListQuery {
 
 export async function listManufacturers(url: URL, env: Env): Promise<{ response: Response; rows: number }> {
 	const { sql, binds, limit, view } = manufacturerListQuery(url);
-	const { results } = await env.DATA.prepare(sql).bind(...binds).all<Row>();
+	const { results, asOf } = await withDataAsOf<Row>(env, env.DATA.prepare(sql).bind(...binds));
 
 	const page = results.slice(0, limit);
 	const last = page[page.length - 1];
@@ -86,7 +86,7 @@ export async function listManufacturers(url: URL, env: Env): Promise<{ response:
 		rows: page.length,
 		response: json({
 			data: page.map((r) => JSON.parse(r.summary)),
-			meta: { data_as_of: await dataAsOf(env), next_cursor: next, view, licence: LICENCE },
+			meta: { data_as_of: asOf, next_cursor: next, view, licence: LICENCE },
 		}),
 	};
 }
