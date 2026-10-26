@@ -9,8 +9,8 @@
     
     <ItemGroup>
         <PackageReference Include="CXuesong.MW.WikiClientLibrary" Version="0.9.0-int.4" />
-        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.13" />
-        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.13" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.14" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.14" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
         <PackageReference Include="Refit.HttpClientFactory" Version="16.4.0" />
         <PackageReference Include="Hangfire.Core" Version="1.8.25" />
