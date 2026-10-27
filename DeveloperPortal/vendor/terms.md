@@ -22,6 +22,12 @@ licensed under
 (CC BY-SA 4.0). These terms don't change that licence, and nothing in them
 limits what it lets you do with data you've received.
 
+The wiki used CC BY-SA 3.0 until it moved to 4.0 in 2024, so some older
+article text is still under 3.0. The API doesn't return article text. It takes facts
+from the articles and arranges them as records, and CC BY-SA 3.0 lets work
+built from 3.0 material be released under a later version. You can treat
+everything the API returns as CC BY-SA 4.0.
+
 These terms cover access to our servers. They say who can have a key, how
 many requests a key can make, and what we can do if someone misuses a key.
 
