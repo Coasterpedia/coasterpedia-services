@@ -33,7 +33,8 @@ services.AddArchiveBot(configuration);
 var provider = services.BuildServiceProvider();
 if (args[0].StartsWith("File:", StringComparison.OrdinalIgnoreCase))
 {
-    await provider.GetRequiredService<ArchiveFileSourceJob>().Run(args[0]);
+    // Backfill archives whatever the file's age; Run would hand an older file to Hangfire, which isn't here.
+    await provider.GetRequiredService<ArchiveFileSourceJob>().Backfill(args[0]);
 }
 else
 {

@@ -48,4 +48,17 @@ public class EventTests
         Assert.Null(evt.PriorNamespace);
         Assert.False(Filter.Matches(evt));
     }
+
+    // EventBus sends the parent as 0 when the revision created the page, and may leave it out.
+    [Theory]
+    [InlineData(""", "rev_parent_id": 461900""", 461900L)]
+    [InlineData(""", "rev_parent_id": 0""", null)]
+    [InlineData("", null)]
+    public void A_revision_carries_its_parent_unless_it_created_the_page(string parent, long? expected)
+    {
+        var evt = EventBusEvent.FromJson(JsonNode.Parse($$"""
+            { "$schema": "/mediawiki/revision/create/2.0.0", "page_title": "File:A.jpg", "page_namespace": 6, "rev_id": 462000{{parent}} }
+            """))!;
+        Assert.Equal(expected, evt.ParentRevisionId);
+    }
 }

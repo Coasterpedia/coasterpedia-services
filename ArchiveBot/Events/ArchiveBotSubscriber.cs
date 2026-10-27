@@ -19,9 +19,17 @@ public class ArchiveBotSubscriber : IEventSubscriber
     {
         if (evt.Namespace == FileNamespace)
         {
-            // No delay: the source page should be captured as close to upload as possible,
-            // while it still shows the licence the file was imported under.
-            BackgroundJob.Enqueue<ArchiveFileSourceJob>(job => job.Run(evt.PageTitle!));
+            // An upload creates the page and is saved now, while the source still shows the licence the file was
+            // imported under. A later edit waits behind everything else, so a bulk edit can't hold up citations.
+            if (evt.ParentRevisionId == null)
+            {
+                BackgroundJob.Enqueue<ArchiveFileSourceJob>(job => job.Run(evt.PageTitle!));
+            }
+            else
+            {
+                BackgroundJob.Enqueue<ArchiveFileSourceJob>(job => job.Backfill(evt.PageTitle!));
+            }
+
             return;
         }
 

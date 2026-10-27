@@ -8,6 +8,8 @@ public record ArchiveBotConfig
     public const string ArchiveQueue = "archive";
     // Taken by the archive server only when ArchiveQueue is empty, so edits always go first.
     public const string SweepQueue = "archive-sweep";
+    // Taken only when SweepQueue is empty too: sources of older files, from edits to their pages.
+    public const string FileBackfillQueue = "archive-files";
     public ArchiveSweepOptions Sweep { get; init; } = new();
     public static readonly TimeSpan SaveInterval = TimeSpan.FromSeconds(10);
     // 15 CDX searches a minute, the limit other CDX clients report; 40 a minute was answered with 429s.

@@ -42,11 +42,12 @@ builder.Services.AddHangfire((services, config) => config
     .UseRedisStorage(services.GetRequiredService<IConnectionMultiplexer>(), new RedisStorageOptions { Db = redisOptions.Db }));
 builder.Services.AddHangfireServer();
 // Wayback saves run one at a time on their own server so a bulk upload doesn't trip archive.org's rate limiter.
-// Redis storage takes queues strictly in this order, so the sweep only runs when no edit is waiting.
+// Redis storage takes queues strictly in this order, so the sweep only runs when no edit is waiting, and older
+// files' sources only when the sweep isn't either.
 builder.Services.AddHangfireServer(o =>
 {
     o.ServerName = "archive";
-    o.Queues = [ArchiveBotConfig.ArchiveQueue, ArchiveBotConfig.SweepQueue];
+    o.Queues = [ArchiveBotConfig.ArchiveQueue, ArchiveBotConfig.SweepQueue, ArchiveBotConfig.FileBackfillQueue];
     o.WorkerCount = 1;
 });
 // One worker, so a flush, a sweep and a drain never overlap (ProjectorJobs).

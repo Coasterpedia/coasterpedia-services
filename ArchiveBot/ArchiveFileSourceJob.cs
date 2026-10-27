@@ -7,16 +7,24 @@ using MarketAlly.IronWiki.Nodes;
 using MarketAlly.IronWiki.Parsing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using WikiClientLibrary.Generators;
 using WikiClientLibrary.Pages;
+using WikiClientLibrary.Sites;
 using static CoasterpediaServices.ArchiveBot.ArgumentUtilities;
 
 namespace CoasterpediaServices.ArchiveBot;
 
 // Archives the page an image was imported from, so the licence it was shown under at upload
 // time is preserved, and records the snapshot on the file page's {{Information}} template.
+// Retries over about three days rather than Hangfire's default seven hours: a site can turn Save Page Now away for
+// hours at a time (Wikimapia has), and a requeue days later then succeeds.
+[AutomaticRetry(Attempts = 10, DelaysInSeconds = [300, 900, 1800, 3600, 7200, 14400, 28800, 43200, 86400, 86400])]
 public partial class ArchiveFileSourceJob
 {
     private static readonly string[] InformationTemplates = ["information", "image documentation"];
+
+    // A file page created longer ago than this is an older file being edited, not an upload.
+    private static readonly TimeSpan UploadWindow = TimeSpan.FromDays(1);
 
     private readonly WikiSiteAccessor _siteAccessor;
     private readonly PacedArchiveClient _archiveClient;
@@ -34,14 +42,44 @@ public partial class ArchiveFileSourceJob
         _archiveBotConfig = archiveBotConfig.Value;
     }
 
-    // Over about three days rather than Hangfire's default seven hours: a site can turn Save Page Now away for
-    // hours at a time (Wikimapia has), and a requeue days later then succeeds.
+    // An upload, saved straight away while the source still shows the licence the file was imported under.
+    // An older file sent here is moved to the backfill queue, as jobs queued before the subscriber split were.
     [Queue(ArchiveBotConfig.ArchiveQueue)]
-    [AutomaticRetry(Attempts = 10, DelaysInSeconds = [300, 900, 1800, 3600, 7200, 14400, 28800, 43200, 86400, 86400])]
     public async Task Run(string pageName)
     {
         var site = await _siteAccessor.GetCoasterpedia(_archiveBotConfig.BotUsername, _archiveBotConfig.BotPassword);
+        if (await CreatedAt(site, pageName) is { } created && created < DateTime.UtcNow - UploadWindow)
+        {
+            _logger.LogInformation("{PageName} was created {Created:yyyy-MM-dd}, moving to the backfill queue", pageName, created);
+            BackgroundJob.Enqueue<ArchiveFileSourceJob>(job => job.Backfill(pageName));
+            return;
+        }
 
+        await Archive(site, pageName);
+    }
+
+    // An edit to an older file page. Runs only when no citation or sweep job is waiting: a bulk edit of file pages
+    // queues one of these per page.
+    [Queue(ArchiveBotConfig.FileBackfillQueue)]
+    public async Task Backfill(string pageName)
+    {
+        var site = await _siteAccessor.GetCoasterpedia(_archiveBotConfig.BotUsername, _archiveBotConfig.BotPassword);
+        await Archive(site, pageName);
+    }
+
+    private static async Task<DateTime?> CreatedAt(WikiSite site, string pageName)
+    {
+        var generator = new RevisionsGenerator(site, new WikiPageStub(pageName)) { TimeAscending = true, PaginationSize = 1 };
+        await foreach (var revision in generator.EnumItemsAsync())
+        {
+            return revision.TimeStamp;
+        }
+
+        return null;
+    }
+
+    private async Task Archive(WikiSite site, string pageName)
+    {
         var page = new WikiPage(site, pageName);
         await page.RefreshAsync(PageQueryOptions.FetchContent | PageQueryOptions.ResolveRedirects);
         var content = page.Content;
