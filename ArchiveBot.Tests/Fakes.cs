@@ -152,9 +152,23 @@ public sealed class FakeArchive : IArchiveClient
 
     public List<string> Saved { get; } = [];
 
+    private readonly HashSet<string> _failingHosts = new(StringComparer.OrdinalIgnoreCase);
+
+    // Answers as Save Page Now does for a capture it couldn't make: 520, "Job failed", no Location.
+    public void Failing(string host) => _failingHosts.Add(host);
+
     public Task<IApiResponse> SavePage(string url)
     {
         Saved.Add(url);
+        if (_failingHosts.Contains(new Uri(url).Host))
+        {
+            var failed = new HttpResponseMessage((HttpStatusCode)520)
+            {
+                RequestMessage = new HttpRequestMessage(HttpMethod.Get, "https://web.archive.org/save/" + url)
+            };
+            return Task.FromResult<IApiResponse>(new ApiResponse<object>(failed, null, new RefitSettings()));
+        }
+
         var response = new HttpResponseMessage(HttpStatusCode.Found)
         {
             RequestMessage = new HttpRequestMessage(HttpMethod.Get, "https://web.archive.org/save/" + url)
@@ -191,7 +205,7 @@ public sealed class JobHarness
     {
         var checker = new LinkChecker(new LinkWebClient(new HttpClient(Sites)), Links, Time, NullLogger<LinkChecker>.Instance);
         Job = new ArchiveLinkJob(null!, new PacedWaybackClient(Wayback, Playback.Client(), NullLogger<PacedWaybackClient>.Instance, TimeSpan.Zero, TimeSpan.Zero),
-            new PacedArchiveClient(Archive, NullLogger<PacedArchiveClient>.Instance, TimeSpan.Zero),
+            new PacedArchiveClient(Archive, NullLogger<PacedArchiveClient>.Instance, TimeSpan.Zero, Time),
             checker, null!, PageChecks, Time, NullLogger<ArchiveLinkJob>.Instance,
             Microsoft.Extensions.Options.Options.Create(new ArchiveBotConfig { BotUsername = "ArchiveBot", BotPassword = "unused" }));
     }

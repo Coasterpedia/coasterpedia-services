@@ -11,8 +11,8 @@ namespace CoasterpediaServices.ArchiveBot.Sweep;
 /// <summary>
 /// Goes through the articles nobody edits, which the edit-triggered runs never reach. Each run queues
 /// its share of the cycle onto the sweep queue, oldest-checked first, and nothing while the last share
-/// is still queued. That queue waits behind the edit-triggered one on the same single worker, so the
-/// sweep uses only spare time and Wayback saves stay paced.
+/// is still queued. That queue waits behind the edit-triggered and file backfill ones on the same single
+/// worker, so the sweep uses only spare time and Wayback saves stay paced.
 /// </summary>
 public sealed class ArchiveSweepJob
 {

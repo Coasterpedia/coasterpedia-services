@@ -1,5 +1,6 @@
 using System.Net;
 using CoasterpediaServices.ArchiveBot.Links;
+using CoasterpediaServices.ArchiveBot.Options;
 using Xunit;
 
 namespace CoasterpediaServices.ArchiveBot.Tests;
@@ -182,6 +183,21 @@ public class ArchiveLinkJobTests
         await _h.Rewrite("A.<ref>{{cite web|url=https://www.theguardian.com/a|title=A}}</ref>");
 
         Assert.Equal(["https://www.theguardian.com/a"], _h.Archive.Saved);
+    }
+
+    [Fact]
+    public async Task A_link_on_a_host_whose_captures_keep_failing_is_not_saved()
+    {
+        _h.Archive.Failing("www.flickr.com");
+        var refs = string.Concat(Enumerable.Range(1, ArchiveBotConfig.HostFailuresBeforePause + 2).Select(i =>
+        {
+            _h.Sites.Answer($"https://www.flickr.com/photos/a/{i}/", HttpStatusCode.OK);
+            return $"<ref>{{{{cite web|url=https://www.flickr.com/photos/a/{i}/|title={i}}}}}</ref>";
+        }));
+
+        await _h.Rewrite("A." + refs);
+
+        Assert.Equal(ArchiveBotConfig.HostFailuresBeforePause, _h.Archive.Saved.Count);
     }
 
     [Fact]

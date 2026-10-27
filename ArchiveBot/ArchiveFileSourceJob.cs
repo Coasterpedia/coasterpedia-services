@@ -44,6 +44,7 @@ public partial class ArchiveFileSourceJob
 
     // An upload, saved straight away while the source still shows the licence the file was imported under.
     // An older file sent here is moved to the backfill queue, as jobs queued before the subscriber split were.
+    // A failed capture is retried from the backfill queue, so failing uploads can't hold the front of the line.
     [Queue(ArchiveBotConfig.ArchiveQueue)]
     public async Task Run(string pageName)
     {
@@ -55,11 +56,19 @@ public partial class ArchiveFileSourceJob
             return;
         }
 
-        await Archive(site, pageName);
+        try
+        {
+            await Archive(site, pageName);
+        }
+        catch (CaptureFailedException e)
+        {
+            _logger.LogInformation("{Message}, trying again from the backfill queue in {Delay}", e.Message, ArchiveBotConfig.FailedUploadRetry);
+            BackgroundJob.Schedule<ArchiveFileSourceJob>(job => job.Backfill(pageName), ArchiveBotConfig.FailedUploadRetry);
+        }
     }
 
-    // An edit to an older file page. Runs only when no citation or sweep job is waiting: a bulk edit of file pages
-    // queues one of these per page.
+    // An edit to an older file page. Waits behind citations and uploads, so a bulk edit of file pages, which queues
+    // one of these per page, can't hold them up. The sweep waits for these in turn.
     [Queue(ArchiveBotConfig.FileBackfillQueue)]
     public async Task Backfill(string pageName)
     {
@@ -128,14 +137,19 @@ public partial class ArchiveFileSourceJob
             return;
         }
 
+        // Throw rather than skip so the source is tried again: the snapshot is only useful while it still shows the
+        // licence the file was uploaded under.
+        if (_archiveClient.PausedUntil(sourceUrl.ToString()) is { } until)
+        {
+            throw new CaptureFailedException($"Saves to {sourceUrl.Host} are paused until {until:u} after repeated failures");
+        }
+
         _logger.LogInformation("Saving source {SourceUrl} for {PageName}", sourceUrl, pageName);
         var saveResponse = await _archiveClient.SavePage(sourceUrl.ToString());
         var location = saveResponse.Headers?.Location;
         if (location == null)
         {
-            // Throw rather than skip so Hangfire retries: the snapshot is only useful while the source still
-            // shows the licence the file was uploaded under.
-            throw new InvalidOperationException($"Saving {sourceUrl} failed with {PacedArchiveClient.FailureReason(saveResponse)}");
+            throw new CaptureFailedException($"Saving {sourceUrl} failed with {PacedArchiveClient.FailureReason(saveResponse)}");
         }
 
         // Keep block-formatted templates ({{Information\n|a=\n|b=\n}}) one argument per line.
@@ -176,6 +190,8 @@ public partial class ArchiveFileSourceJob
 
     private static string NormaliseName(Template template) =>
         template.Name?.ToString().Trim().Replace('_', ' ').ToLower() ?? "";
+
+    private sealed class CaptureFailedException(string message) : InvalidOperationException(message);
 
     [GeneratedRegex(@"https?://[^\s\[\]|{}<>""]+")]
     private static partial Regex UrlRegex();

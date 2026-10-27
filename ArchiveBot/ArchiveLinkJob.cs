@@ -217,6 +217,10 @@ public partial class ArchiveLinkJob
                 {
                     _logger.LogInformation("Archive not found and URL is excluded from the Wayback Machine, not saving");
                 }
+                else if (_archiveClient.PausedUntil(redirectTarget?.ToString() ?? url) is { } until)
+                {
+                    _logger.LogInformation("Archive not found and saves to this host are paused until {Until}, not saving", until);
+                }
                 else
                 {
                     _logger.LogInformation("Archive not found, saving page");
