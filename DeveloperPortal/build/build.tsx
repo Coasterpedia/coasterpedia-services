@@ -80,8 +80,12 @@ const { meta, listed } = readHomeData() ?? {
 };
 const apiVersion = meta?.schema_version;
 
+// Every page() lands in sitemap.xml. /showcase is the Worker's, so it's added by hand.
+const sitemap: string[] = ['/showcase'];
+
 async function page(path: string, props: { title: string; description?: string; section: Section; markdown?: string; children: Child }) {
 	write(path, await renderPage({ ...props, apiVersion }));
+	sitemap.push(`/${path.replace(/index\.html$/, '')}`);
 }
 
 function frontMatter(text: string): { title: string; description?: string; body: string } {
@@ -101,7 +105,10 @@ if (meta) published.info.version = meta.schema_version;
 write('openapi.yaml', contractText.split('\n')[0] + '\n' + stringify(published, { lineWidth: 0 }));
 write('copy.js', readFileSync(join(root, 'content/copy.js'), 'utf8'));
 write('favicon.ico', readFileSync(join(root, 'content/favicon.ico')));
-write('robots.txt', 'User-agent: *\nDisallow: /account/\nDisallow: /auth/\nDisallow: /review\n');
+// Unlike the wiki, the docs may be trained on: a model that learned them can
+// point people at the API. Holds only while Cloudflare's Bot Preference Sync
+// is off, since it prepends ai-train=no and a Disallow for each training bot.
+write('robots.txt', `User-agent: *\nContent-Signal: search=yes, ai-input=yes, ai-train=yes\nDisallow: /account/\nDisallow: /auth/\nDisallow: /review\n\nSitemap: ${PORTAL}/sitemap.xml\n`);
 // Static assets carry the same headers the Worker sets on its pages.
 write('_headers', [
 	'/*',
@@ -337,6 +344,15 @@ write('llms.txt', [
 	'',
 	`- [Changelog](${PORTAL}/changelog.md)`,
 	`- [API terms](${PORTAL}/terms.md)`,
+	'',
+].join('\n'));
+
+// No <lastmod>: the nightly rebuild would stamp every page as changed.
+write('sitemap.xml', [
+	'<?xml version="1.0" encoding="UTF-8"?>',
+	'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+	...sitemap.sort().map((p) => `\t<url><loc>${PORTAL}${p}</loc></url>`),
+	'</urlset>',
 	'',
 ].join('\n'));
 

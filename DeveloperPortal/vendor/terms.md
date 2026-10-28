@@ -1,6 +1,6 @@
 # Coasterpedia API terms
 
-Version 1, 16 October 2026. **Draft, not in force.**
+Version 1, 28 October 2026.
 
 These terms cover your use of the Coasterpedia API at `api.coasterpedia.net`
 and the developer portal at `developer.coasterpedia.net`. You accept them
@@ -60,12 +60,12 @@ portal.
 
 ## The free tier is for non-commercial projects
 
-**A project is commercial if it earns money, or if a business uses it in its
-work.** Earning money includes charging for the project or any part of it,
-charging a membership fee, showing adverts in it, and selling access to
-features. A project that earns
-money is commercial even if it makes a loss. Taking donations is fine, as
-long as donors get nothing extra.
+**A project is commercial once it charges for anything, sells anything or
+shows adverts, or if a business uses it in its work.** That includes
+charging for the project or any part of it, charging a membership fee, and
+selling access to features. It's commercial from the day that starts, even
+if nobody has paid yet, and even if it makes a loss. Taking donations is
+fine, as long as donors get nothing extra.
 
 Registered charities and museums can use a free key for their own projects.
 
@@ -77,6 +77,7 @@ is commercial.
 | A ride counter you use yourself, or share for free | Yes |
 | A free fan site or app with no adverts and nothing to buy | Yes |
 | The same site with a Ko-fi or Patreon link, where supporters get nothing extra | Yes |
+| An app you plan to make money from, before it charges, sells or shows adverts, including a free beta | Yes, until it does |
 | A school project, a student's thesis, or university research | Yes |
 | A registered charity's or a museum's own project | Yes |
 | A Patreon tier that unlocks features built on our data | No |
@@ -90,9 +91,10 @@ If you're not sure, ask us before you build on it. If a non-commercial
 project is going to become commercial, tell us before it does. We won't
 charge you for the time it was non-commercial.
 
-There's no paid tier yet. If your project is commercial, don't use a free
-key for it. Email us at developer@coasterpedia.net and tell us what the
-project is. To use the API commercially, you must be 18 or over, or have a
+There's no paid tier you can sign up for yet. If your project is commercial,
+don't use a free key for it. Email us at developer@coasterpedia.net and tell
+us what the project is, and we'll send you the terms and a price for a paid
+plan. To use the API commercially, you must be 18 or over, or have a
 parent's or guardian's permission.
 
 We trust what you tell us. If a free key is being used in a way that looks
@@ -106,8 +108,14 @@ the data. This line does that:
 > Ride data from [Coasterpedia](https://coasterpedia.net), CC BY-SA 4.0
 
 Put it where people see the data, on the screen or page that shows it. If the
-data runs all through an app, the app's about screen will do. For a bot, a
-command that shows the credit will do. If you changed the data, say so.
+data runs all through an app, the app's about screen will do. For a bot in a
+chat server, a command that shows the credit will do. If you changed the
+data, say so.
+
+If your AI assistant or agent answers people with the data, it's showing the
+data to them, so put the credit in each answer that uses it, with a link if
+the answer can hold one. The licence asks this whether the assistant got the
+data from the API or by reading the wiki's pages.
 
 Share-alike applies to the data. If you publish a dataset that includes ours,
 or one you made from it, you must license that dataset under CC BY-SA 4.0
@@ -118,6 +126,11 @@ applies.
 You can use the name Coasterpedia to credit us and to say where your data
 comes from. Don't use our logo, or a name or design that makes your project
 look like it's run or endorsed by Coasterpedia.
+
+Park, ride and company names appear in the data to identify them, and their
+trademarks belong to their owners. Coasterpedia has no connection with any
+park, manufacturer or operator. Don't present the data as coming from one of
+them, or your project as endorsed by one.
 
 ## Photos
 
@@ -133,12 +146,12 @@ we may block it.
 
 ## Limits
 
-A free account can make 60 requests a minute, across all its keys. Every
-response to a request with a key gives your limit in its `RateLimit-Policy`
-header, and the [docs](https://developer.coasterpedia.net/docs/errors/)
-always show the current limits.
+Each account has a limit on how many requests it can make a minute, shared
+across all its keys. The [docs](https://developer.coasterpedia.net/docs/errors/)
+give the current limit for free accounts, and every response to a request
+with a key gives yours in its `RateLimit-Policy` header.
 
-The free tier is a fair-use service. Staying under 60 a minute doesn't by
+The free tier is a fair-use service. Staying under the limit doesn't by
 itself make your use fair. If we think an account's use is unreasonable, we
 can lower its limit or end its access, even if it never goes over.
 
@@ -198,7 +211,8 @@ We can suspend or revoke a key, or every key on an account, if:
 - its use harms the service or other people's use of it;
 - the project doesn't credit Coasterpedia as the licence requires, and you
   don't fix that within 30 days of us telling you;
-- the project presents itself as run or endorsed by Coasterpedia;
+- the project presents itself as run or endorsed by Coasterpedia, or
+  presents the data as coming from a park, manufacturer or operator;
 - you gave us false information about yourself or the project;
 - the account belongs to someone whose access we've already ended;
 - it's used to supply our data to other people in bulk, such as in a dump, a
@@ -278,7 +292,9 @@ We provide the API and its data as they are. Volunteers write the data, and
 it can be wrong, incomplete or out of date, as the wiki's disclaimer says.
 The service can be slow, change, or be unavailable. We don't promise it's
 suitable for any purpose. Don't rely on it for anything where a mistake could
-hurt someone, such as safety information about a ride.
+hurt someone, such as a ride's height limits or other safety information.
+Parks change their height limits, and ours can be out of date. If your
+project shows them, we suggest telling people to check with the park.
 
 ## Our liability
 
@@ -306,6 +322,10 @@ of this page.
   the API and revoke your keys. The portal will ask you to accept the new
   version before you create another key.
 
+The changelog at the end of this page lists every change with
+its date. Each entry says what changed, and whether it gives you more or
+asks more of you.
+
 ## If someone else runs Coasterpedia
 
 If another person or organisation takes over running Coasterpedia, these
@@ -321,3 +341,7 @@ Ireland, you can also bring a claim in your own courts.
 
 If a court decides that part of these terms can't be enforced, the rest
 still applies.
+
+## Changelog
+
+- 28 October 2026: version 1, first published.

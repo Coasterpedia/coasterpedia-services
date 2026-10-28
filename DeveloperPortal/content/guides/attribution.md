@@ -20,8 +20,14 @@ Ride data from <a href="https://coasterpedia.net">Coasterpedia</a>, CC BY-SA 4.0
 ```
 
 Put it where people see the data, on the screen or page that shows it. If
-the data runs all through an app, the app's about screen will do. For a bot,
-a command that shows the credit will do. If you changed the data, say so.
+the data runs all through an app, the app's about screen will do. For a bot
+in a chat server, a command that shows the credit will do. If you changed the
+data, say so.
+
+If your AI assistant or agent answers people with the data, put the credit in
+each answer that uses it, with a link if the answer can hold one. That holds
+whether the assistant got the data from the API or by reading the wiki's
+pages.
 
 Every response includes the licence in `meta.licence`, so your project can
 show it without you writing it in by hand.

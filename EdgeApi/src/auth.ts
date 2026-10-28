@@ -1,6 +1,6 @@
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import type { Env, KeyEntry } from './env';
-import { problem } from './http';
+import { GET_A_KEY, PORTAL, problem } from './http';
 import { verifySession } from './session';
 
 export interface Caller {
@@ -32,17 +32,20 @@ export async function authenticate(request: Request, env: Env): Promise<Caller |
 	const match = /^Bearer\s+(cpk_[A-Za-z0-9]+)$/.exec(header);
 	if (!match) {
 		return problem(401, 'key-required', 'An API key is required',
-			'Send Authorization: Bearer cpk_… with a key from the developer portal. During the closed beta, keys are issued by hand.',
+			`Requests need a key, sent as Authorization: Bearer cpk_…. ${GET_A_KEY} /v1/meta and /v1/vocabularies need no key.`,
 			{ 'www-authenticate': 'Bearer' });
 	}
 
 	const key = match[1];
 	const entry = await env.KEYS.get<KeyEntry>(`key:${await sha256Hex(key)}`, { type: 'json', cacheTtl: 60 });
 	if (!entry) {
-		return problem(401, 'key-unknown', 'Unknown API key', undefined, { 'www-authenticate': 'Bearer' });
+		return problem(401, 'key-unknown', 'Unknown API key',
+			`No key matches this one. Check that it was copied whole. ${GET_A_KEY}`,
+			{ 'www-authenticate': 'Bearer' });
 	}
 	if (entry.status !== 'active') {
-		return problem(403, 'key-revoked', 'This API key has been revoked');
+		return problem(403, 'key-revoked', 'This API key has been revoked',
+			`Its owner or Coasterpedia revoked it. Its owner can create another at ${PORTAL}. If they didn’t expect this, they can email developer@coasterpedia.net.`);
 	}
 
 	return { account: entry.account, tier: entry.tier, keyPrefix: key.slice(0, 8) };

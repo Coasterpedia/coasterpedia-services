@@ -23,6 +23,10 @@ export function isoSeconds(at: Date): string {
 
 const PROBLEM_BASE = 'https://api.coasterpedia.net/problems/';
 
+/** Where a person gets a key; every refusal about keys names it (DR-010 §8.1). */
+export const PORTAL = 'https://developer.coasterpedia.net';
+export const GET_A_KEY = `Free keys for non-commercial projects are self-serve in about a minute: a person signs in at ${PORTAL} with a Coasterpedia account and creates one.`;
+
 export function json(body: unknown, status = 200, headers: HeadersInit = {}): Response {
 	return new Response(JSON.stringify(body), {
 		status,

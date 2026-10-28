@@ -190,7 +190,7 @@ describe('a session', () => {
 		expect(res.status).toBe(403);
 		const problem = await res.json<any>();
 		expect(problem.type).toMatch(/session-scope$/);
-		expect(problem.detail).toContain('/portal');
+		expect(problem.detail).toContain('https://developer.coasterpedia.net');
 	});
 
 	it('leaves a key as it was', async () => {

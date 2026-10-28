@@ -51,7 +51,8 @@ records.
 
 ## Limits
 
-Your limit covers your whole account, so all your keys share it. Each
+A free account can make 60 requests a minute. Your limit covers your whole
+account, so all your keys share it. Each
 response to a request with a key says which limit applies:
 
 ```

@@ -1,6 +1,6 @@
 import type { Caller } from './auth';
 import type { Env } from './env';
-import { badRequest, isoSeconds, json, problem } from './http';
+import { badRequest, GET_A_KEY, isoSeconds, json, problem } from './http';
 
 /**
  * The Attractions Browser's sessions (DR-010 §7.4). The reader's browser
@@ -93,7 +93,7 @@ export function sessionScope(route: string, url: URL): Response | null {
 	const scope = SCOPE[route];
 	if (!scope) {
 		return problem(403, 'session-scope', 'This needs an API key',
-			'A browser session reads the attractions list, its facets and the parks list. Records, the change feed and settled data need a key from https://api.coasterpedia.net/portal.');
+			`A browser session reads the attractions list, its facets and the parks list. Records, the change feed and settled data need an API key. ${GET_A_KEY}`);
 	}
 	if (url.searchParams.get('view') !== 'latest') {
 		return badRequest('session-view', 'A session reads view=latest',
