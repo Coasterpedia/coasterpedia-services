@@ -92,6 +92,12 @@ describe('ingest', () => {
 });
 
 describe('keys', () => {
+	it('llms.txt sends agents to the portal, with no key', async () => {
+		const res = await get('/llms.txt', null);
+		expect(res.status).toBe(301);
+		expect(res.headers.get('location')).toBe('https://developer.coasterpedia.net/llms.txt');
+	});
+
 	it('meta is open', async () => {
 		expect((await get('/v1/meta', null)).status).toBe(200);
 	});

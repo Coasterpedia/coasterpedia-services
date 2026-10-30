@@ -4,7 +4,7 @@ import { cacheKey, serveCached, type Served } from './cache';
 import { delayHours, listChanges, pruneChanges } from './changes';
 import type { Env } from './env';
 import { attractionFacets } from './facets';
-import { problem, ProblemError } from './http';
+import { PORTAL, problem, ProblemError } from './http';
 import { ingest } from './ingest';
 import { getManufacturer, listManufacturers } from './manufacturers';
 import { getPark, getParks, listParks, parkAttractions } from './parks';
@@ -61,6 +61,11 @@ export default {
 				return problem(405, 'method', 'Method not allowed', 'The API is read-only.');
 			}
 
+			// DR-010 §8.1: agents look for this first. The portal builds the real one.
+			if (path === '/llms.txt') {
+				return Response.redirect(`${PORTAL}/llms.txt`, 301);
+			}
+
 			const reads = replicaReads(env);
 
 			// Open: no key needed (DR-010 §6), and no limit, so the cache is what
@@ -73,7 +78,7 @@ export default {
 			}
 
 			if (!path.startsWith('/v1/')) {
-				return problem(404, 'not-found', 'Not found', 'The API lives under /v1/.');
+				return problem(404, 'not-found', 'Not found', `The API lives under /v1/. Docs and keys: ${PORTAL}`);
 			}
 
 			const caller = await authenticate(request, env);
