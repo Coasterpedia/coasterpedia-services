@@ -267,10 +267,9 @@ keys.post('/', async (c) => {
 					<button type="button" class="btn" data-copy="new-key" hidden>Copy</button>
 				</div>
 				<p>Send it in the <code>Authorization</code> header:</p>
-				<pre class="code">{`curl -H "Authorization: Bearer ${key}" \\\n  "https://api.coasterpedia.net/v1/attractions?limit=1"`}</pre>
+				<pre class="code" data-command>{`curl -H "Authorization: Bearer ${key}" \\\n  "https://api.coasterpedia.net/v1/attractions?limit=1"`}</pre>
 				<p>Keep it on your server. If you put it in a web page or an app, anyone who has the page or the app can read the key and use it. If you’re building an app, have the app call your own server, and have your server call the API. <a href="/docs/">Getting started</a> explains the rest.</p>
 				<p><a class="btn btn--primary" href="/account/keys">Done</a></p>
-				<script src="/copy.js" defer></script>
 			</div>
 		),
 	});

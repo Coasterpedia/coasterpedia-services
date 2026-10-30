@@ -279,7 +279,7 @@ await page('index.html', {
 				<div class="hero__sample">
 					<div class="sample">
 						<div class="sample__label">Request</div>
-						<pre class="code">{'curl -H "Authorization: Bearer cpk_…" \\\n  "https://api.coasterpedia.net/v1/attractions?sort=-height"'}</pre>
+						<pre class="code" data-command>{'curl -H "Authorization: Bearer cpk_…" \\\n  "https://api.coasterpedia.net/v1/attractions?sort=-height"'}</pre>
 						<div class="sample__label">Each record</div>
 						<pre class="code">{'id · name · type · status · location\ndates · stats · manufacturers · products\nhistory'}</pre>
 					</div>

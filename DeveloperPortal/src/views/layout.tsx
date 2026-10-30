@@ -105,6 +105,7 @@ export function Layout(props: PageProps) {
 				<Header section={props.section} viewer={props.viewer} />
 				<main id="content" class="portal-main">{props.children}</main>
 				<Footer apiVersion={props.apiVersion} viewer={props.viewer} />
+				<script src="/copy.js" defer></script>
 			</body>
 		</html>
 	);

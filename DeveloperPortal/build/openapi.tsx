@@ -234,7 +234,7 @@ function OperationHtml({ spec, op, examples }: { spec: Spec; op: Operation; exam
 					))}
 				</ul>
 			)}
-			<pre><code>{curl(spec, op, examples)}</code></pre>
+			<pre data-command><code>{curl(spec, op, examples)}</code></pre>
 			{example && <ExampleHtml example={example} />}
 		</section>
 	);

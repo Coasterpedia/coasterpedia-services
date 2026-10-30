@@ -463,6 +463,28 @@ code {
 	word-break: break-word;
 }
 
+/* A command with its copy button beside it, wrapped by copy.js. The button
+ * sits outside the block, so it never covers the end of a long line. */
+.command {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+}
+
+.command > pre {
+	flex: 1;
+	min-width: 0;
+	margin-block: 0;
+}
+
+.prose .command {
+	margin-block: 1em;
+}
+
+.sample .command > .btn {
+	margin: 8px 8px 0 0;
+}
+
 /* ── Pages ────────────────────────────────────────────────────────────── */
 
 .page {
