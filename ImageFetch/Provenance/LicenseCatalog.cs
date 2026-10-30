@@ -48,14 +48,37 @@ public static class LicenseCatalog
         }
 
         // Commons-only licences (Flickr never offered these, and Commons only hosts the free
-        // BY / BY-SA families): 2.5, and the German ports, which the templates render via
-        // countrycode/countryname.
+        // BY / BY-SA families): 2.5, and the national ports, which the templates render via
+        // countrycode/countryname. countryname also names the flag, File:{countryname}.svg on the
+        // wiki, so each one here is a file that exists. Left out: "uk" (England and Wales, no
+        // flag file) and "ug" (no flag file).
+        (string Code, string Country)[] ports =
+        [
+            ("ar", "Argentina"), ("at", "Austria"), ("au", "Australia"), ("be", "Belgium"),
+            ("bg", "Bulgaria"), ("br", "Brazil"), ("ca", "Canada"), ("ch", "Switzerland"),
+            ("cl", "Chile"), ("cn", "China"), ("co", "Colombia"), ("cr", "Costa Rica"),
+            ("cz", "Czech Republic"), ("de", "Germany"), ("dk", "Denmark"), ("ec", "Ecuador"),
+            ("ee", "Estonia"), ("eg", "Egypt"), ("es", "Spain"), ("fi", "Finland"),
+            ("fr", "France"), ("gr", "Greece"), ("gt", "Guatemala"), ("hk", "Hong Kong"),
+            ("hr", "Croatia"), ("hu", "Hungary"), ("ie", "Ireland"), ("il", "Israel"),
+            ("in", "India"), ("it", "Italy"), ("jp", "Japan"), ("kr", "South Korea"),
+            ("lu", "Luxembourg"), ("mk", "North Macedonia"), ("mt", "Malta"), ("mx", "Mexico"),
+            ("my", "Malaysia"), ("nl", "Netherlands"), ("no", "Norway"), ("nz", "New Zealand"),
+            ("pe", "Peru"), ("ph", "Philippines"), ("pl", "Poland"), ("pr", "Puerto Rico"),
+            ("pt", "Portugal"), ("ro", "Romania"), ("rs", "Serbia"), ("scotland", "Scotland"),
+            ("se", "Sweden"), ("sg", "Singapore"), ("si", "Slovenia"), ("th", "Thailand"),
+            ("tw", "Taiwan"), ("us", "USA"), ("vn", "Vietnam"), ("za", "South Africa"),
+        ];
         foreach (var (slug, template) in new[] { ("cc-by", "CC-BY"), ("cc-by-sa", "CC-BY-SA") })
         {
             Add($"{slug}-2.5", $"{{{{{template}|type=2.5}}}}");
-            foreach (var version in new[] { "2.0", "2.5", "3.0" })
+            foreach (var version in new[] { "1.0", "2.0", "2.5", "3.0" })
             {
-                Add($"{slug}-{version}-de", $"{{{{{template}|type={version}|countrycode=de|countryname=Germany}}}}");
+                foreach (var (code, country) in ports)
+                {
+                    Add($"{slug}-{version}-{code}",
+                        $"{{{{{template}|type={version}|countrycode={code}|countryname={country}}}}}");
+                }
             }
         }
 
