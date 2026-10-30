@@ -18,7 +18,9 @@ namespace CoasterpediaServices.ArchiveBot;
 // time is preserved, and records the snapshot on the file page's {{Information}} template.
 // Retries over about three days rather than Hangfire's default seven hours: a site can turn Save Page Now away for
 // hours at a time (Wikimapia has), and a requeue days later then succeeds.
+// A backfill waiting for its host's next save slot doesn't count as a try.
 [AutomaticRetry(Attempts = 10, DelaysInSeconds = [300, 900, 1800, 3600, 7200, 14400, 28800, 43200, 86400, 86400])]
+[Defer]
 public partial class ArchiveFileSourceJob
 {
     private static readonly string[] InformationTemplates = ["information", "image documentation"];
@@ -58,7 +60,7 @@ public partial class ArchiveFileSourceJob
 
         try
         {
-            await Archive(site, pageName);
+            await Archive(site, pageName, waitTurn: false);
         }
         catch (CaptureFailedException e)
         {
@@ -73,7 +75,7 @@ public partial class ArchiveFileSourceJob
     public async Task Backfill(string pageName)
     {
         var site = await _siteAccessor.GetCoasterpedia(_archiveBotConfig.BotUsername, _archiveBotConfig.BotPassword);
-        await Archive(site, pageName);
+        await Archive(site, pageName, waitTurn: true);
     }
 
     private static async Task<DateTime?> CreatedAt(WikiSite site, string pageName)
@@ -87,7 +89,8 @@ public partial class ArchiveFileSourceJob
         return null;
     }
 
-    private async Task Archive(WikiSite site, string pageName)
+    // An upload saves now, ahead of any backlog on its host. A backfill waits its turn behind that backlog.
+    private async Task Archive(WikiSite site, string pageName, bool waitTurn)
     {
         var page = new WikiPage(site, pageName);
         await page.RefreshAsync(PageQueryOptions.FetchContent | PageQueryOptions.ResolveRedirects);
@@ -135,6 +138,12 @@ public partial class ArchiveFileSourceJob
         {
             _logger.LogWarning("Information template on {PageName} did not round-trip, skipping", pageName);
             return;
+        }
+
+        if (waitTurn && await _archiveClient.TakeTurn(sourceUrl.ToString()) is { } slot)
+        {
+            _logger.LogInformation("Saves to {Host} are spaced out, trying {PageName} again at {Slot:u}", sourceUrl.Host, pageName, slot);
+            throw new DeferredException(slot, $"Waiting for a save slot on {sourceUrl.Host} at {slot:u}");
         }
 
         // Throw rather than skip so the source is tried again: the snapshot is only useful while it still shows the

@@ -12,6 +12,9 @@ public record ArchiveBotConfig
     public const string SweepQueue = "archive-sweep";
     public ArchiveSweepOptions Sweep { get; init; } = new();
     public static readonly TimeSpan SaveInterval = TimeSpan.FromSeconds(10);
+    // At most one save a host this often. Flickr saves 10 s apart failed in runs, each run pausing the host for
+    // HostPause (Oct 2026); a steady trickle should drain a backlog faster than bursts and pauses.
+    public static readonly TimeSpan HostSaveInterval = TimeSpan.FromMinutes(1);
     // Save Page Now failing this many captures running on one host (Flickr did, Oct 2026) stops saves there for
     // HostPause. Each failure otherwise still costs the worker a save and its pacing.
     public const int HostFailuresBeforePause = 3;
