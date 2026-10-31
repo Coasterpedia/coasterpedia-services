@@ -2,7 +2,7 @@ import { env } from 'cloudflare:workers';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { daily } from '../src/cron';
 import type { KeyEntry } from '../src/env';
-import { Browser, DEVELOPER, outbound, resetAccounts, setAeRows, setWikiBlocked, stubOutbound } from './helpers';
+import { Browser, DEVELOPER, outbound, PROJECT, resetAccounts, setAeRows, setWikiBlocked, stubOutbound } from './helpers';
 
 // Accounts and usage, for reviewers: the list, one account, and revoking.
 
@@ -19,7 +19,7 @@ afterEach(() => vi.restoreAllMocks());
 async function developerWithKey() {
 	const developer = new Browser();
 	await developer.signIn(DEVELOPER);
-	const res = await developer.post('/account/keys', { name: 'Credit log', description: 'Log every coaster you have ridden.', terms: '1' });
+	const res = await developer.post('/account/keys', { name: 'Credit log', description: 'Log every coaster you have ridden.', ...PROJECT, terms: '1' });
 	const key = /<code id="new-key">(cpk_[A-Za-z0-9]+)<\/code>/.exec(await res.text())![1];
 	const row = (await env.ACCOUNTS.prepare('SELECT id, hash FROM keys').first<{ id: string; hash: string }>())!;
 	return { developer, key, ...row };
@@ -119,6 +119,52 @@ describe('accounts', () => {
 		expect(html).toContain('Supplies the whole dataset to another site.');
 	});
 
+	it('says what a key is for, and when its use doesn’t match', async () => {
+		const { key } = await developerWithKey();
+		const prefix = key.slice(0, 8);
+		setAeRows([
+			{ match: 'GROUP BY account, day, status', data: [{ account: 'u42', day: `${today} 00:00:00`, status: '200', requests: '9000', last: `${today} 09:00:00` }] },
+			{ match: 'GROUP BY prefix, route, status', data: [
+				{ prefix, route: '/v1/parks', status: '200', requests: '4000' },
+				{ prefix, route: '/v1/changes', status: '200', requests: '14' },
+			] },
+		]);
+		const browser = await reviewer();
+		const list = await (await browser.fetch('/review/accounts')).text();
+		expect(list).toContain('Busy for what it says it is');
+
+		const html = await (await browser.fetch('/review/accounts/u42')).text();
+		expect(html).toContain('Something only I use, such as a ride log or a spreadsheet');
+		expect(html).toContain('no link');
+		expect(html).toContain('makes money: no');
+		expect(html).toContain('says it’s only for their own use, and it made 4,014 requests in 14 days, about 287 a day.');
+		expect(html).toContain('it reads the change feed');
+	});
+
+	it('shows the wiki account’s edits and age after the daily run', async () => {
+		await developerWithKey();
+		vi.spyOn(console, 'log').mockImplementation(() => {});
+		await daily(env);
+		const html = await (await (await reviewer()).fetch('/review/accounts/u42')).text();
+		expect(html).toContain('1,204 wiki edits since Mar 2019');
+	});
+
+	it('asks a key’s owner about it, and records that we asked', async () => {
+		const { id, hash } = await developerWithKey();
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		const browser = await reviewer();
+		expect(await (await browser.fetch('/review/accounts/u42')).text()).toContain('Could you tell us a bit more about “Credit log”?');
+
+		const res = await browser.post(`/review/accounts/u42/keys/${id}/ask`, { question: 'What does it do?' });
+		expect(res.headers.get('location')).toBe('/review/accounts/u42?done=asked');
+		expect(warn).toHaveBeenCalledWith(expect.stringContaining('A question about your Coasterpedia API key “Credit log”'));
+		const row = (await env.ACCOUNTS.prepare('SELECT asked_at, asked_by FROM keys WHERE id = ?').bind(id).first<Record<string, unknown>>())!;
+		expect(row.asked_at).toBeTruthy();
+		expect(row.asked_by).toBe(7);
+		expect((await env.KEYS.get<KeyEntry>(`key:${hash}`, 'json'))!.status).toBe('active');
+		expect(await (await browser.fetch('/review/accounts/u42')).text()).toContain('Ask again');
+	});
+
 	it('won’t revoke another account’s key through this one', async () => {
 		const { id, hash } = await developerWithKey();
 		const browser = await reviewer();
@@ -173,7 +219,7 @@ describe('wiki blocks', () => {
 	it('refuses a new key while the wiki says the account is blocked, and leaves its keys alone', async () => {
 		const { developer, hash } = await developerWithKey();
 		setWikiBlocked(new Set([42]));
-		const res = await developer.post('/account/keys', { name: 'Second', description: 'Another one.', terms: '1' });
+		const res = await developer.post('/account/keys', { name: 'Second', description: 'Another one.', ...PROJECT, terms: '1' });
 		expect(res.status).toBe(403);
 		expect(await res.text()).toContain('Blocked accounts can’t create keys');
 		expect((await env.ACCOUNTS.prepare('SELECT COUNT(*) AS n FROM keys').first<{ n: number }>())!.n).toBe(1);
@@ -188,7 +234,7 @@ describe('wiki blocks', () => {
 		setWikiBlocked(new Set([42]));
 		await daily(env);
 		setWikiBlocked(new Set());
-		const res = await developer.post('/account/keys', { name: 'Second', description: 'Another one.', terms: '1' });
+		const res = await developer.post('/account/keys', { name: 'Second', description: 'Another one.', ...PROJECT, terms: '1' });
 		expect(res.status).toBe(200);
 		expect((await blockedAt()).blocked_at).toBeNull();
 	});
@@ -197,7 +243,7 @@ describe('wiki blocks', () => {
 		const { developer } = await developerWithKey();
 		vi.spyOn(console, 'warn').mockImplementation(() => {});
 		setWikiBlocked(null);
-		const res = await developer.post('/account/keys', { name: 'Second', description: 'Another one.', terms: '1' });
+		const res = await developer.post('/account/keys', { name: 'Second', description: 'Another one.', ...PROJECT, terms: '1' });
 		expect(res.status).toBe(200);
 	});
 

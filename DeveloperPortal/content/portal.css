@@ -381,6 +381,52 @@ code {
 	accent-color: var( --color-progressive );
 }
 
+/* A list the reader picks one from: one edge round the list, dividers
+ * between rows, the checked row a background step. Radios, so it works
+ * without a script. */
+.choices {
+	display: flex;
+	flex-direction: column;
+	border: 1px solid var( --border-color-interactive );
+	border-radius: var( --border-radius-base );
+	overflow: hidden;
+}
+
+.choices__option {
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+	padding: 10px 12px;
+	color: var( --color-emphasized );
+	cursor: pointer;
+	transition: var( --transition-hover );
+}
+
+.choices__option + .choices__option {
+	border-top: var( --border-subtle );
+}
+
+.choices__option input {
+	flex: none;
+	width: 20px;
+	height: 20px;
+	margin: 2px 0 0;
+	accent-color: var( --color-progressive );
+}
+
+.choices__option:hover {
+	background-color: var( --background-color-interactive-subtle );
+}
+
+.choices__option:has( input:checked ) {
+	background-color: var( --background-color-progressive-subtle );
+}
+
+.choices__option:has( input:focus-visible ) {
+	outline: 2px solid var( --outline-color-progressive--focus );
+	outline-offset: -2px;
+}
+
 /* The platform choice is radios, so the form works without a script. The
  * primitive keys its selection on aria-pressed; a checked radio is the same
  * state, painted the same way. */
@@ -777,6 +823,30 @@ code {
 .revoke-form__row {
 	display: flex;
 	gap: 8px;
+}
+
+textarea.input {
+	min-height: 7rem;
+	line-height: 1.5;
+	resize: vertical;
+}
+
+/* A key's "worth a look" line: what it says against what it does. */
+.look {
+	margin: 6px 0 0;
+}
+
+.ask {
+	margin-bottom: 12px;
+}
+
+.ask summary {
+	color: var( --color-link );
+	cursor: pointer;
+}
+
+.ask[open] summary {
+	margin-bottom: 8px;
 }
 
 /* ── Home ─────────────────────────────────────────────────────────────── */

@@ -27,7 +27,7 @@ export async function removeListing(env: Env, keyId: string): Promise<void> {
 	if (shots.length) await env.SHOTS.delete(shots);
 }
 
-function httpsUrl(value: string): string | null {
+export function httpsUrl(value: string): string | null {
 	try {
 		const url = new URL(value);
 		return url.protocol === 'https:' && value.length <= 300 ? url.toString() : null;
@@ -54,7 +54,7 @@ function ListingForm({ apiKey: key, fields, screenshot, errors, listed, note }: 
 			<a href="/account/keys" class="meta">← Your keys</a>
 			<h1>{listed ? 'Edit the listing' : 'List in the showcase'}</h1>
 			<p>
-				This listing is for the key <code>{key.prefix}…</code>. We’ve filled in the name and description from the key, and you can change them here.
+				This listing is for the key <code>{key.prefix}…</code>. We’ve filled in what we can from the key, and you can change it here.
 				{listed && ' The listed version stays up while we review your edit.'}
 			</p>
 			{note && <p class="notice notice--error">We didn’t list this last time. The reviewer said “{note}”</p>}
@@ -152,7 +152,7 @@ listings.get('/', async (c) => {
 	const source = (row && pendingOf(row)) ?? row;
 	const fields: Draft = source
 		? { name: source.name, description: source.description, link: source.link, platform: source.platform, credit_url: source.credit_url, show_maker: source.show_maker }
-		: { name: key.name, description: key.description, link: '', platform: '', credit_url: '', show_maker: 0 };
+		: { name: key.name, description: key.description, link: key.link ?? '', platform: '', credit_url: '', show_maker: 0 };
 	return form(c, key, row, fields, []);
 });
 

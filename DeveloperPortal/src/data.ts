@@ -12,6 +12,33 @@ export const PLATFORMS = [
 
 export const platformLabel = (slug: string) => PLATFORMS.find((p) => p.slug === slug)?.label ?? slug;
 
+/** What a key is for, asked when it's created. `public` kinds need a link unless the project isn't public yet. */
+export const KINDS = [
+	{ slug: 'website', label: 'A website', public: true },
+	{ slug: 'app', label: 'An app for phones or computers', public: true },
+	{ slug: 'bot', label: 'A bot, such as for Discord', public: true },
+	{ slug: 'personal', label: 'Something only I use, such as a ride log or a spreadsheet', public: false },
+	{ slug: 'trying', label: 'I’m trying the API out', public: false },
+	{ slug: 'other', label: 'Something else', public: false },
+] as const;
+
+export const kindOf = (slug: string | null) => KINDS.find((k) => k.slug === slug);
+
+/** The terms' commercial test, as one question. 'yes' can't have a free key. */
+export const COMMERCIAL = [
+	{ slug: 'no', label: 'No' },
+	{ slug: 'later', label: 'Not yet, but it might later' },
+	{ slug: 'yes', label: 'Yes' },
+] as const;
+
+/**
+ * Kinds that should make few requests. Above this many a day, on average, the
+ * reviewer pages suggest a look: a ride log reads a few records, not a park
+ * list every hour.
+ */
+export const LIGHT_KINDS = ['personal', 'trying'];
+export const LIGHT_PER_DAY = 200;
+
 /** The API's burst limit per account; EdgeApi/src/ratelimit.ts BURST says the same. */
 export const REQUESTS_PER_MINUTE = 60;
 
@@ -26,6 +53,10 @@ export const FIX = {
 	name: 'Give the project a name of up to 40 characters.',
 	description: 'Describe the project in one line of up to 100 characters.',
 	terms: 'Accept the API terms to create a key.',
+	kind: 'Choose what you’re building.',
+	keyLink: 'Add a link to the project that starts with https://, or tick “It isn’t public yet”.',
+	optionalLink: 'Make the link start with https://, or leave it empty.',
+	commercial: 'Say whether the project will make money.',
 	link: 'Add a link to the project that starts with https://.',
 	credit: 'Add a link to where the project credits Coasterpedia, starting with https://.',
 	platform: 'Choose the platform it runs on.',
@@ -41,6 +72,11 @@ export interface KeyRow {
 	revoked_at: string | null;
 	last_used_at: string | null;
 	uses: string | null;
+	/** Null on keys made before migration 0003. */
+	kind: string | null;
+	link: string | null;
+	commercial: string | null;
+	asked_at: string | null;
 }
 
 /** The fields a developer fills in; also the shape of a pending edit. */

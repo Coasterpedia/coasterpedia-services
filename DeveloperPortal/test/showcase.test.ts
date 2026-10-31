@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { daily } from '../src/cron';
 import { FIX } from '../src/data';
 import { HOME_DATA_KEY, type HomeData } from '../src/home-data';
-import { Browser, outbound, resetAccounts, setAeRows, stubOutbound } from './helpers';
+import { Browser, outbound, PROJECT, resetAccounts, setAeRows, stubOutbound } from './helpers';
 
 // DR-010 §13.4–13.5, §13.7, §13.10.
 
@@ -31,7 +31,7 @@ beforeEach(async () => {
 	await reviewer.signIn(REVIEWER);
 	developer = new Browser();
 	await developer.signIn(DEVELOPER);
-	await developer.post('/account/keys', { name: 'Statbot', description: 'Coaster stats for Discord servers.', terms: '1' });
+	await developer.post('/account/keys', { name: 'Statbot', description: 'Coaster stats for Discord servers.', ...PROJECT, terms: '1' });
 	keyId = (await env.ACCOUNTS.prepare('SELECT id FROM keys').first<string>('id'))!;
 });
 afterEach(() => vi.restoreAllMocks());

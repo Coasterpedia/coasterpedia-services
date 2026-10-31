@@ -1,11 +1,14 @@
-// Your keys (DR-010 §7.2 steps 5–7, §13.3): create, list, revoke.
+// Your keys (DR-010 §7.2 steps 5–7, §13.3): create, list, revoke, and the
+// project details each key carries (project.tsx).
 import { Hono } from 'hono';
-import { ago, type AppEnv, ClosedBeta, type Ctx, isoNow, message, page, requireSession, shortDate } from './app';
+import { ago, type AppEnv, ClosedBeta, CONTACT, type Ctx, isoNow, message, page, requireSession, shortDate } from './app';
 import { isBlocked } from './blocks';
 import { b64url, randomToken } from './cookies';
-import { FIX, HIDE_AFTER_DAYS, isVisible, type KeyRow, type ListingRow, MAX_KEYS, REQUESTS_PER_MINUTE, usesOf } from './data';
+import { FIX, HIDE_AFTER_DAYS, isVisible, type KeyRow, type ListingRow, MAX_KEYS, ownKey, REQUESTS_PER_MINUTE, usesOf } from './data';
 import { apiAccount, type KeyEntry } from './env';
 import { removeListing } from './listings';
+import { reviewerAddresses, sendMail } from './mail';
+import { emptyProject, type Project, ProjectFields, projectOf, readProject } from './project';
 import { TERMS_VERSION } from './terms-version';
 import { liveUsage, type LiveUsage } from './usage';
 
@@ -80,6 +83,8 @@ const FLASH: Record<string, string> = {
 	sent: 'Thanks. We’ll review it and email you when we’re done.',
 	withdrawn: 'We’ve withdrawn it.',
 	revoked: 'We’ve revoked the key. Within a minute, the API will refuse any request that uses it.',
+	details: 'We’ve saved the project details.',
+	commercial: `Thanks for telling us. We’ll email you about a paid plan. If you have questions first, write to ${CONTACT}.`,
 };
 
 keys.get('/', async (c) => {
@@ -110,7 +115,7 @@ keys.get('/', async (c) => {
 					<div class="page__intro">
 						<h1>Your keys</h1>
 						<p>
-							Limits are per account, so all your keys share them. You can make {REQUESTS_PER_MINUTE} requests a minute.
+							Your keys share one limit: together, they can make {REQUESTS_PER_MINUTE} requests a minute to the API.
 							{live && ` You’ve made ${live.today.toLocaleString('en-GB')} requests today (UTC).`}
 						</p>
 					</div>
@@ -118,7 +123,7 @@ keys.get('/', async (c) => {
 				</div>
 
 				{results.length === 0 ? (
-					<p>You have no keys yet. To create one, you’ll need a name for your project and a line about what it does, and you’ll need to accept the API terms.</p>
+					<p>You have no keys yet. To create one, you’ll need a name for your project, a line about what it does and a link if it’s public, and you’ll need to accept the API terms.</p>
 				) : (
 					<div class="keys" role="table" aria-label="Your keys">
 						<div class="keys__row keys__row--head" role="row">
@@ -134,6 +139,7 @@ keys.get('/', async (c) => {
 									<div role="cell" class="keys__project">
 										<strong>{row.name}</strong>
 										<span>{row.description}</span>
+										<a href={`/account/keys/${row.id}/details`}>{row.kind ? 'Project details' : 'Add project details'}</a>
 									</div>
 									<div role="cell" class="keys__key">
 										<code>{row.prefix}…</code>
@@ -155,10 +161,28 @@ keys.get('/', async (c) => {
 	});
 });
 
-function NewKeyForm({ error, name = '', description = '' }: { error?: string; name?: string; description?: string }) {
+interface NewKeyProps {
+	errors?: string[];
+	name?: string;
+	description?: string;
+	project?: Project;
+}
+
+function Errors({ errors }: { errors?: string[] }) {
+	if (!errors?.length) return null;
+	if (errors.length === 1) return <p class="notice notice--error" role="alert">{errors[0]}</p>;
+	return (
+		<div class="notice notice--error" role="alert">
+			<p>Fix these, then try again:</p>
+			<ul>{errors.map((e) => <li>{e}</li>)}</ul>
+		</div>
+	);
+}
+
+function NewKeyForm({ errors, name = '', description = '', project = emptyProject }: NewKeyProps) {
 	return (
 		<form method="post" action="/account/keys" class="form">
-			{error && <p class="notice notice--error" role="alert">{error}</p>}
+			<Errors errors={errors} />
 			<div class="field">
 				<label class="field__label" for="name">Project name</label>
 				<input class="input" id="name" name="name" maxlength={40} required value={name} />
@@ -168,6 +192,7 @@ function NewKeyForm({ error, name = '', description = '' }: { error?: string; na
 				<input class="input" id="description" name="description" maxlength={100} required value={description} />
 				<p class="field__help">Up to 100 characters. We show it on Your keys, and in the showcase if you list the project.</p>
 			</div>
+			<ProjectFields project={project} />
 			<label class="check">
 				<input type="checkbox" name="terms" value={TERMS_VERSION ?? ''} required />
 				<span>I accept the <a href="/terms/">API terms</a> (version {TERMS_VERSION}), including that free keys are for non-commercial projects.</span>
@@ -180,7 +205,7 @@ function NewKeyForm({ error, name = '', description = '' }: { error?: string; na
 	);
 }
 
-function newKeyPage(c: Ctx, props: { error?: string; name?: string; description?: string }, status = 200) {
+function newKeyPage(c: Ctx, props: NewKeyProps, status = 200) {
 	return page(c, {
 		title: 'Create a key',
 		section: 'keys',
@@ -222,14 +247,25 @@ keys.post('/', async (c) => {
 	const form = await c.req.parseBody();
 	const name = String(form.name ?? '').trim();
 	const description = String(form.description ?? '').trim();
+	const { project, errors: projectErrors } = readProject(form);
 
-	if (!name || name.length > 40) return newKeyPage(c, { error: FIX.name, name, description }, 400);
-	if (!description || description.length > 100) return newKeyPage(c, { error: FIX.description, name, description }, 400);
-	if (form.terms !== TERMS_VERSION) return newKeyPage(c, { error: FIX.terms, name, description }, 400);
-	if ((await activeKeyCount(c)) >= MAX_KEYS) return newKeyPage(c, { error: `You already have ${MAX_KEYS} keys. Revoke one you no longer use first.`, name, description }, 409);
+	const errors: string[] = [];
+	if (!name || name.length > 40) errors.push(FIX.name);
+	if (!description || description.length > 100) errors.push(FIX.description);
+	errors.push(...projectErrors);
+	if (form.terms !== TERMS_VERSION) errors.push(FIX.terms);
+	if (errors.length) return newKeyPage(c, { errors, name, description, project }, 400);
+	if ((await activeKeyCount(c)) >= MAX_KEYS) return newKeyPage(c, { errors: [`You already have ${MAX_KEYS} keys. Revoke one you no longer use first.`], name, description, project }, 409);
 
 	const account = await c.env.ACCOUNTS.prepare(`SELECT tier FROM accounts WHERE id = ?`).bind(session.sub).first<{ tier: string }>();
 	if (!account) return c.redirect('/auth/sign-in?return=/account/keys/new', 303);
+	// The terms: a commercial project doesn't use a free key, it asks us for a plan.
+	if (project.commercial === 'yes' && account.tier === 'free') {
+		return newKeyPage(c, {
+			errors: [`Free keys are for projects that don’t make money. For this one, email ${CONTACT} and tell us what it is, and we’ll send you the terms and a price for a paid plan. If it won’t make money yet, choose “Not yet”.`],
+			name, description, project,
+		}, 400);
+	}
 	if (await isBlocked(c.env, session.sub)) return blockedNow(c);
 
 	// Usage is recorded by prefix, so a prefix is unique within the account.
@@ -245,8 +281,8 @@ keys.post('/', async (c) => {
 	const id = b64url(crypto.getRandomValues(new Uint8Array(12)));
 
 	await c.env.ACCOUNTS.prepare(
-		`INSERT INTO keys (id, account_id, hash, prefix, name, description, terms_version, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-	).bind(id, session.sub, hash, prefix, name, description, TERMS_VERSION, isoNow()).run();
+		`INSERT INTO keys (id, account_id, hash, prefix, name, description, kind, link, commercial, terms_version, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+	).bind(id, session.sub, hash, prefix, name, description, project.kind, project.link || null, project.commercial, TERMS_VERSION, isoNow()).run();
 	const entry: KeyEntry = { account: apiAccount(session.sub), tier: account.tier, status: 'active', name };
 	try {
 		await c.env.KEYS.put(`key:${hash}`, JSON.stringify(entry));
@@ -273,6 +309,71 @@ keys.post('/', async (c) => {
 			</div>
 		),
 	});
+});
+
+function detailsPage(c: Ctx, key: KeyRow, project: Project, errors: string[] = [], status = 200) {
+	return page(c, {
+		title: `Project details for ${key.name}`,
+		section: 'keys',
+		children: (
+			<div class="wrap page page--narrow">
+				<a href="/account/keys" class="meta">← Your keys</a>
+				<h1>Project details</h1>
+				<p>
+					For <strong>{key.name}</strong>, the key <code>{key.prefix}…</code>. We use these to check that keys are used as the API terms describe.
+					{' '}If the project changes, update them here. If it’s going to make money, tell us here before it does.
+				</p>
+				<form method="post" action={`/account/keys/${key.id}/details`} class="form">
+					<Errors errors={errors} />
+					<ProjectFields project={project} />
+					<div class="form__actions">
+						<button type="submit" class="btn btn--primary">Save</button>
+						<a href="/account/keys">Cancel</a>
+					</div>
+				</form>
+			</div>
+		),
+	}, status);
+}
+
+async function activeOwnKey(c: Ctx): Promise<KeyRow | null> {
+	const key = await ownKey(c.env.ACCOUNTS, c.get('session').sub, c.req.param('id') ?? '');
+	return key && !key.revoked_at ? key : null;
+}
+
+const noSuchKey = (c: Ctx) => message(c, 404, 'No such key', <p><a href="/account/keys">Your keys</a></p>, 'keys');
+
+keys.get('/:id/details', async (c) => {
+	const key = await activeOwnKey(c);
+	return key ? detailsPage(c, key, projectOf(key)) : noSuchKey(c);
+});
+
+keys.post('/:id/details', async (c) => {
+	const key = await activeOwnKey(c);
+	if (!key) return noSuchKey(c);
+	const { project, errors } = readProject(await c.req.parseBody());
+	if (errors.length) return detailsPage(c, key, project, errors, 400);
+
+	await c.env.ACCOUNTS.prepare(`UPDATE keys SET kind = ?, link = ?, commercial = ? WHERE id = ?`)
+		.bind(project.kind, project.link || null, project.commercial, key.id).run();
+
+	// The terms ask a free project to tell us before it makes money. This is it telling us.
+	const session = c.get('session');
+	const account = await c.env.ACCOUNTS.prepare(`SELECT tier FROM accounts WHERE id = ?`).bind(session.sub).first<{ tier: string }>();
+	if (project.commercial === 'yes' && key.commercial !== 'yes' && account?.tier === 'free') {
+		c.executionCtx.waitUntil((async () => sendMail(c.env, {
+			to: await reviewerAddresses(c.env),
+			subject: `${key.name} says it makes money`,
+			text: [
+				`${session.name} changed the key ${key.prefix}… (${key.name}) to say the project makes money, or is about to.`,
+				'It’s on the free tier, so it needs a paid plan. Email them about one.',
+				'',
+				`${c.env.PORTAL_ORIGIN}/review/accounts/u${session.sub}`,
+			].join('\n'),
+		}))());
+		return c.redirect('/account/keys?done=commercial', 303);
+	}
+	return c.redirect('/account/keys?done=details', 303);
 });
 
 keys.get('/:id/revoke', async (c) => {

@@ -4,6 +4,8 @@ import { expect, vi } from 'vitest';
 import worker from '../src/index';
 
 export const PORTAL = 'https://developer.coasterpedia.net';
+/** The new-key form's project details, filled in the plainest way. */
+export const PROJECT = { kind: 'personal', commercial: 'no' };
 export const WIKI = 'https://coasterpedia.net';
 
 export interface Profile {
@@ -51,7 +53,7 @@ export function stubOutbound() {
 				query: {
 					users: ids.map((id) => (wikiBlocked!.has(id)
 						? { userid: id, name: `User ${id}`, blockid: 1, blockedby: 'Admin', blockreason: 'Vandalism', blockexpiry: 'infinite', blockpartial: false }
-						: { userid: id, name: `User ${id}` })),
+						: { userid: id, name: `User ${id}`, editcount: 1204, registration: '2019-03-04T10:00:00Z' })),
 				},
 			});
 		}
