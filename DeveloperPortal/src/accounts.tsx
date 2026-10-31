@@ -4,7 +4,7 @@
 // grounds for revoking). Both email the owner.
 import { Hono } from 'hono';
 import { ago, type AppEnv, CONTACT, type Ctx, isoNow, message, page, requireSession, shortDate } from './app';
-import { COMMERCIAL, type KeyRow, kindOf, LIGHT_KINDS, LIGHT_PER_DAY } from './data';
+import { COMMERCIAL, type KeyRow, kindOf, LIGHT_KINDS, LIGHT_PER_DAY, platformLabel, platformsOf } from './data';
 import { apiAccount, type KeyEntry } from './env';
 import { removeListing } from './listings';
 import { sendMail } from './mail';
@@ -211,9 +211,11 @@ function ProjectLine({ k }: { k: KeyDetail }) {
 	const kind = kindOf(k.kind);
 	if (!kind) return <div class="meta">No project details yet.</div>;
 	const commercial = COMMERCIAL.find((c) => c.slug === k.commercial)?.label;
+	const platforms = platformsOf(k.platforms).map(platformLabel).join(', ');
 	return (
 		<div class="meta">
-			{kind.label}
+			{kind.short}
+			{platforms && ` · ${platforms}`}
 			{' · '}
 			{k.link ? <a href={k.link} rel="noopener noreferrer nofollow">{k.link}</a> : kind.public ? 'not public yet' : 'no link'}
 			{commercial && <> · makes money: {commercial.toLowerCase()}</>}

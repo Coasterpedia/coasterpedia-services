@@ -12,14 +12,30 @@ export const PLATFORMS = [
 
 export const platformLabel = (slug: string) => PLATFORMS.find((p) => p.slug === slug)?.label ?? slug;
 
-/** What a key is for, asked when it's created. `public` kinds need a link unless the project isn't public yet. */
+/**
+ * Platforms from a column or a form: a JSON array, a bare slug (a listing's
+ * platform, or a pending edit saved before migration 0004) or an array.
+ * Unknown slugs go; the rest come back in PLATFORMS order.
+ */
+export function platformsOf(value: string | string[] | null | undefined): string[] {
+	let list: unknown = value ?? [];
+	if (typeof value === 'string') {
+		try {
+			list = value.startsWith('[') ? JSON.parse(value) : [value];
+		} catch {
+			list = [];
+		}
+	}
+	const given = new Set(Array.isArray(list) ? list.map(String) : []);
+	return PLATFORMS.map((p) => p.slug).filter((slug) => given.has(slug));
+}
+
+/** What a key is for, asked when it's created. A `public` kind needs a platform, and a link unless it isn't public yet. */
 export const KINDS = [
-	{ slug: 'website', label: 'A website', public: true },
-	{ slug: 'app', label: 'An app for phones or computers', public: true },
-	{ slug: 'bot', label: 'A bot, such as for Discord', public: true },
-	{ slug: 'personal', label: 'Something only I use, such as a ride log or a spreadsheet', public: false },
-	{ slug: 'trying', label: 'I’m trying the API out', public: false },
-	{ slug: 'other', label: 'Something else', public: false },
+	{ slug: 'public', label: 'Something other people use, or will', short: 'For other people', public: true },
+	{ slug: 'personal', label: 'Something only I use, such as a ride log or a spreadsheet', short: 'Only for the owner', public: false },
+	{ slug: 'trying', label: 'Nothing yet. I’m trying the API out', short: 'Trying the API out', public: false },
+	{ slug: 'other', label: 'Something else, such as research or a school project', short: 'Something else', public: false },
 ] as const;
 
 export const kindOf = (slug: string | null) => KINDS.find((k) => k.slug === slug);
@@ -48,6 +64,16 @@ export const MAX_KEYS = 10;
 /** We hide a listing after this long without a request (§13.4). */
 export const HIDE_AFTER_DAYS = 90;
 
+/** An https URL of up to 300 characters, normalised; null for anything else. */
+export function httpsUrl(value: string): string | null {
+	try {
+		const url = new URL(value);
+		return url.protocol === 'https:' && value.length <= 300 ? url.toString() : null;
+	} catch {
+		return null;
+	}
+}
+
 /** What to fix, worded the same on the key form and the listing form. */
 export const FIX = {
 	name: 'Give the project a name of up to 40 characters.',
@@ -59,7 +85,8 @@ export const FIX = {
 	commercial: 'Say whether the project will make money.',
 	link: 'Add a link to the project that starts with https://.',
 	credit: 'Add a link to where the project credits Coasterpedia, starting with https://.',
-	platform: 'Choose the platform it runs on.',
+	platform: 'Choose at least one platform it runs on.',
+	keyPlatform: 'Choose where the project runs.',
 };
 
 export interface KeyRow {
@@ -75,6 +102,8 @@ export interface KeyRow {
 	/** Null on keys made before migration 0003. */
 	kind: string | null;
 	link: string | null;
+	/** A JSON array of PLATFORMS slugs, or null. */
+	platforms: string | null;
 	commercial: string | null;
 	asked_at: string | null;
 }
@@ -84,13 +113,16 @@ export interface ListingFields {
 	name: string;
 	description: string;
 	link: string;
-	platform: string;
+	platforms: string[];
 	credit_url: string;
 	show_maker: number;
 	screenshot: string | null;
 }
 
-export interface ListingRow extends ListingFields {
+/** As D1 holds it: platforms as JSON, and platform, the first of them, for showcase.json. */
+export interface ListingRow extends Omit<ListingFields, 'platforms'> {
+	platform: string;
+	platforms: string | null;
 	key_id: string;
 	state: 'draft' | 'review' | 'listed' | 'rejected';
 	pending: string | null;
@@ -110,7 +142,19 @@ export function usesOf(row: { uses: string | null }): string[] {
 }
 
 export function pendingOf(row: ListingRow): ListingFields | null {
-	return row.pending ? (JSON.parse(row.pending) as ListingFields) : null;
+	if (!row.pending) return null;
+	const pending = JSON.parse(row.pending) as ListingFields & { platform?: string };
+	return { ...pending, platforms: platformsOf(pending.platforms ?? pending.platform) };
+}
+
+/** The listed version, in the form's shape. */
+export function fieldsOf(row: ListingRow): ListingFields {
+	return { ...row, platforms: platformsOf(row.platforms ?? row.platform) };
+}
+
+/** A form field that may come once or several times (parseBody with all: true). */
+export function listField(value: unknown): string[] {
+	return (Array.isArray(value) ? value : value === undefined ? [] : [value]).map(String);
 }
 
 /** A key of this account, revoked or not; null for anyone else's. */

@@ -119,27 +119,30 @@ describe('keys', () => {
 });
 
 describe('project details', () => {
-	const stored = async () => (await env.ACCOUNTS.prepare('SELECT kind, link, commercial FROM keys').first<Record<string, string | null>>())!;
+	const stored = async () => (await env.ACCOUNTS.prepare('SELECT kind, platforms, link, commercial FROM keys').first<Record<string, string | null>>())!;
 
-	it('stores what the key is for', async () => {
+	it('stores what the key is for, on every platform chosen', async () => {
 		const browser = new Browser();
 		await browser.signIn();
-		const res = await browser.post('/account/keys', { name: 'Credit log', description: 'Rides.', kind: 'app', link: 'https://testflight.apple.com/join/abc', commercial: 'later', terms: '1' });
+		const form = new FormData();
+		for (const [k, v] of [['name', 'Credit log'], ['description', 'Rides.'], ['kind', 'public'], ['platforms', 'android'], ['platforms', 'ios'],
+			['link', 'https://testflight.apple.com/join/abc'], ['commercial', 'later'], ['terms', '1']]) form.append(k, v);
+		const res = await browser.post('/account/keys', form);
 		expect(res.status).toBe(200);
-		expect(await stored()).toEqual({ kind: 'app', link: 'https://testflight.apple.com/join/abc', commercial: 'later' });
+		expect(await stored()).toEqual({ kind: 'public', platforms: '["ios","android"]', link: 'https://testflight.apple.com/join/abc', commercial: 'later' });
 	});
 
-	it('needs a link for a website, an app or a bot, unless it isn’t public yet', async () => {
+	it('needs a platform and a link for a project other people use, unless it isn’t public yet', async () => {
 		const browser = new Browser();
 		await browser.signIn();
-		const fields = { name: 'Site', description: 'A site.', kind: 'website', commercial: 'no', terms: '1' };
-		const missing = await browser.post('/account/keys', fields);
-		expect(missing.status).toBe(400);
-		expect(await missing.text()).toContain('or tick “It isn’t public yet”');
-		expect((await browser.post('/account/keys', { ...fields, link: 'http://example.com' })).status).toBe(400);
+		const fields = { name: 'Site', description: 'A site.', kind: 'public', commercial: 'no', terms: '1' };
+		const missing = await (await browser.post('/account/keys', fields)).text();
+		expect(missing).toContain('Choose where the project runs.');
+		expect(missing).toContain('or tick “It isn’t public yet”');
+		expect((await browser.post('/account/keys', { ...fields, platforms: 'web', link: 'http://example.com' })).status).toBe(400);
 
-		expect((await browser.post('/account/keys', { ...fields, not_public: '1' })).status).toBe(200);
-		expect(await stored()).toEqual({ kind: 'website', link: null, commercial: 'no' });
+		expect((await browser.post('/account/keys', { ...fields, platforms: 'web', not_public: '1' })).status).toBe(200);
+		expect(await stored()).toEqual({ kind: 'public', platforms: '["web"]', link: null, commercial: 'no' });
 	});
 
 	it('refuses a free key for a project that makes money, and keeps what was typed', async () => {
@@ -163,10 +166,10 @@ describe('project details', () => {
 
 		const saved = await browser.post(`/account/keys/${id}/details`, { kind: 'personal', commercial: 'no' });
 		expect(saved.headers.get('location')).toBe('/account/keys?done=details');
-		expect(await stored()).toEqual({ kind: 'personal', link: null, commercial: 'no' });
+		expect(await stored()).toEqual({ kind: 'personal', platforms: null, link: null, commercial: 'no' });
 
 		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-		const changed = await browser.post(`/account/keys/${id}/details`, { kind: 'app', link: 'https://example.com', commercial: 'yes' });
+		const changed = await browser.post(`/account/keys/${id}/details`, { kind: 'public', platforms: 'ios', link: 'https://example.com', commercial: 'yes' });
 		expect(changed.headers.get('location')).toBe('/account/keys?done=commercial');
 		// SES isn't configured in tests, so the mail is logged instead.
 		expect(warn).toHaveBeenCalledWith(expect.stringContaining('Credit log says it makes money'));
@@ -180,7 +183,7 @@ describe('project details', () => {
 		const other = new Browser();
 		await other.signIn({ sub: 43, username: 'Other', confirmed_email: true, email: 'other@example.com' });
 		expect((await other.fetch(`/account/keys/${id}/details`)).status).toBe(404);
-		expect((await other.post(`/account/keys/${id}/details`, { kind: 'website', link: 'https://x.example', commercial: 'yes' })).status).toBe(404);
-		expect(await stored()).toEqual({ kind: 'personal', link: null, commercial: 'no' });
+		expect((await other.post(`/account/keys/${id}/details`, { kind: 'public', platforms: 'web', link: 'https://x.example', commercial: 'yes' })).status).toBe(404);
+		expect(await stored()).toEqual({ kind: 'personal', platforms: null, link: null, commercial: 'no' });
 	});
 });

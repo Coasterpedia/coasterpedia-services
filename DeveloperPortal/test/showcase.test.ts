@@ -15,7 +15,7 @@ const LISTING = {
 	name: 'Statbot',
 	description: 'Coaster stats for Discord servers.',
 	link: 'https://statbot.example',
-	platform: 'discord_bot',
+	platforms: 'discord_bot' as string | string[],
 	credit_url: 'https://statbot.example/about',
 	show_maker: '1',
 };
@@ -38,9 +38,9 @@ afterEach(() => vi.restoreAllMocks());
 
 const sesMails = () => outbound.filter((o) => o.url.startsWith('https://email.')).map((o) => JSON.parse(String(o.init!.body)));
 
-function form(fields: Record<string, string>) {
+function form(fields: Record<string, string | string[]>) {
 	const data = new FormData();
-	for (const [k, v] of Object.entries(fields)) data.set(k, v);
+	for (const [k, v] of Object.entries(fields)) for (const one of [v].flat()) data.append(k, one);
 	return data;
 }
 
@@ -64,7 +64,7 @@ describe('listing and review', () => {
 	});
 
 	it('refuses a listing without https links or a platform', async () => {
-		const res = await submit({ ...LISTING, link: 'http://statbot.example', platform: 'fax' });
+		const res = await submit({ ...LISTING, link: 'http://statbot.example', platforms: 'fax' });
 		expect(res.status).toBe(400);
 		const html = await res.text();
 		expect(html).toContain(FIX.link);
@@ -91,7 +91,7 @@ describe('listing and review', () => {
 		expect(page).toContain('by <a href="https://coasterpedia.net/wiki/User:Developer">Developer</a>');
 
 		const json = await (await new Browser().fetch('/showcase.json')).json<{ data: Record<string, unknown>[] }>();
-		expect(json.data).toEqual([expect.objectContaining({ name: 'Statbot', platform: 'discord_bot', maker: 'Developer', url: 'https://statbot.example/' })]);
+		expect(json.data).toEqual([expect.objectContaining({ name: 'Statbot', platform: 'discord_bot', platforms: ['discord_bot'], maker: 'Developer', url: 'https://statbot.example/' })]);
 	});
 
 	it('keeps the listed version up while an edit is reviewed, and keeps it when the edit is turned down', async () => {
@@ -152,6 +152,36 @@ describe('listing and review', () => {
 		await reviewer.post(`/review/${keyId}/approve`, {});
 		expect(await (await new Browser().fetch('/showcase?on=web')).text()).not.toContain('statbot.example');
 		expect(await (await new Browser().fetch('/showcase?on=discord_bot')).text()).toContain('statbot.example');
+	});
+
+	it('lists a project on several platforms under each, and keeps platform for older readers', async () => {
+		await submit({ ...LISTING, platforms: ['android', 'ios'] });
+		await reviewer.post(`/review/${keyId}/approve`, {});
+		await env.ACCOUNTS.prepare('UPDATE keys SET last_used_at = ?').bind(new Date().toISOString()).run();
+		const json = await (await new Browser().fetch('/showcase.json')).json<{ data: Record<string, unknown>[] }>();
+		expect(json.data[0]).toEqual(expect.objectContaining({ platform: 'ios', platforms: ['ios', 'android'] }));
+		const html = await (await new Browser().fetch('/showcase?on=android')).text();
+		expect(html).toContain('statbot.example');
+		expect(html).toContain('<span class="t-badge">iOS</span><span class="t-badge">Android</span>');
+	});
+
+	it('starts a first listing from what the key says', async () => {
+		await env.ACCOUNTS.prepare(`UPDATE keys SET kind = 'public', platforms = '["ios","android"]', link = 'https://statbot.example/app'`).run();
+		const html = await (await developer.fetch(`/account/keys/${keyId}/listing`)).text();
+		expect(html).toContain('value="https://statbot.example/app"');
+		expect(html).toMatch(/value="ios" checked/);
+		expect(html).toMatch(/value="android" checked/);
+		expect(html).not.toMatch(/value="web" checked/);
+	});
+
+	it('accepts an edit saved before a listing could have several platforms', async () => {
+		await submit();
+		await reviewer.post(`/review/${keyId}/approve`, {});
+		const old = { ...LISTING, platforms: undefined, platform: 'web', link: 'https://statbot.example/', credit_url: 'https://statbot.example/about', show_maker: 1, screenshot: null };
+		await env.ACCOUNTS.prepare('UPDATE listings SET pending = ?').bind(JSON.stringify(old)).run();
+		await reviewer.post(`/review/${keyId}/approve`, {});
+		const row = (await env.ACCOUNTS.prepare('SELECT platform, platforms FROM listings').first<Record<string, string>>())!;
+		expect(row).toEqual({ platform: 'web', platforms: '["web"]' });
 	});
 });
 

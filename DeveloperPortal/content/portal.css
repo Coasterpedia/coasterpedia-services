@@ -708,6 +708,13 @@ code {
 	gap: 8px;
 }
 
+.project__platforms {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: 4px;
+}
+
 .project__title a {
 	font-size: var( --font-size-large );
 	font-weight: var( --font-weight-bold );

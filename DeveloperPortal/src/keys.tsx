@@ -4,7 +4,7 @@ import { Hono } from 'hono';
 import { ago, type AppEnv, ClosedBeta, CONTACT, type Ctx, isoNow, message, page, requireSession, shortDate } from './app';
 import { isBlocked } from './blocks';
 import { b64url, randomToken } from './cookies';
-import { FIX, HIDE_AFTER_DAYS, isVisible, type KeyRow, type ListingRow, MAX_KEYS, ownKey, REQUESTS_PER_MINUTE, usesOf } from './data';
+import { FIX, HIDE_AFTER_DAYS, isVisible, type KeyRow, kindOf, type ListingRow, MAX_KEYS, ownKey, REQUESTS_PER_MINUTE, usesOf } from './data';
 import { apiAccount, type KeyEntry } from './env';
 import { removeListing } from './listings';
 import { reviewerAddresses, sendMail } from './mail';
@@ -79,6 +79,9 @@ function ShowcaseCell({ row, now }: { row: Row; now: number }) {
 	);
 }
 
+/** No kind, or a public one with no platform (a 0003 "app" key, converted by 0004). */
+const detailsMissing = (row: KeyRow) => !row.kind || (kindOf(row.kind)?.public === true && !row.platforms);
+
 const FLASH: Record<string, string> = {
 	sent: 'Thanks. We’ll review it and email you when we’re done.',
 	withdrawn: 'We’ve withdrawn it.',
@@ -139,7 +142,7 @@ keys.get('/', async (c) => {
 									<div role="cell" class="keys__project">
 										<strong>{row.name}</strong>
 										<span>{row.description}</span>
-										<a href={`/account/keys/${row.id}/details`}>{row.kind ? 'Project details' : 'Add project details'}</a>
+										<a href={`/account/keys/${row.id}/details`}>{detailsMissing(row) ? 'Add project details' : 'Project details'}</a>
 									</div>
 									<div role="cell" class="keys__key">
 										<code>{row.prefix}…</code>
@@ -244,7 +247,7 @@ keys.get('/new', async (c) => {
 keys.post('/', async (c) => {
 	if (!TERMS_VERSION) return termsClosed(c);
 	const session = c.get('session');
-	const form = await c.req.parseBody();
+	const form = await c.req.parseBody({ all: true });
 	const name = String(form.name ?? '').trim();
 	const description = String(form.description ?? '').trim();
 	const { project, errors: projectErrors } = readProject(form);
@@ -281,8 +284,9 @@ keys.post('/', async (c) => {
 	const id = b64url(crypto.getRandomValues(new Uint8Array(12)));
 
 	await c.env.ACCOUNTS.prepare(
-		`INSERT INTO keys (id, account_id, hash, prefix, name, description, kind, link, commercial, terms_version, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-	).bind(id, session.sub, hash, prefix, name, description, project.kind, project.link || null, project.commercial, TERMS_VERSION, isoNow()).run();
+		`INSERT INTO keys (id, account_id, hash, prefix, name, description, kind, platforms, link, commercial, terms_version, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+	).bind(id, session.sub, hash, prefix, name, description, project.kind, platformsJson(project), project.link || null, project.commercial, TERMS_VERSION, isoNow()).run();
 	const entry: KeyEntry = { account: apiAccount(session.sub), tier: account.tier, status: 'active', name };
 	try {
 		await c.env.KEYS.put(`key:${hash}`, JSON.stringify(entry));
@@ -336,6 +340,8 @@ function detailsPage(c: Ctx, key: KeyRow, project: Project, errors: string[] = [
 	}, status);
 }
 
+const platformsJson = (project: Project) => (project.platforms.length ? JSON.stringify(project.platforms) : null);
+
 async function activeOwnKey(c: Ctx): Promise<KeyRow | null> {
 	const key = await ownKey(c.env.ACCOUNTS, c.get('session').sub, c.req.param('id') ?? '');
 	return key && !key.revoked_at ? key : null;
@@ -351,11 +357,11 @@ keys.get('/:id/details', async (c) => {
 keys.post('/:id/details', async (c) => {
 	const key = await activeOwnKey(c);
 	if (!key) return noSuchKey(c);
-	const { project, errors } = readProject(await c.req.parseBody());
+	const { project, errors } = readProject(await c.req.parseBody({ all: true }));
 	if (errors.length) return detailsPage(c, key, project, errors, 400);
 
-	await c.env.ACCOUNTS.prepare(`UPDATE keys SET kind = ?, link = ?, commercial = ? WHERE id = ?`)
-		.bind(project.kind, project.link || null, project.commercial, key.id).run();
+	await c.env.ACCOUNTS.prepare(`UPDATE keys SET kind = ?, platforms = ?, link = ?, commercial = ? WHERE id = ?`)
+		.bind(project.kind, platformsJson(project), project.link || null, project.commercial, key.id).run();
 
 	// The terms ask a free project to tell us before it makes money. This is it telling us.
 	const session = c.get('session');

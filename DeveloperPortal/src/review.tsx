@@ -3,7 +3,7 @@
 // and the screenshot is fine.
 import { Hono, type MiddlewareHandler } from 'hono';
 import { type AppEnv, type Ctx, isoNow, isReviewer, message, page, requireSession, shortDate } from './app';
-import { type ListingFields, type ListingRow, pendingOf, platformLabel, usesOf } from './data';
+import { fieldsOf, type ListingFields, type ListingRow, pendingOf, platformLabel, usesOf } from './data';
 import { CREDIT_LINE, shotUrl } from './listings';
 import { sendMail } from './mail';
 import { WIKI } from './views/layout';
@@ -23,14 +23,14 @@ type QueueRow = ListingRow & { prefix: string; uses: string | null; last_used_at
 
 function Entry({ row }: { row: QueueRow }) {
 	const pending = pendingOf(row);
-	const shown: ListingFields = pending ?? row;
+	const shown: ListingFields = pending ?? fieldsOf(row);
 	return (
 		<article class="card review-entry">
 			{shown.screenshot
 				? <img class="review-entry__shot" src={shotUrl(shown.screenshot)} alt={`Screenshot of ${shown.name}`} width={640} height={400} />
 				: <div class="review-entry__shot t-photo-placeholder" role="img" aria-label="No screenshot" />}
 			<div class="review-entry__body">
-				<h2>{shown.name} <span class="t-badge">{platformLabel(shown.platform)}</span></h2>
+				<h2>{shown.name} {shown.platforms.map((p) => <span class="t-badge">{platformLabel(p)}</span>)}</h2>
 				<p>{shown.description}</p>
 				<dl class="facts">
 					<dt>Kind</dt><dd>{pending ? `An edit to a listed project${row.name !== shown.name ? ` (listed as ${row.name})` : ''}` : 'A new listing'}</dd>
@@ -99,9 +99,10 @@ review.post('/:key/approve', async (c) => {
 
 	if (pending) {
 		await c.env.ACCOUNTS.prepare(
-			`UPDATE listings SET name = ?, description = ?, link = ?, platform = ?, credit_url = ?, show_maker = ?, screenshot = ?,
+			`UPDATE listings SET name = ?, description = ?, link = ?, platform = ?, platforms = ?, credit_url = ?, show_maker = ?, screenshot = ?,
 				pending = NULL, note = NULL, reviewed_at = ?, reviewed_by = ? WHERE key_id = ?`,
-		).bind(pending.name, pending.description, pending.link, pending.platform, pending.credit_url, pending.show_maker, pending.screenshot, now, by, row.key_id).run();
+		).bind(pending.name, pending.description, pending.link, pending.platforms[0], JSON.stringify(pending.platforms),
+			pending.credit_url, pending.show_maker, pending.screenshot, now, by, row.key_id).run();
 		if (row.screenshot && row.screenshot !== pending.screenshot) await c.env.SHOTS.delete(row.screenshot);
 	} else {
 		await c.env.ACCOUNTS.prepare(

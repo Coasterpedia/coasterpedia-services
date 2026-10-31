@@ -134,7 +134,7 @@ describe('accounts', () => {
 		expect(list).toContain('Busy for what it says it is');
 
 		const html = await (await browser.fetch('/review/accounts/u42')).text();
-		expect(html).toContain('Something only I use, such as a ride log or a spreadsheet');
+		expect(html).toContain('Only for the owner · no link');
 		expect(html).toContain('no link');
 		expect(html).toContain('makes money: no');
 		expect(html).toContain('says it’s only for their own use, and it made 4,014 requests in 14 days, about 287 a day.');

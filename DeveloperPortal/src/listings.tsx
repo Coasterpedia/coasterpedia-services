@@ -4,9 +4,10 @@
 import { Hono } from 'hono';
 import { type AppEnv, type Ctx, isoNow, message, page, requireSession } from './app';
 import { randomToken } from './cookies';
-import { FIX, type KeyRow, type ListingFields, type ListingRow, listingOf, ownKey, pendingOf, PLATFORMS, platformLabel, usesOf } from './data';
+import { fieldsOf, FIX, httpsUrl, type KeyRow, type ListingFields, type ListingRow, listField, listingOf, ownKey, pendingOf, platformLabel, platformsOf, usesOf } from './data';
 import type { Env } from './env';
 import { reviewerAddresses, sendMail } from './mail';
+import { PlatformChoices } from './project';
 
 export const listings = new Hono<AppEnv>();
 listings.use('*', requireSession);
@@ -25,15 +26,6 @@ export async function removeListing(env: Env, keyId: string): Promise<void> {
 	const shots = [row.screenshot, pendingOf(row)?.screenshot].filter((s): s is string => !!s);
 	await env.ACCOUNTS.prepare(`DELETE FROM listings WHERE key_id = ?`).bind(keyId).run();
 	if (shots.length) await env.SHOTS.delete(shots);
-}
-
-export function httpsUrl(value: string): string | null {
-	try {
-		const url = new URL(value);
-		return url.protocol === 'https:' && value.length <= 300 ? url.toString() : null;
-	} catch {
-		return null;
-	}
 }
 
 type Draft = Omit<ListingFields, 'screenshot'>;
@@ -80,17 +72,7 @@ function ListingForm({ apiKey: key, fields, screenshot, errors, listed, note }: 
 					<input class="input" id="link" name="link" type="url" placeholder="https://" required value={fields.link} />
 					<p class="field__help">Where someone can use it, such as the website, the app store page or a bot’s invite link.</p>
 				</div>
-				<fieldset class="field">
-					<legend class="field__label">Platform</legend>
-					<div class="t-segmented portal-segmented">
-						{PLATFORMS.map((p) => (
-							<label class="t-segmented__option">
-								<input type="radio" name="platform" value={p.slug} checked={fields.platform === p.slug} required />
-								{p.label}
-							</label>
-						))}
-					</div>
-				</fieldset>
+				<PlatformChoices checked={fields.platforms} legend="Platforms" help="Choose every one it runs on. We show each on the project’s card." />
 				<div class="field">
 					<label class="field__label" for="screenshot">Screenshot</label>
 					{screenshot && <img class="listing-form__shot" src={shotUrl(screenshot)} alt="The screenshot sent last time" width={320} height={200} />}
@@ -149,10 +131,11 @@ listings.get('/', async (c) => {
 	const key = await activeKey(c);
 	if (!key) return noKey(c);
 	const row = await listingOf(c.env.ACCOUNTS, key.id);
-	const source = (row && pendingOf(row)) ?? row;
+	const source = row && (pendingOf(row) ?? fieldsOf(row));
+	// A first listing starts from what the key says about the project.
 	const fields: Draft = source
-		? { name: source.name, description: source.description, link: source.link, platform: source.platform, credit_url: source.credit_url, show_maker: source.show_maker }
-		: { name: key.name, description: key.description, link: key.link ?? '', platform: '', credit_url: '', show_maker: 0 };
+		? { name: source.name, description: source.description, link: source.link, platforms: source.platforms, credit_url: source.credit_url, show_maker: source.show_maker }
+		: { name: key.name, description: key.description, link: key.link ?? '', platforms: platformsOf(key.platforms), credit_url: '', show_maker: 0 };
 	return form(c, key, row, fields, []);
 });
 
@@ -179,14 +162,14 @@ listings.post('/', async (c) => {
 	if (!key) return noKey(c);
 	const session = c.get('session');
 	const row = await listingOf(c.env.ACCOUNTS, key.id);
-	const body = await c.req.parseBody();
+	const body = await c.req.parseBody({ all: true });
 	const text = (name: string) => String(body[name] ?? '').trim();
 
 	const fields: Draft = {
 		name: text('name'),
 		description: text('description'),
 		link: text('link'),
-		platform: text('platform'),
+		platforms: platformsOf(listField(body.platforms)),
 		credit_url: text('credit_url'),
 		show_maker: body.show_maker === '1' ? 1 : 0,
 	};
@@ -197,7 +180,7 @@ listings.post('/', async (c) => {
 	if (!link) errors.push(FIX.link);
 	const credit = httpsUrl(fields.credit_url);
 	if (!credit) errors.push(FIX.credit);
-	if (!PLATFORMS.some((p) => p.slug === fields.platform)) errors.push(FIX.platform);
+	if (fields.platforms.length === 0) errors.push(FIX.platform);
 
 	const pending = row ? pendingOf(row) : null;
 	let screenshot = pending?.screenshot ?? row?.screenshot ?? null;
@@ -220,11 +203,12 @@ listings.post('/', async (c) => {
 			.bind(JSON.stringify(listing), now, key.id).run();
 	} else {
 		await c.env.ACCOUNTS.prepare(
-			`INSERT INTO listings (key_id, state, name, description, link, platform, credit_url, show_maker, screenshot, submitted_at)
-			VALUES (?1, 'review', ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
-			ON CONFLICT (key_id) DO UPDATE SET state = 'review', name = ?2, description = ?3, link = ?4, platform = ?5,
-				credit_url = ?6, show_maker = ?7, screenshot = ?8, note = NULL, submitted_at = ?9`,
-		).bind(key.id, listing.name, listing.description, listing.link, listing.platform, listing.credit_url, listing.show_maker, listing.screenshot, now).run();
+			`INSERT INTO listings (key_id, state, name, description, link, platform, platforms, credit_url, show_maker, screenshot, submitted_at)
+			VALUES (?1, 'review', ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
+			ON CONFLICT (key_id) DO UPDATE SET state = 'review', name = ?2, description = ?3, link = ?4, platform = ?5, platforms = ?6,
+				credit_url = ?7, show_maker = ?8, screenshot = ?9, note = NULL, submitted_at = ?10`,
+		).bind(key.id, listing.name, listing.description, listing.link, listing.platforms[0], JSON.stringify(listing.platforms),
+			listing.credit_url, listing.show_maker, listing.screenshot, now).run();
 	}
 
 	c.executionCtx.waitUntil((async () => sendMail(c.env, {
@@ -234,7 +218,7 @@ listings.post('/', async (c) => {
 			`${session.name} ${row?.state === 'listed' ? 'edited a listed project' : 'sent a project for the showcase'}.`,
 			'',
 			`Project: ${listing.name}`,
-			`Platform: ${platformLabel(listing.platform)}`,
+			`Platforms: ${listing.platforms.map(platformLabel).join(', ')}`,
 			`Link: ${listing.link}`,
 			`Credit: ${listing.credit_url}`,
 			'',

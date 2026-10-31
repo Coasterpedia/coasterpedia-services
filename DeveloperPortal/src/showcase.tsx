@@ -2,7 +2,7 @@
 // last 90 days, newest listed first, never ordered by usage.
 import { Hono } from 'hono';
 import { type AppEnv, page } from './app';
-import { HIDE_AFTER_DAYS, type ListingRow, PLATFORMS, platformLabel, usesOf } from './data';
+import { HIDE_AFTER_DAYS, type ListingRow, PLATFORMS, platformLabel, platformsOf, usesOf } from './data';
 import type { Env } from './env';
 import { shotUrl } from './listings';
 import { WIKI } from './views/layout';
@@ -10,6 +10,8 @@ import { WIKI } from './views/layout';
 export const showcase = new Hono<AppEnv>();
 
 type ShowcaseRow = ListingRow & { uses: string | null; username: string };
+
+const platformsOfRow = (row: ListingRow) => platformsOf(row.platforms ?? row.platform);
 
 /** Listed, key alive, and used (or listed) within the window. */
 export async function visibleListings(env: Env, now = Date.now()): Promise<ShowcaseRow[]> {
@@ -34,7 +36,7 @@ export function ProjectCard({ row }: { row: ShowcaseRow }) {
 			<div class="project__body">
 				<div class="project__title">
 					<a href={row.link} rel="noopener">{row.name}</a>
-					<span class="t-badge">{platformLabel(row.platform)}</span>
+					<span class="project__platforms">{platformsOfRow(row).map((p) => <span class="t-badge">{platformLabel(p)}</span>)}</span>
 				</div>
 				<p>{row.description}</p>
 				{(uses.length > 0 || row.show_maker === 1) && (
@@ -52,8 +54,9 @@ export function ProjectCard({ row }: { row: ShowcaseRow }) {
 showcase.get('/showcase', async (c) => {
 	const all = await visibleListings(c.env);
 	const on = new Set((c.req.query('on') ?? '').split(',').filter((s) => PLATFORMS.some((p) => p.slug === s)));
-	const shown = on.size ? all.filter((r) => on.has(r.platform)) : all;
-	const facets = PLATFORMS.map((p) => ({ ...p, count: all.filter((r) => r.platform === p.slug).length })).filter((p) => p.count > 0);
+	// A project on several platforms counts under each, and shows when any of them is on.
+	const shown = on.size ? all.filter((r) => platformsOfRow(r).some((p) => on.has(p))) : all;
+	const facets = PLATFORMS.map((p) => ({ ...p, count: all.filter((r) => platformsOfRow(r).includes(p.slug)).length })).filter((p) => p.count > 0);
 
 	const toggled = (slug: string) => {
 		const next = new Set(on);
@@ -108,7 +111,9 @@ export async function showcaseJson(env: Env, now = Date.now()) {
 			name: r.name,
 			description: r.description,
 			url: r.link,
+			// platform, the first of platforms, for readers from before a project could have several.
 			platform: r.platform,
+			platforms: platformsOfRow(r),
 			screenshot: r.screenshot ? `${env.PORTAL_ORIGIN}${shotUrl(r.screenshot)}` : null,
 			uses: usesOf(r),
 			maker: r.show_maker === 1 ? r.username : null,

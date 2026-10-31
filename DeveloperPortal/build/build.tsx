@@ -47,7 +47,7 @@ async function fetchJson<T>(url: string): Promise<T | null> {
 }
 
 interface Meta { schema_version: string; counts: Record<string, number> }
-interface Listed { name: string; description: string; url: string; platform: string; screenshot: string | null; uses: string[]; maker: string | null }
+interface Listed { name: string; description: string; url: string; platform: string; platforms?: string[]; screenshot: string | null; uses: string[]; maker: string | null }
 
 /**
  * In CI, what the daily run wrote to R2, read with the deploy job's token:
@@ -242,7 +242,8 @@ const GETS = [
 ];
 
 function HomeCard({ p }: { p: Listed }) {
-	const label = PLATFORMS.find((x) => x.slug === p.platform)?.label ?? p.platform;
+	// platforms is missing from data the daily run wrote before migration 0004.
+	const labels = (p.platforms ?? [p.platform]).map((slug) => PLATFORMS.find((x) => x.slug === slug)?.label ?? slug);
 	return (
 		<article class="card project">
 			<a class={p.screenshot ? 'project__shot' : 'project__shot t-photo-placeholder'} href={p.url} tabindex={-1} aria-hidden="true">
@@ -251,7 +252,7 @@ function HomeCard({ p }: { p: Listed }) {
 			<div class="project__body">
 				<div class="project__title">
 					<a href={p.url} rel="noopener">{p.name}</a>
-					<span class="t-badge">{label}</span>
+					<span class="project__platforms">{labels.map((label) => <span class="t-badge">{label}</span>)}</span>
 				</div>
 				<p>{p.description}</p>
 				{p.uses.length > 0 && <p class="meta project__meta">Uses {p.uses.join(' · ')}</p>}
