@@ -154,9 +154,12 @@ public sealed record Capture(Uri? Snapshot, string? Error, string? Message)
         { Snapshot: not null } => CaptureFault.None,
         // Save Page Now itself answering 429: we're starting captures too fast.
         { Error: "http-429" } => CaptureFault.RateLimited,
-        // No JSON at all: web.archive.org itself refused the request.
-        { Error: { } e } when e.StartsWith("http-") || SaveServiceErrors.Contains(e) => CaptureFault.SaveService,
+        // The keys were refused: nothing saves until they're fixed.
+        { Error: "http-401" or "http-403" } => CaptureFault.SaveService,
+        { Error: { } e } when SaveServiceErrors.Contains(e) => CaptureFault.SaveService,
         _ when Permanent || Later => CaptureFault.Url,
+        // Anything else, a bare 500 included, counts as the site's: one source answered 500 every time (Nov 2026) and
+        // paused every save. Save Page Now failing for every site still pauses them all, through FailingHostsBeforeGlobalPause.
         _ => CaptureFault.Site
     };
 

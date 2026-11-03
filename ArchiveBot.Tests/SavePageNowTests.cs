@@ -98,11 +98,19 @@ public class SavePageNowTests
     }
 
     [Fact]
-    public async Task An_error_page_instead_of_an_answer_is_save_page_nows_fault()
+    public async Task An_error_page_instead_of_an_answer_counts_as_the_sites()
     {
-        var capture = await Client(new Script((HttpStatusCode.BadGateway, "<html>502 Bad Gateway</html>"))).Save(Url);
+        var capture = await Client(new Script((HttpStatusCode.InternalServerError, "<html>500 Internal Server Error</html>"))).Save(Url);
 
-        Assert.Equal("http-502", capture.Error);
+        Assert.Equal("http-500", capture.Error);
+        Assert.Equal(CaptureFault.Site, capture.Fault);
+    }
+
+    [Fact]
+    public async Task Refused_keys_are_save_page_nows_fault()
+    {
+        var capture = await Client(new Script((HttpStatusCode.Unauthorized, "<html>401</html>"))).Save(Url);
+
         Assert.Equal(CaptureFault.SaveService, capture.Fault);
     }
 
