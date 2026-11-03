@@ -49,10 +49,21 @@ public class SavePageNow : ISavePageNow
         }
 
         // skip_first_archive: we never ask whether this is the URL's first capture, and the check slows every one.
+        // if_not_archived_within: a capture from the last day is used rather than a new one. Many files share a
+        // source (eight LAGO logos cite www.lago.be), and a URL takes only 5 captures a day.
         var (status, start) = await Send(new HttpRequestMessage(HttpMethod.Post, "/save")
         {
-            Content = new FormUrlEncodedContent(new Dictionary<string, string> { ["url"] = url, ["skip_first_archive"] = "1" })
+            Content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["url"] = url, ["skip_first_archive"] = "1", ["if_not_archived_within"] = "1d"
+            })
         });
+        // The documentation doesn't say how a reused capture is answered, so take one given straight away.
+        if (start is { Status: "success", Timestamp: { } reused })
+        {
+            return Capture.Saved(new Uri($"https://web.archive.org/web/{reused}/{url}"));
+        }
+
         if (start?.JobId is not { } jobId)
         {
             return Capture.Failed(start?.StatusExt ?? $"http-{(int)status}", start?.Message);

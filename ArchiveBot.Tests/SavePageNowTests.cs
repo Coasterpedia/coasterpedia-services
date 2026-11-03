@@ -49,7 +49,20 @@ public class SavePageNowTests
         Assert.Equal(CaptureFault.None, capture.Fault);
         Assert.Equal((HttpMethod.Post, "/save", "LOW access:secret"), (script.Requests[0].Method, script.Requests[0].Path, script.Requests[0].Auth));
         Assert.Contains("skip_first_archive=1", script.Requests[0].Form);
+        Assert.Contains("if_not_archived_within=1d", script.Requests[0].Form);
         Assert.Equal("/save/status/spn2-abc", script.Requests[2].Path);
+    }
+
+    [Fact]
+    public async Task A_recent_capture_given_straight_away_is_used()
+    {
+        var script = new Script((HttpStatusCode.OK,
+            """{"status":"success","url":"https://www.lago.be/","timestamp":"20261103091200","message":"The same snapshot had been made 3 hours ago."}"""));
+
+        var capture = await Client(script).Save("https://www.lago.be/");
+
+        Assert.Equal(new Uri("https://web.archive.org/web/20261103091200/https://www.lago.be/"), capture.Snapshot);
+        Assert.Single(script.Requests);
     }
 
     [Fact]
