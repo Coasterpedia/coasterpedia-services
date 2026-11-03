@@ -98,12 +98,30 @@ public class SavePageNowTests
     }
 
     [Fact]
-    public async Task An_error_page_instead_of_an_answer_counts_as_the_sites()
+    public async Task An_error_page_instead_of_an_answer_is_unexplained()
     {
         var capture = await Client(new Script((HttpStatusCode.InternalServerError, "<html>500 Internal Server Error</html>"))).Save(Url);
 
         Assert.Equal("http-500", capture.Error);
-        Assert.Equal(CaptureFault.Site, capture.Fault);
+        Assert.Equal(CaptureFault.Unexplained, capture.Fault);
+    }
+
+    // What Save Page Now answered, Nov 2026.
+    [Theory]
+    [InlineData("error:internal-server-error", "The target server returned an internal server error https://funspotamericaatlanta.com/arieforceone-roller-coaster/. (HTTP status=500)", CaptureFault.Site, false)]
+    [InlineData("error:no-request", "The target server blocks access to http://www.dollywood.com/themepark/rides/LightningRod. (HTTP status=403)", CaptureFault.Url, true)]
+    [InlineData("error:host-crawling-paused", "Please try again in ~1 min. Crawling this host is paused because they notified us that they are overloaded right now.", CaptureFault.Url, false)]
+    [InlineData("please try again in ~10 min. crawling this host is paused because they notified us that they are overloaded right now. (http status=429)", "Job failed.", CaptureFault.Url, false)]
+    [InlineData("error:invalid-host-resolution", "Cannot resolve host content.sixflags.com.", CaptureFault.Site, false)]
+    public async Task Failures_are_put_down_to_whoever_save_page_now_names(string error, string message, CaptureFault fault, bool permanent)
+    {
+        var script = new Script(
+            (HttpStatusCode.OK, """{"job_id":"spn2-abc"}"""),
+            (HttpStatusCode.OK, System.Text.Json.JsonSerializer.Serialize(new { status = "error", status_ext = error, message })));
+
+        var capture = await Client(script).Save(Url);
+
+        Assert.Equal((fault, permanent), (capture.Fault, capture.Permanent));
     }
 
     [Fact]
@@ -134,7 +152,7 @@ public class SavePageNowTests
         var capture = await Client(script, timeout: TimeSpan.FromMilliseconds(50)).Save(Url);
 
         Assert.Equal("timeout", capture.Error);
-        Assert.Equal(CaptureFault.Site, capture.Fault);
+        Assert.Equal(CaptureFault.Unexplained, capture.Fault);
     }
 
     [Fact]

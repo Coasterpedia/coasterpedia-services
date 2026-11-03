@@ -111,8 +111,10 @@ public enum CaptureFault
     None,
     // This URL only, so nothing pauses. A permanent one isn't tried again.
     Url,
-    // The site, or no reason given. Counts towards pausing the host, and every host when several fail together.
+    // The site, by Save Page Now's account. Counts towards pausing that host only.
     Site,
+    // No reason given. Counts towards pausing the host, and every host when several fail together.
+    Unexplained,
     // Save Page Now itself, or our account: every save pauses straight away.
     SaveService,
     // The worker waits out RateLimitCooldown and the job retries.
@@ -124,28 +126,40 @@ public sealed record Capture(Uri? Snapshot, string? Error, string? Message)
 {
     public const string NoKeys = "no-keys";
 
-    // The status_ext codes in the SPN2 API documentation. Most describe the target: error:too-many-requests is the
-    // site answering 429 and error:unauthorized is a site that wants a login. Anything not listed is the site's.
+    // The status_ext codes in the SPN2 API documentation, checked against what it answered (Nov 2026). Most describe
+    // the target, whatever the documentation says: error:internal-server-error is the site answering 500,
+    // error:too-many-requests a site answering 429, error:unauthorized a site that wants a login. A code not listed
+    // here, error:no-request included, is the site's.
     private static readonly HashSet<string> SaveServiceErrors =
     [
-        NoKeys, "error:blocked-client-ip", "error:cannot-fetch", "error:capture-location-error", "error:celery",
-        "error:internal-server-error", "error:job-failed", "error:max-daily-bandwidth", "error:max-daily-bandwidth-from-ip",
-        "error:no-browsers-available", "error:proxy-error", "error:user-session-limit"
+        NoKeys, "error:blocked-client-ip", "error:max-daily-bandwidth", "error:max-daily-bandwidth-from-ip",
+        "error:user-session-limit"
     ];
 
+    // Save Page Now's own trouble or no reason: one URL can cause these, so only several sites failing them together
+    // pauses every save.
+    private static readonly HashSet<string> UnexplainedErrors =
+    [
+        "error:cannot-fetch", "error:capture-location-error", "error:celery", "error:job-failed",
+        "error:no-browsers-available", "error:proxy-error", "error:unknown", "timeout"
+    ];
+
+    // error:no-request is a site turning Save Page Now away with a 403.
     private static readonly HashSet<string> PermanentErrors =
     [
         "error:bad-request", "error:blocked", "error:blocked-url", "error:filesize-limit", "error:ftp-access-denied",
-        "error:invalid-url-syntax", "error:method-not-allowed", "error:no-access", "error:not-found", "error:too-many-redirects",
-        "error:unauthorized"
+        "error:invalid-url-syntax", "error:method-not-allowed", "error:no-access", "error:no-request", "error:not-found",
+        "error:too-many-redirects", "error:unauthorized"
     ];
 
     public static Capture Saved(Uri snapshot) => new(snapshot, null, null);
 
     public static Capture Failed(string error, string? message) => new(null, error, message);
 
-    // Captured 5 times today already: the URL is fine, and tomorrow's try should work.
-    private bool Later => Error == "error:too-many-daily-captures";
+    // Captured 5 times today already, or Save Page Now resting the host for a few minutes: the URL and the site are
+    // fine, and the job's next try should work. The host pause sometimes comes back as the status_ext's text.
+    private bool Later => Error is "error:too-many-daily-captures" or "error:host-crawling-paused"
+        || $"{Error} {Message}".Contains("crawling this host is paused", StringComparison.OrdinalIgnoreCase);
 
     public bool Permanent => Error != null && PermanentErrors.Contains(Error);
 
@@ -158,8 +172,8 @@ public sealed record Capture(Uri? Snapshot, string? Error, string? Message)
         { Error: "http-401" or "http-403" } => CaptureFault.SaveService,
         { Error: { } e } when SaveServiceErrors.Contains(e) => CaptureFault.SaveService,
         _ when Permanent || Later => CaptureFault.Url,
-        // Anything else, a bare 500 included, counts as the site's: one source answered 500 every time (Nov 2026) and
-        // paused every save. Save Page Now failing for every site still pauses them all, through FailingHostsBeforeGlobalPause.
+        // A bare 500 and the like: one source answered 500 every time (Nov 2026).
+        { Error: { } e } when UnexplainedErrors.Contains(e) || !e.StartsWith("error:") => CaptureFault.Unexplained,
         _ => CaptureFault.Site
     };
 

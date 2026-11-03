@@ -164,21 +164,31 @@ public class PacedArchiveClient
 
         host.Failures++;
         host.PausedUntil = null;
-        _failingHosts.Add(uri.Host);
-        if (_failingHosts.Count >= ArchiveBotConfig.FailingHostsBeforeGlobalPause)
+        if (capture.Fault == CaptureFault.Site)
         {
-            // The hosts weren't at fault, so none of them stays paused for it.
-            foreach (var name in _failingHosts)
+            // Save Page Now reached the site to say what went wrong, so Save Page Now itself is working. An old
+            // backlog fails site after site like this (dead and blocking sources) without anything else being wrong.
+            _failingHosts.Clear();
+            _pausedUntil = null;
+        }
+        else
+        {
+            _failingHosts.Add(uri.Host);
+            if (_failingHosts.Count >= ArchiveBotConfig.FailingHostsBeforeGlobalPause)
             {
-                var failing = _hosts[name];
-                failing.Failures = 0;
-                failing.PausedUntil = null;
-            }
+                // The hosts weren't at fault, so none of them stays paused for it.
+                foreach (var name in _failingHosts)
+                {
+                    var failing = _hosts[name];
+                    failing.Failures = 0;
+                    failing.PausedUntil = null;
+                }
 
-            _pausedUntil = _time.GetUtcNow() + ArchiveBotConfig.GlobalPause;
-            _logger.LogWarning("Save Page Now failed captures on {Hosts}, pausing all saves until {Until}",
-                string.Join(", ", _failingHosts), _pausedUntil);
-            return;
+                _pausedUntil = _time.GetUtcNow() + ArchiveBotConfig.GlobalPause;
+                _logger.LogWarning("Save Page Now failed captures on {Hosts} without a reason, pausing all saves until {Until}",
+                    string.Join(", ", _failingHosts), _pausedUntil);
+                return;
+            }
         }
 
         if (host.Failures >= ArchiveBotConfig.HostFailuresBeforePause)

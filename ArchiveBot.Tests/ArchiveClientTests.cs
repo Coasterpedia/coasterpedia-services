@@ -39,13 +39,13 @@ public class ArchiveClientTests
     }
 
     [Fact]
-    public async Task Failures_across_hosts_pause_every_host_briefly()
+    public async Task Unexplained_failures_across_hosts_pause_every_host_briefly()
     {
         var (client, archive, time) = Paced();
         string[] hosts = ["www.flickr.com", "commons.wikimedia.org", "www.geograph.org.uk"];
         foreach (var host in hosts)
         {
-            archive.Failing(host);
+            archive.Failing(host, "http-500");
             await client.SavePage($"https://{host}/a/1");
         }
 
@@ -68,9 +68,9 @@ public class ArchiveClientTests
     public async Task A_capture_that_works_on_any_host_means_the_failures_are_the_sites()
     {
         var (client, archive, _) = Paced();
-        archive.Failing("www.flickr.com");
-        archive.Failing("commons.wikimedia.org");
-        archive.Failing("www.geograph.org.uk");
+        archive.Failing("www.flickr.com", "http-500");
+        archive.Failing("commons.wikimedia.org", "http-500");
+        archive.Failing("www.geograph.org.uk", "http-500");
 
         await client.SavePage("https://www.flickr.com/a/1");
         await client.SavePage("https://commons.wikimedia.org/a/1");
@@ -78,6 +78,34 @@ public class ArchiveClientTests
         await client.SavePage("https://www.geograph.org.uk/a/1");
 
         Assert.Null(client.PausedUntil("https://wikimapia.org/1/photo/3"));
+    }
+
+    [Fact]
+    public async Task Sites_failing_one_after_another_for_their_own_reasons_pause_only_themselves()
+    {
+        var (client, archive, _) = Paced();
+        string[] hosts = ["www.dollywood.com", "yomiuriland.com", "seaworldparks.com", "www.fabbrigroup.com"];
+        foreach (var host in hosts)
+        {
+            archive.Failing(host, "error:gateway-timeout");
+            await client.SavePage($"https://{host}/a/1");
+        }
+
+        Assert.Null(client.PausedUntil("https://wikimapia.org/1/photo/2"));
+    }
+
+    [Fact]
+    public async Task A_host_save_page_now_is_resting_pauses_nothing()
+    {
+        var (client, archive, _) = Paced();
+        archive.Failing("www.flickr.com", "error:host-crawling-paused");
+
+        for (var i = 0; i < ArchiveBotConfig.HostFailuresBeforePause + 1; i++)
+        {
+            await client.SavePage($"https://www.flickr.com/a/{i}");
+        }
+
+        Assert.Null(client.PausedUntil("https://www.flickr.com/b/1"));
     }
 
     [Fact]

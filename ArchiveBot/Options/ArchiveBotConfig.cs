@@ -24,10 +24,10 @@ public record ArchiveBotConfig
     // HostPause. Each failure otherwise still costs the worker a save and its pacing.
     public const int HostFailuresBeforePause = 3;
     public static readonly TimeSpan HostPause = TimeSpan.FromHours(6);
-    // Captures failing on this many hosts with none working in between is Save Page Now turning us away, not the
-    // sites: it refused Commons, Flickr, Geograph and Facebook at once (Nov 2026), and pausing each host for
-    // HostPause cost most of a day. Saves everywhere stop for GlobalPause instead, and no host is paused for it.
-    // A failure Save Page Now puts down to itself or our account (CaptureFault.SaveService) stops them at once.
+    // Captures failing without a reason on this many hosts, with none working in between, is Save Page Now turning
+    // us away, not the sites: it refused Commons, Flickr, Geograph and Facebook at once (Nov 2026), and pausing each
+    // host for HostPause cost most of a day. Saves everywhere stop for GlobalPause instead, and no host is paused for
+    // it. A failure that names the site doesn't count; one Save Page Now puts down to our account stops them at once.
     public const int FailingHostsBeforeGlobalPause = 3;
     public static readonly TimeSpan GlobalPause = TimeSpan.FromMinutes(30);
     // A failed upload's next try, from the backfill queue rather than another turn at the front of the line.
