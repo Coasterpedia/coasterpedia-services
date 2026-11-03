@@ -150,15 +150,21 @@ public partial class ArchiveFileSourceJob
         // licence the file was uploaded under.
         if (_archiveClient.PausedUntil(sourceUrl.ToString()) is { } until)
         {
-            throw new CaptureFailedException($"Saves to {sourceUrl.Host} are paused until {until:u} after repeated failures");
+            throw new CaptureFailedException($"Saves to {sourceUrl.Host} are paused until {until:u} after failed captures");
         }
 
         _logger.LogInformation("Saving source {SourceUrl} for {PageName}", sourceUrl, pageName);
-        var saveResponse = await _archiveClient.SavePage(sourceUrl.ToString());
-        var location = saveResponse.Headers?.Location;
-        if (location == null)
+        var capture = await _archiveClient.SavePage(sourceUrl.ToString());
+        if (capture.Snapshot is not { } location)
         {
-            throw new CaptureFailedException($"Saving {sourceUrl} failed with {PacedArchiveClient.FailureReason(saveResponse)}");
+            // A page Save Page Now won't ever capture (blocked, gone, login only) isn't worth the retries.
+            if (capture.Permanent)
+            {
+                _logger.LogInformation("Save Page Now can't capture {SourceUrl} ({Reason}), not trying again", sourceUrl, capture.Reason);
+                return;
+            }
+
+            throw new CaptureFailedException($"Saving {sourceUrl} failed with {capture.Reason}");
         }
 
         // Keep block-formatted templates ({{Information\n|a=\n|b=\n}}) one argument per line.

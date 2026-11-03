@@ -1,43 +1,12 @@
-using System.Net;
-using System.Text;
 using CoasterpediaServices.ArchiveBot.Clients.Archive;
 using CoasterpediaServices.ArchiveBot.Options;
 using Microsoft.Extensions.Logging.Abstractions;
-using Refit;
 using Xunit;
 
 namespace CoasterpediaServices.ArchiveBot.Tests;
 
 public class ArchiveClientTests
 {
-    private sealed class Answer(HttpStatusCode status, string body) : HttpMessageHandler
-    {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
-            Task.FromResult(new HttpResponseMessage(status)
-            {
-                RequestMessage = request,
-                Content = new StringContent(body, Encoding.UTF8, "text/html")
-            });
-    }
-
-    private static Task<IApiResponse> Save(HttpStatusCode status, string body) =>
-        RestService.For<IArchiveClient>(new HttpClient(new Answer(status, body)) { BaseAddress = new Uri("https://web.archive.org") })
-            .SavePage("https://wikimapia.org/25002991/photo/2928345");
-
-    [Fact]
-    public async Task A_failed_save_gives_the_reason_on_the_page()
-    {
-        var response = await Save((HttpStatusCode)523, """
-            <div class="col-md-4 col-md-offset-4">
-                <h2>Sorry</h2>
-                <p>Cannot resolve host nosuch.example. If the site is online, it may be blocking access from our service.</p>
-            </div>
-            """);
-
-        Assert.Equal("status 523: Cannot resolve host nosuch.example. If the site is online, it may be blocking access from our service.",
-            PacedArchiveClient.FailureReason(response));
-    }
-
     private static (PacedArchiveClient Client, FakeArchive Archive, FixedTime Time) Paced()
     {
         var archive = new FakeArchive();
@@ -67,6 +36,73 @@ public class ArchiveClientTests
         // The try after the pause fails, and pauses the host again straight away.
         await client.SavePage("https://www.flickr.com/photos/a/again/");
         Assert.NotNull(client.PausedUntil("https://www.flickr.com/photos/b/1/"));
+    }
+
+    [Fact]
+    public async Task Failures_across_hosts_pause_every_host_briefly()
+    {
+        var (client, archive, time) = Paced();
+        string[] hosts = ["www.flickr.com", "commons.wikimedia.org", "www.geograph.org.uk"];
+        foreach (var host in hosts)
+        {
+            archive.Failing(host);
+            await client.SavePage($"https://{host}/a/1");
+        }
+
+        Assert.Equal(time.Now + ArchiveBotConfig.GlobalPause, client.PausedUntil("https://wikimapia.org/1/photo/2"));
+        Assert.Equal(time.Now + ArchiveBotConfig.GlobalPause, client.Reserve("https://wikimapia.org/1/photo/2"));
+
+        // No host is left paused for the hours a failing site gets.
+        time.Advance(ArchiveBotConfig.GlobalPause);
+        foreach (var host in hosts)
+        {
+            Assert.Null(client.PausedUntil($"https://{host}/b/1"));
+        }
+
+        // The try after the pause fails, and pauses every host again straight away.
+        await client.SavePage("https://www.flickr.com/a/2");
+        Assert.Equal(time.Now + ArchiveBotConfig.GlobalPause, client.PausedUntil("https://wikimapia.org/1/photo/2"));
+    }
+
+    [Fact]
+    public async Task A_capture_that_works_on_any_host_means_the_failures_are_the_sites()
+    {
+        var (client, archive, _) = Paced();
+        archive.Failing("www.flickr.com");
+        archive.Failing("commons.wikimedia.org");
+        archive.Failing("www.geograph.org.uk");
+
+        await client.SavePage("https://www.flickr.com/a/1");
+        await client.SavePage("https://commons.wikimedia.org/a/1");
+        await client.SavePage("https://wikimapia.org/1/photo/2");
+        await client.SavePage("https://www.geograph.org.uk/a/1");
+
+        Assert.Null(client.PausedUntil("https://wikimapia.org/1/photo/3"));
+    }
+
+    [Fact]
+    public async Task Save_Page_Now_at_fault_pauses_every_host_at_once()
+    {
+        var (client, archive, time) = Paced();
+        archive.Failing("www.flickr.com", "error:user-session-limit");
+
+        await client.SavePage("https://www.flickr.com/a/1");
+
+        Assert.Equal(time.Now + ArchiveBotConfig.GlobalPause, client.PausedUntil("https://wikimapia.org/1/photo/2"));
+    }
+
+    [Fact]
+    public async Task A_url_Save_Page_Now_wont_capture_pauses_nothing()
+    {
+        var (client, archive, _) = Paced();
+        archive.Failing("www.flickr.com", "error:blocked-url");
+
+        for (var i = 0; i < ArchiveBotConfig.HostFailuresBeforePause + 1; i++)
+        {
+            await client.SavePage($"https://www.flickr.com/a/{i}");
+        }
+
+        Assert.Null(client.PausedUntil("https://www.flickr.com/b/1"));
     }
 
     [Fact]
@@ -185,18 +221,10 @@ public class ArchiveClientTests
     }
 
     // Fails, then works, then fails.
-    private sealed class Alternating(IArchiveClient first, IArchiveClient second) : IArchiveClient
+    private sealed class Alternating(ISavePageNow first, ISavePageNow second) : ISavePageNow
     {
         private int _calls;
 
-        public Task<IApiResponse> SavePage(string url) => _calls++ % 2 == 0 ? first.SavePage(url) : second.SavePage(url);
-    }
-
-    [Fact]
-    public async Task A_failed_save_without_a_reason_gives_the_status()
-    {
-        var response = await Save((HttpStatusCode)520, "<html><body>Bad gateway</body></html>");
-
-        Assert.Equal("status 520", PacedArchiveClient.FailureReason(response));
+        public Task<Capture> Save(string url) => _calls++ % 2 == 0 ? first.Save(url) : second.Save(url);
     }
 }

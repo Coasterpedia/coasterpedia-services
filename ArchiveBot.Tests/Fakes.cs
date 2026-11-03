@@ -146,35 +146,23 @@ public sealed class FakePlayback : HttpMessageHandler
     public WaybackPlayback Client() => new(new HttpClient(this) { BaseAddress = new Uri("https://web.archive.org") });
 }
 
-public sealed class FakeArchive : IArchiveClient
+public sealed class FakeArchive : ISavePageNow
 {
     public const string SavedAt = "20261024120000";
 
     public List<string> Saved { get; } = [];
 
-    private readonly HashSet<string> _failingHosts = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string> _failingHosts = new(StringComparer.OrdinalIgnoreCase);
 
-    // Answers as Save Page Now does for a capture it couldn't make: 520, "Job failed", no Location.
-    public void Failing(string host) => _failingHosts.Add(host);
+    // Captures on the host fail with the status_ext given; the default is the site answering 503.
+    public void Failing(string host, string error = "error:service-unavailable") => _failingHosts[host] = error;
 
-    public Task<IApiResponse> SavePage(string url)
+    public Task<Capture> Save(string url)
     {
         Saved.Add(url);
-        if (_failingHosts.Contains(new Uri(url).Host))
-        {
-            var failed = new HttpResponseMessage((HttpStatusCode)520)
-            {
-                RequestMessage = new HttpRequestMessage(HttpMethod.Get, "https://web.archive.org/save/" + url)
-            };
-            return Task.FromResult<IApiResponse>(new ApiResponse<object>(failed, null, new RefitSettings()));
-        }
-
-        var response = new HttpResponseMessage(HttpStatusCode.Found)
-        {
-            RequestMessage = new HttpRequestMessage(HttpMethod.Get, "https://web.archive.org/save/" + url)
-        };
-        response.Headers.Location = new Uri($"https://web.archive.org/web/{SavedAt}/{url}");
-        return Task.FromResult<IApiResponse>(new ApiResponse<object>(response, null, new RefitSettings()));
+        return Task.FromResult(_failingHosts.TryGetValue(new Uri(url).Host, out var error)
+            ? Capture.Failed(error, null)
+            : Capture.Saved(new Uri($"https://web.archive.org/web/{SavedAt}/{url}")));
     }
 }
 

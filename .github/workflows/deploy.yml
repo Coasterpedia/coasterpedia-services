@@ -82,6 +82,8 @@ jobs:
           ssh ${{ secrets.DOCKER_HOST_2 }} '
             export SERVICES_IMAGE="${{needs.dotnet_build.outputs.digest}}" &&
             export ARCHIVE_BOT_PASSWORD="${{secrets.ARCHIVE_BOT_PASSWORD}}" &&
+            export ARCHIVE_ORG_ACCESS_KEY="${{secrets.ARCHIVE_ORG_ACCESS_KEY}}" &&
+            export ARCHIVE_ORG_SECRET_KEY="${{secrets.ARCHIVE_ORG_SECRET_KEY}}" &&
             export ARCHIVE_SWEEP_ENABLED="${{vars.ARCHIVE_SWEEP_ENABLED}}" &&
             export FLICKR_API_KEY="${{secrets.FLICKR_API_KEY}}" &&
             export COMMONS_ACCESS_TOKEN="${{secrets.COMMONS_ACCESS_TOKEN}}" &&

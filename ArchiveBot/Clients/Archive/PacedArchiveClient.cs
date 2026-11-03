@@ -1,34 +1,36 @@
-using System.Net;
-using System.Text.RegularExpressions;
 using CoasterpediaServices.ArchiveBot.Options;
 using Microsoft.Extensions.Logging;
-using Refit;
 
 namespace CoasterpediaServices.ArchiveBot.Clients.Archive;
 
-// Wraps Wayback saves with pacing, a pause on 429, a pause on a host whose captures keep failing, and save slots
+// Wraps Wayback saves with pacing, a pause on 429, a pause on a host whose captures keep failing, a shorter pause on
+// every host when Save Page Now is at fault or captures fail across hosts, and save slots
 // HostSaveInterval apart on each host for jobs that can wait. Only use from jobs on the single-worker archive queue:
 // holding that worker is what holds back every other queued save. State is in memory, so a restart forgets pauses
 // and slots.
-public partial class PacedArchiveClient
+public class PacedArchiveClient
 {
-    private readonly IArchiveClient _archiveClient;
+    private readonly ISavePageNow _savePageNow;
     private readonly ILogger<PacedArchiveClient> _logger;
     private readonly TimeSpan _saveInterval;
     private readonly TimeSpan _hostInterval;
     private readonly TimeProvider _time;
     private readonly Dictionary<string, Host> _hosts = new(StringComparer.OrdinalIgnoreCase);
+    // Hosts with a failed capture since the last capture that worked anywhere.
+    private readonly HashSet<string> _failingHosts = new(StringComparer.OrdinalIgnoreCase);
+    // Saves to every host, after captures failed across hosts.
+    private DateTimeOffset? _pausedUntil;
 
-    public PacedArchiveClient(IArchiveClient archiveClient, ILogger<PacedArchiveClient> logger, TimeProvider time)
-        : this(archiveClient, logger, ArchiveBotConfig.SaveInterval, ArchiveBotConfig.HostSaveInterval, time)
+    public PacedArchiveClient(ISavePageNow savePageNow, ILogger<PacedArchiveClient> logger, TimeProvider time)
+        : this(savePageNow, logger, ArchiveBotConfig.SaveInterval, ArchiveBotConfig.HostSaveInterval, time)
     {
     }
 
     // For tests, which save without pacing.
-    internal PacedArchiveClient(IArchiveClient archiveClient, ILogger<PacedArchiveClient> logger, TimeSpan saveInterval,
+    internal PacedArchiveClient(ISavePageNow savePageNow, ILogger<PacedArchiveClient> logger, TimeSpan saveInterval,
         TimeSpan hostInterval, TimeProvider time)
     {
-        _archiveClient = archiveClient;
+        _savePageNow = savePageNow;
         _logger = logger;
         _saveInterval = saveInterval;
         _hostInterval = hostInterval;
@@ -37,10 +39,14 @@ public partial class PacedArchiveClient
 
     // When saves to the URL's host start again, while they're paused. Check before SavePage.
     public DateTimeOffset? PausedUntil(string url) =>
-        Uri.TryCreate(url, UriKind.Absolute, out var uri) && _hosts.TryGetValue(uri.Host, out var host)
-            && host.PausedUntil is { } until && until > _time.GetUtcNow()
-            ? until
-            : null;
+        Uri.TryCreate(url, UriKind.Absolute, out var uri) ? PausedUntil(HostFor(uri), _time.GetUtcNow()) : null;
+
+    // The later of the host's pause and the pause on every host, while either lasts.
+    private DateTimeOffset? PausedUntil(Host host, DateTimeOffset now)
+    {
+        var until = new[] { host.PausedUntil, _pausedUntil }.Max();
+        return until > now ? until : null;
+    }
 
     // For a job that can wait its turn: null to save now, or a slot to come back at. Slots on one host are
     // HostSaveInterval apart and run past any pause, so a backlog drains steadily instead of in bursts that trip
@@ -69,7 +75,7 @@ public partial class PacedArchiveClient
 
         var now = _time.GetUtcNow();
         var host = HostFor(uri);
-        var pausedUntil = host.PausedUntil is { } until && until > now ? until : (DateTimeOffset?)null;
+        var pausedUntil = PausedUntil(host, now);
         // Every slot handed out has come round, so any left belong to jobs that were deleted.
         if (host.NextSlot <= now)
         {
@@ -101,7 +107,7 @@ public partial class PacedArchiveClient
         return slot;
     }
 
-    public async Task<IApiResponse> SavePage(string url)
+    public async Task<Capture> SavePage(string url)
     {
         // Citations and uploads save without a turn, but the next slot on the host still waits a full interval.
         if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
@@ -114,9 +120,9 @@ public partial class PacedArchiveClient
             }
         }
 
-        var response = await _archiveClient.SavePage(url);
-        Record(url, response);
-        if (response.StatusCode == HttpStatusCode.TooManyRequests)
+        var capture = await _savePageNow.Save(url);
+        Record(url, capture);
+        if (capture.Fault == CaptureFault.RateLimited)
         {
             // Throw after the pause so Hangfire retries the job, rather than every other queued
             // save hitting the limiter in turn and using up its retries.
@@ -127,11 +133,11 @@ public partial class PacedArchiveClient
 
         // Pace saves so a bulk upload doesn't trip archive.org's rate limiter.
         await Task.Delay(_saveInterval);
-        return response;
+        return capture;
     }
 
-    // A save after the pause ends gets one try: another failure pauses the host again straight away.
-    private void Record(string url, IApiResponse response)
+    // A save after a pause ends gets one try: another failure pauses again straight away.
+    private void Record(string url, Capture capture)
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
         {
@@ -139,20 +145,42 @@ public partial class PacedArchiveClient
         }
 
         var host = HostFor(uri);
-        if (response.Headers?.Location != null)
+        switch (capture.Fault)
         {
-            host.Failures = 0;
-            host.PausedUntil = null;
-            return;
-        }
-
-        if ((int)response.StatusCode is < 520 or > 529)
-        {
-            return;
+            case CaptureFault.None:
+                host.Failures = 0;
+                host.PausedUntil = null;
+                _failingHosts.Clear();
+                _pausedUntil = null;
+                return;
+            case CaptureFault.SaveService:
+                _pausedUntil = _time.GetUtcNow() + ArchiveBotConfig.GlobalPause;
+                _logger.LogWarning("Save Page Now refused a capture ({Reason}), pausing all saves until {Until}",
+                    capture.Reason, _pausedUntil);
+                return;
+            case CaptureFault.Url or CaptureFault.RateLimited:
+                return;
         }
 
         host.Failures++;
         host.PausedUntil = null;
+        _failingHosts.Add(uri.Host);
+        if (_failingHosts.Count >= ArchiveBotConfig.FailingHostsBeforeGlobalPause)
+        {
+            // The hosts weren't at fault, so none of them stays paused for it.
+            foreach (var name in _failingHosts)
+            {
+                var failing = _hosts[name];
+                failing.Failures = 0;
+                failing.PausedUntil = null;
+            }
+
+            _pausedUntil = _time.GetUtcNow() + ArchiveBotConfig.GlobalPause;
+            _logger.LogWarning("Save Page Now failed captures on {Hosts}, pausing all saves until {Until}",
+                string.Join(", ", _failingHosts), _pausedUntil);
+            return;
+        }
+
         if (host.Failures >= ArchiveBotConfig.HostFailuresBeforePause)
         {
             host.PausedUntil = _time.GetUtcNow() + ArchiveBotConfig.HostPause;
@@ -182,16 +210,4 @@ public partial class PacedArchiveClient
         // URL → the slot its job was told to come back at.
         public readonly Dictionary<string, DateTimeOffset> Slots = new();
     }
-
-    // Save Page Now answers a capture it couldn't make with a 52x and gives the reason on the page, e.g. "Cannot
-    // resolve host" (523), or a timeout or the site's own error (520).
-    public static string FailureReason(IApiResponse response)
-    {
-        var match = (response.Error as ApiException)?.Content is { } content ? SorryMessage().Match(content) : null;
-        var reason = match is { Success: true } ? WebUtility.HtmlDecode(match.Groups[1].Value).Trim() : null;
-        return $"status {(int)response.StatusCode}" + (string.IsNullOrEmpty(reason) ? "" : $": {reason}");
-    }
-
-    [GeneratedRegex(@"<h2>Sorry</h2>\s*<p>(.*?)</p>", RegexOptions.Singleline)]
-    private static partial Regex SorryMessage();
 }

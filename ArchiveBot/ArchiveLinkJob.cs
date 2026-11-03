@@ -224,10 +224,9 @@ public partial class ArchiveLinkJob
                 else
                 {
                     _logger.LogInformation("Archive not found, saving page");
-                    var saveResponse = await _archiveClient.SavePage(redirectTarget?.ToString() ?? url);
-                    var location = saveResponse.Headers?.Location;
+                    var capture = await _archiveClient.SavePage(redirectTarget?.ToString() ?? url);
 
-                    if (location != null)
+                    if (capture.Snapshot is { } location)
                     {
                         _logger.LogInformation("Saving page successful, updating reference");
                         UpdateArgument(citationTemplate, "archive-url", location.ToString());
@@ -236,7 +235,7 @@ public partial class ArchiveLinkJob
                     }
                     else
                     {
-                        _logger.LogInformation("Saving page failed with {Reason}", PacedArchiveClient.FailureReason(saveResponse));
+                        _logger.LogInformation("Saving page failed with {Reason}", capture.Reason);
                     }
                 }
             }

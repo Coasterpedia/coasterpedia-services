@@ -65,18 +65,14 @@ public static class ArchiveBotServiceCollectionExtensions
                 c.Timeout = TimeSpan.FromSeconds(65);
             });
 
-        services.AddRefitGeneratedClient<IArchiveClient>(new RefitSettings
-        {
-            HttpMessageHandlerFactory = () => new HttpClientHandler
+        // Each request is a start or a status check; SavePageNow decides how long a whole capture may take.
+        services.AddHttpClient<ISavePageNow, SavePageNow>()
+            .ConfigureHttpClient(c =>
             {
-                AllowAutoRedirect = false
-            }
-        }).ConfigureHttpClient(c =>
-        {
-            c.BaseAddress = new Uri("https://web.archive.org");
-            c.DefaultRequestHeaders.UserAgent.ParseAdd("CoasterpediaArchiveBot/1.0 (https://coasterpedia.net)");
-            c.Timeout = TimeSpan.FromSeconds(240);
-        });
+                c.BaseAddress = new Uri("https://web.archive.org");
+                c.DefaultRequestHeaders.UserAgent.ParseAdd("CoasterpediaArchiveBot/1.0 (https://coasterpedia.net)");
+                c.Timeout = TimeSpan.FromSeconds(60);
+            });
 
         services.AddSingleton<IEventSubscriber, ArchiveBotSubscriber>();
 
