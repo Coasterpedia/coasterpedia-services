@@ -164,6 +164,14 @@ public partial class ArchiveFileSourceJob
                 return;
             }
 
+            // Only a matter of waiting (too many captures running, the host resting, captured enough today), so the
+            // job comes back then without spending a retry.
+            if (capture.RetryAfter is { } wait)
+            {
+                var again = DateTimeOffset.UtcNow + wait;
+                throw new DeferredException(again, $"Save Page Now can't capture {sourceUrl} yet ({capture.Reason}), trying again at {again:u}");
+            }
+
             throw new CaptureFailedException($"Saving {sourceUrl} failed with {capture.Reason}");
         }
 

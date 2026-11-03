@@ -117,6 +117,8 @@ public enum CaptureFault
     Unexplained,
     // Save Page Now itself, or our account: every save pauses straight away.
     SaveService,
+    // Save Page Now still counts our earlier captures as running: every save waits SessionLimitPause.
+    Busy,
     // The worker waits out RateLimitCooldown and the job retries.
     RateLimited
 }
@@ -132,8 +134,7 @@ public sealed record Capture(Uri? Snapshot, string? Error, string? Message)
     // here, error:no-request included, is the site's.
     private static readonly HashSet<string> SaveServiceErrors =
     [
-        NoKeys, "error:blocked-client-ip", "error:max-daily-bandwidth", "error:max-daily-bandwidth-from-ip",
-        "error:user-session-limit"
+        NoKeys, "error:blocked-client-ip", "error:max-daily-bandwidth", "error:max-daily-bandwidth-from-ip"
     ];
 
     // Save Page Now's own trouble or no reason: one URL can cause these, so only several sites failing them together
@@ -156,12 +157,24 @@ public sealed record Capture(Uri? Snapshot, string? Error, string? Message)
 
     public static Capture Failed(string error, string? message) => new(null, error, message);
 
-    // Captured 5 times today already, or Save Page Now resting the host for a few minutes: the URL and the site are
-    // fine, and the job's next try should work. The host pause sometimes comes back as the status_ext's text.
-    private bool Later => Error is "error:too-many-daily-captures" or "error:host-crawling-paused"
+    // Save Page Now resting the host for a few minutes. It sometimes comes back as the status_ext's text.
+    private bool HostResting => Error == "error:host-crawling-paused"
         || $"{Error} {Message}".Contains("crawling this host is paused", StringComparison.OrdinalIgnoreCase);
 
+    // Captured 5 times today already, or the host resting: the URL and the site are fine, and a later try should work.
+    private bool Later => Error == "error:too-many-daily-captures" || HostResting;
+
     public bool Permanent => Error != null && PermanentErrors.Contains(Error);
+
+    // How long to wait before trying this URL again, when the failure is only a matter of waiting, so a job can come
+    // back then without spending one of its retries.
+    public TimeSpan? RetryAfter => this switch
+    {
+        { Error: "error:user-session-limit" } => ArchiveBotConfig.SessionLimitPause,
+        { Error: "error:too-many-daily-captures" } => TimeSpan.FromHours(12),
+        _ when HostResting => TimeSpan.FromMinutes(10),
+        _ => null
+    };
 
     public CaptureFault Fault => this switch
     {
@@ -170,6 +183,7 @@ public sealed record Capture(Uri? Snapshot, string? Error, string? Message)
         { Error: "http-429" } => CaptureFault.RateLimited,
         // The keys were refused: nothing saves until they're fixed.
         { Error: "http-401" or "http-403" } => CaptureFault.SaveService,
+        { Error: "error:user-session-limit" } => CaptureFault.Busy,
         { Error: { } e } when SaveServiceErrors.Contains(e) => CaptureFault.SaveService,
         _ when Permanent || Later => CaptureFault.Url,
         // A bare 500 and the like: one source answered 500 every time (Nov 2026).

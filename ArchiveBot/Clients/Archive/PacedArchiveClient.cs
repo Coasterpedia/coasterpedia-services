@@ -158,6 +158,10 @@ public class PacedArchiveClient
                 _logger.LogWarning("Save Page Now refused a capture ({Reason}), pausing all saves until {Until}",
                     capture.Reason, _pausedUntil);
                 return;
+            case CaptureFault.Busy:
+                _pausedUntil = _time.GetUtcNow() + ArchiveBotConfig.SessionLimitPause;
+                _logger.LogInformation("Save Page Now has too many of our captures running, pausing all saves until {Until}", _pausedUntil);
+                return;
             case CaptureFault.Url or CaptureFault.RateLimited:
                 return;
         }

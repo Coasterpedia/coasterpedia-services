@@ -112,11 +112,22 @@ public class ArchiveClientTests
     public async Task Save_Page_Now_at_fault_pauses_every_host_at_once()
     {
         var (client, archive, time) = Paced();
-        archive.Failing("www.flickr.com", "error:user-session-limit");
+        archive.Failing("www.flickr.com", "error:max-daily-bandwidth");
 
         await client.SavePage("https://www.flickr.com/a/1");
 
         Assert.Equal(time.Now + ArchiveBotConfig.GlobalPause, client.PausedUntil("https://wikimapia.org/1/photo/2"));
+    }
+
+    [Fact]
+    public async Task Too_many_captures_running_pauses_every_host_for_a_moment()
+    {
+        var (client, archive, time) = Paced();
+        archive.Failing("www.holidayworld.com", "error:user-session-limit");
+
+        await client.SavePage("https://www.holidayworld.com/thunderbird/photos/");
+
+        Assert.Equal(time.Now + ArchiveBotConfig.SessionLimitPause, client.PausedUntil("https://wikimapia.org/1/photo/2"));
     }
 
     [Fact]

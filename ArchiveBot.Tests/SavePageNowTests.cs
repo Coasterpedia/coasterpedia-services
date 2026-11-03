@@ -68,14 +68,15 @@ public class SavePageNowTests
     }
 
     [Fact]
-    public async Task A_capture_refused_at_the_start_is_save_page_nows_fault()
+    public async Task A_capture_refused_at_the_start_waits_without_spending_a_retry()
     {
         var script = new Script((HttpStatusCode.OK,
-            """{"status":"error","status_ext":"error:user-session-limit","message":"You have already reached the limit of active sessions."}"""));
+            """{"status":"error","status_ext":"error:user-session-limit","message":"You have already reached the limit of active Save Page Now sessions. Please wait for a minute and then try again."}"""));
 
         var capture = await Client(script).Save(Url);
 
-        Assert.Equal(CaptureFault.SaveService, capture.Fault);
+        Assert.Equal(CaptureFault.Busy, capture.Fault);
+        Assert.Equal(ArchiveBotConfig.SessionLimitPause, capture.RetryAfter);
         Assert.Single(script.Requests);
     }
 

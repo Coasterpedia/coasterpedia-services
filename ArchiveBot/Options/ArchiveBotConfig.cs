@@ -30,6 +30,9 @@ public record ArchiveBotConfig
     // it. A failure that names the site doesn't count; one Save Page Now puts down to our account stops them at once.
     public const int FailingHostsBeforeGlobalPause = 3;
     public static readonly TimeSpan GlobalPause = TimeSpan.FromMinutes(30);
+    // Save Page Now counting too many of our captures as running asks for a minute's wait (Nov 2026), even though
+    // the worker only ever runs one.
+    public static readonly TimeSpan SessionLimitPause = TimeSpan.FromMinutes(2);
     // A failed upload's next try, from the backfill queue rather than another turn at the front of the line.
     public static readonly TimeSpan FailedUploadRetry = TimeSpan.FromDays(1);
     // 15 CDX searches a minute, the limit other CDX clients report; 40 a minute was answered with 429s.
