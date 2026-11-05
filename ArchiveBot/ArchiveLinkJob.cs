@@ -75,6 +75,14 @@ public partial class ArchiveLinkJob
             return;
         }
 
+        // A sweep run would otherwise save over someone still writing the page: its first citation puts it at the
+        // front of the sweep (Nov 2026). The run that edit scheduled covers it, and leaving it unchecked keeps it due.
+        if (revisionId == null && EditedTooRecently(page.LastRevision?.TimeStamp, _time.GetUtcNow()))
+        {
+            _logger.LogInformation("{PageName} was edited within {Delay}, skipping", pageName, ArchiveBotConfig.Delay);
+            return;
+        }
+
         var botConfig = await _botConfigProvider.Get(site);
         var result = await RewriteReferences(page.Content, botConfig);
         if (result.Content == page.Content)
@@ -312,6 +320,10 @@ public partial class ArchiveLinkJob
             changes.Updated++;
         }
     }
+
+    // Edit-triggered runs wait out Delay by being scheduled; any other run checks it here.
+    public static bool EditedTooRecently(DateTime? lastEdit, DateTimeOffset now) =>
+        lastEdit is { } at && now - new DateTimeOffset(DateTime.SpecifyKind(at, DateTimeKind.Utc)) < ArchiveBotConfig.Delay;
 
     private static DateTime? ParseCitationDate(string? value) =>
         DateTime.TryParseExact(value, CitationDateFormats, CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out var date)

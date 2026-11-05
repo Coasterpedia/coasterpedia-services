@@ -367,4 +367,28 @@ public class ArchiveLinkJobTests
 
         Assert.Single(_h.Sites.Requests);
     }
+
+    // When a run that no edit scheduled may touch the page
+
+    private static readonly DateTimeOffset Now = new(2026, 11, 5, 21, 30, 0, TimeSpan.Zero);
+
+    [Fact]
+    public void A_page_edited_minutes_ago_is_left_alone() =>
+        Assert.True(ArchiveLinkJob.EditedTooRecently(new DateTime(2026, 11, 5, 21, 17, 21, DateTimeKind.Utc), Now));
+
+    [Fact]
+    public void A_page_edited_more_than_the_delay_ago_is_checked() =>
+        Assert.False(ArchiveLinkJob.EditedTooRecently(Now.UtcDateTime - ArchiveBotConfig.Delay - TimeSpan.FromMinutes(1), Now));
+
+    [Fact]
+    public void A_page_edited_exactly_the_delay_ago_is_checked() =>
+        Assert.False(ArchiveLinkJob.EditedTooRecently(Now.UtcDateTime - ArchiveBotConfig.Delay, Now));
+
+    [Fact]
+    public void An_unspecified_timestamp_is_read_as_UTC() =>
+        Assert.True(ArchiveLinkJob.EditedTooRecently(new DateTime(2026, 11, 5, 21, 17, 21, DateTimeKind.Unspecified), Now));
+
+    [Fact]
+    public void A_page_without_a_revision_time_is_not_held_back() =>
+        Assert.False(ArchiveLinkJob.EditedTooRecently(null, Now));
 }
