@@ -1,12 +1,75 @@
 {
-	"captured_at": "2026-10-16T10:31:07Z",
-	"schema_version": "1.0.0-beta.19",
+	"captured_at": "2026-11-09T17:47:02Z",
+	"schema_version": "1.0.0-beta.24",
 	"examples": {
 		"GET /attractions": {
 			"request": "/v1/attractions?park=2027&sort=-height&limit=2",
 			"shortened": false,
 			"body": {
 				"data": [
+					{
+						"id": 3395,
+						"type": "coaster",
+						"name": "The Smiler",
+						"name_is_placeholder": false,
+						"status": "operating",
+						"park": {
+							"id": 2027,
+							"name": "Alton Towers"
+						},
+						"location_kind": "park",
+						"country": {
+							"code": "GB",
+							"name": "UK"
+						},
+						"opened": {
+							"edtf": "2013-05-31",
+							"earliest": "2013-05-31",
+							"latest": "2013-05-31"
+						},
+						"manufacturers": [
+							{
+								"id": 2405,
+								"name": "Gerstlauer"
+							}
+						],
+						"products": [
+							{
+								"product": {
+									"id": 10271,
+									"name": "Infinity Coaster"
+								},
+								"variant": "1140"
+							}
+						],
+						"stats": {
+							"height": {
+								"value": 30,
+								"unit": "m",
+								"entered": {
+									"value": 30,
+									"unit": "m"
+								}
+							},
+							"length": {
+								"value": 1170,
+								"unit": "m",
+								"entered": {
+									"value": 1170,
+									"unit": "m"
+								}
+							},
+							"speed": {
+								"value": 85,
+								"unit": "km/h",
+								"entered": {
+									"value": 85,
+									"unit": "km/h"
+								}
+							}
+						},
+						"updated_at": "2026-10-24T08:44:17Z"
+					},
 					{
 						"id": 18742,
 						"type": "ride",
@@ -73,80 +136,12 @@
 								}
 							}
 						},
-						"updated_at": "2026-10-13T12:28:06Z"
-					},
-					{
-						"id": 3180,
-						"type": "coaster",
-						"name": "Corkscrew",
-						"name_is_placeholder": false,
-						"status": "defunct",
-						"park": {
-							"id": 2027,
-							"name": "Alton Towers"
-						},
-						"location_kind": "park",
-						"country": {
-							"code": "GB",
-							"name": "UK"
-						},
-						"opened": {
-							"edtf": "1980-04-04",
-							"earliest": "1980-04-04",
-							"latest": "1980-04-04"
-						},
-						"closed": {
-							"edtf": "2008-11-09",
-							"earliest": "2008-11-09",
-							"latest": "2008-11-09"
-						},
-						"manufacturers": [
-							{
-								"id": 548,
-								"name": "Vekoma"
-							}
-						],
-						"products": [
-							{
-								"product": {
-									"id": 9484,
-									"name": "Corkscrew with Bayerncurve"
-								},
-								"variant": null
-							}
-						],
-						"stats": {
-							"height": {
-								"value": 22.9,
-								"unit": "m",
-								"entered": {
-									"value": 22.9,
-									"unit": "m"
-								}
-							},
-							"length": {
-								"value": 731.5,
-								"unit": "m",
-								"entered": {
-									"value": 731.5,
-									"unit": "m"
-								}
-							},
-							"speed": {
-								"value": 64.4,
-								"unit": "km/h",
-								"entered": {
-									"value": 64.4,
-									"unit": "km/h"
-								}
-							}
-						},
-						"updated_at": "2026-10-13T12:28:06Z"
+						"updated_at": "2026-10-19T16:44:26Z"
 					}
 				],
 				"meta": {
-					"data_as_of": "2026-10-16T10:00:56Z",
-					"next_cursor": "WyJoZWlnaHQiLDIyLjksMzE4MF0",
+					"data_as_of": "2026-11-09T17:42:43Z",
+					"next_cursor": "WyJoZWlnaHQiLDI3LDE4NzQyXQ",
 					"view": "settled",
 					"licence": {
 						"name": "CC BY-SA 4.0",
@@ -161,25 +156,25 @@
 			"shortened": true,
 			"body": {
 				"data": {
-					"total": 44,
+					"total": 48,
 					"dimensions": {
 						"type": [
 							{
 								"value": "ride",
 								"label": "Ride",
-								"count": 34
+								"count": 35
 							},
 							{
 								"value": "coaster",
 								"label": "Roller coaster",
-								"count": 10
+								"count": 13
 							}
 						],
 						"status": [
 							{
 								"value": "operating",
 								"label": "Operating",
-								"count": 27
+								"count": 29
 							},
 							{
 								"value": "defunct",
@@ -187,22 +182,22 @@
 								"count": 15
 							},
 							{
-								"value": "in_storage",
-								"label": "In storage",
-								"count": 1
+								"value": "standing_but_not_operating",
+								"label": "Standing but not operating",
+								"count": 2
 							}
 						],
 						"country": [
 							{
 								"value": "GB",
 								"label": "UK",
-								"count": 44
+								"count": 48
 							}
 						],
 						"location_kind": [
 							{
 								"value": "park",
-								"count": 44
+								"count": 48
 							}
 						],
 						"manufacturer": [
@@ -217,9 +212,9 @@
 								"count": 4
 							},
 							{
-								"value": "543",
-								"label": "Bolliger & Mabillard",
-								"count": 3
+								"value": "546",
+								"label": "Intamin",
+								"count": 4
 							}
 						],
 						"product": [
@@ -229,14 +224,14 @@
 								"count": 2
 							},
 							{
-								"value": "38673",
-								"label": "Top Spin",
+								"value": "59661",
+								"label": "Frog Hopper",
 								"count": 2
 							},
 							{
-								"value": "68311",
-								"label": "1001 Nacht",
-								"count": 1
+								"value": "38673",
+								"label": "Top Spin",
+								"count": 2
 							}
 						]
 					},
@@ -244,7 +239,7 @@
 						"height": {
 							"unit": "m",
 							"min": 4,
-							"max": 27,
+							"max": 30,
 							"buckets": [
 								{
 									"from": 4,
@@ -310,7 +305,7 @@
 					}
 				},
 				"meta": {
-					"data_as_of": "2026-10-16T10:00:56Z",
+					"data_as_of": "2026-11-09T17:42:43Z",
 					"view": "settled",
 					"licence": {
 						"name": "CC BY-SA 4.0",
@@ -383,6 +378,13 @@
 						"Inverted",
 						"Terrain"
 					],
+					"videos": [
+						"-NQq-CtYtu0",
+						"HfUFhkscnyo"
+					],
+					"cost": {
+						"text": "£10,000,000"
+					},
 					"stats": {
 						"height": {
 							"value": 13,
@@ -458,15 +460,15 @@
 						]
 					},
 					"revision": 488888,
-					"updated_at": "2026-10-13T12:28:06Z",
+					"updated_at": "2026-10-24T08:44:17Z",
 					"settlement": {
 						"settled_revision": 488888,
-						"pending_revision": null,
-						"settles_at": null
+						"pending_revision": 538116,
+						"settles_at": "2026-11-15T09:33:41Z"
 					}
 				},
 				"meta": {
-					"data_as_of": "2026-10-16T10:00:56Z",
+					"data_as_of": "2026-11-09T17:42:43Z",
 					"view": "settled",
 					"licence": {
 						"name": "CC BY-SA 4.0",
@@ -494,7 +496,7 @@
 							"earliest": "1913-01-01",
 							"latest": "1913-12-31"
 						},
-						"updated_at": "2026-10-13T12:28:06Z"
+						"updated_at": "2026-10-16T16:35:54Z"
 					},
 					{
 						"id": 4720,
@@ -513,7 +515,7 @@
 					}
 				],
 				"meta": {
-					"data_as_of": "2026-10-16T10:00:56Z",
+					"data_as_of": "2026-11-09T17:42:43Z",
 					"next_cursor": "WyJuYW1lIiwiYWR2ZW50dXJlIGlzbGFuZCIsNDcyMF0",
 					"view": "settled",
 					"licence": {
@@ -682,7 +684,7 @@
 					}
 				},
 				"meta": {
-					"data_as_of": "2026-10-16T10:00:56Z",
+					"data_as_of": "2026-11-09T17:42:43Z",
 					"view": "settled",
 					"licence": {
 						"name": "CC BY-SA 4.0",
@@ -783,7 +785,7 @@
 					}
 				],
 				"meta": {
-					"data_as_of": "2026-10-16T10:00:56Z",
+					"data_as_of": "2026-11-09T17:42:43Z",
 					"next_cursor": "WyJuYW1lIiwiYWx0b24gdG93ZXJzIGR1bmdlb24iLDE4MTY3XQ",
 					"view": "settled",
 					"licence": {
@@ -830,7 +832,7 @@
 					}
 				],
 				"meta": {
-					"data_as_of": "2026-10-16T10:00:56Z",
+					"data_as_of": "2026-11-09T17:42:43Z",
 					"next_cursor": "WyJuYW1lIiwiYXNwcm8gcGFya3MiLDYzNjc5XQ",
 					"view": "settled",
 					"licence": {
@@ -875,7 +877,7 @@
 					}
 				},
 				"meta": {
-					"data_as_of": "2026-10-16T10:00:56Z",
+					"data_as_of": "2026-11-09T17:42:43Z",
 					"view": "settled",
 					"licence": {
 						"name": "CC BY-SA 4.0",
@@ -934,7 +936,7 @@
 					}
 				],
 				"meta": {
-					"data_as_of": "2026-10-16T10:00:56Z",
+					"data_as_of": "2026-11-09T17:42:43Z",
 					"view": "settled",
 					"licence": {
 						"name": "CC BY-SA 4.0",
@@ -985,7 +987,7 @@
 					}
 				],
 				"meta": {
-					"data_as_of": "2026-10-16T10:00:56Z",
+					"data_as_of": "2026-11-09T17:42:43Z",
 					"next_cursor": "WyJuYW1lIiwiYS5yLm0uICh1c2EpIiw0NjI1M10",
 					"view": "settled",
 					"licence": {
@@ -1011,22 +1013,22 @@
 						"earliest": "1988-01-01",
 						"latest": "1988-12-31"
 					},
-					"headquarters": "Monthey, Valais, Switzerland",
+					"headquarters": "Monthey, Valais",
 					"country": {
 						"code": "CH",
 						"name": "Switzerland"
 					},
 					"website": "https://bolliger-mabillard.com/",
-					"revision": 442933,
-					"updated_at": "2026-10-12T15:34:31Z",
+					"revision": 492366,
+					"updated_at": "2026-10-17T09:17:15Z",
 					"settlement": {
-						"settled_revision": 442933,
+						"settled_revision": 492366,
 						"pending_revision": null,
 						"settles_at": null
 					}
 				},
 				"meta": {
-					"data_as_of": "2026-10-16T10:00:56Z",
+					"data_as_of": "2026-11-09T17:42:43Z",
 					"view": "settled",
 					"licence": {
 						"name": "CC BY-SA 4.0",
@@ -1052,7 +1054,7 @@
 								"name": "Bolliger & Mabillard"
 							}
 						],
-						"installations": 16,
+						"installations": 19,
 						"updated_at": "2026-10-12T15:34:31Z"
 					},
 					{
@@ -1066,12 +1068,12 @@
 								"name": "Bolliger & Mabillard"
 							}
 						],
-						"installations": 5,
+						"installations": 7,
 						"updated_at": "2026-10-12T15:34:31Z"
 					}
 				],
 				"meta": {
-					"data_as_of": "2026-10-16T10:00:56Z",
+					"data_as_of": "2026-11-09T17:42:43Z",
 					"next_cursor": "WyJuYW1lIiwiZmFtaWx5IGNvYXN0ZXIiLDE0MDYxXQ",
 					"view": "settled",
 					"licence": {
@@ -1117,7 +1119,7 @@
 					}
 				],
 				"meta": {
-					"data_as_of": "2026-10-16T10:00:56Z",
+					"data_as_of": "2026-11-09T17:42:43Z",
 					"next_cursor": "WyJuYW1lIiwiMjA4IHJldHJhayIsNzQyNTdd",
 					"view": "settled",
 					"licence": {
@@ -1158,15 +1160,15 @@
 					},
 					"revision": 470846,
 					"updated_at": "2026-10-13T12:28:06Z",
-					"installations": 28,
 					"settlement": {
 						"settled_revision": 470846,
 						"pending_revision": null,
 						"settles_at": null
-					}
+					},
+					"installations": 32
 				},
 				"meta": {
-					"data_as_of": "2026-10-16T10:00:56Z",
+					"data_as_of": "2026-11-09T17:42:43Z",
 					"view": "settled",
 					"licence": {
 						"name": "CC BY-SA 4.0",
@@ -1242,7 +1244,7 @@
 								}
 							}
 						},
-						"updated_at": "2026-10-13T12:28:06Z"
+						"updated_at": "2026-10-24T08:44:17Z"
 					},
 					{
 						"id": 240,
@@ -1305,11 +1307,11 @@
 								}
 							}
 						},
-						"updated_at": "2026-10-13T12:28:06Z"
+						"updated_at": "2026-10-24T08:44:17Z"
 					}
 				],
 				"meta": {
-					"data_as_of": "2026-10-16T10:00:56Z",
+					"data_as_of": "2026-11-09T17:42:43Z",
 					"next_cursor": "WyJuYW1lIiwiYWxwZW5nZWlzdCIsMjQwXQ",
 					"view": "settled",
 					"licence": {
@@ -1348,7 +1350,7 @@
 					}
 				],
 				"meta": {
-					"data_as_of": "2026-10-16T10:00:56Z",
+					"data_as_of": "2026-11-09T17:42:43Z",
 					"view": "settled",
 					"licence": {
 						"name": "CC BY-SA 4.0",
@@ -1359,28 +1361,28 @@
 			}
 		},
 		"GET /changes": {
-			"request": "/v1/changes?since=2026-10-15T10:30:44Z&limit=2",
+			"request": "/v1/changes?since=2026-11-08T17:46:39Z&limit=2",
 			"shortened": false,
 			"body": {
 				"data": [
 					{
-						"kind": "attraction",
-						"id": 91131,
+						"kind": "park_company",
+						"id": 92830,
 						"op": "upsert",
-						"revision": 491570,
-						"at": "2026-10-15T11:58:42Z"
+						"revision": 530051,
+						"at": "2026-11-08T20:47:01Z"
 					},
 					{
-						"kind": "park",
-						"id": 68518,
+						"kind": "attraction",
+						"id": 39118,
 						"op": "upsert",
-						"revision": 491574,
-						"at": "2026-10-15T12:20:42Z"
+						"revision": 530104,
+						"at": "2026-11-08T21:47:02Z"
 					}
 				],
 				"meta": {
-					"data_as_of": "2026-10-16T10:00:56Z",
-					"next_cursor": "WyJjaGFuZ2VzIiwiMTVlOTA5OWU0OGFmNTVjYyIsMTAxNTE0XQ",
+					"data_as_of": "2026-11-09T17:42:43Z",
+					"next_cursor": "WyJjaGFuZ2VzIiwiMTVlOTA5OWU0OGFmNTVjYyIsMTEyNzY4XQ",
 					"has_more": true,
 					"view": "settled",
 					"delay": "PT0H",
@@ -1658,7 +1660,7 @@
 					]
 				},
 				"meta": {
-					"data_as_of": "2026-10-13T12:28:06Z",
+					"data_as_of": "2026-10-31T00:34:06Z",
 					"licence": {
 						"name": "CC BY-SA 4.0",
 						"url": "https://creativecommons.org/licenses/by-sa/4.0/",
@@ -1671,17 +1673,17 @@
 			"request": "/v1/meta",
 			"shortened": false,
 			"body": {
-				"data_as_of": "2026-10-16T10:00:56Z",
-				"schema_version": "1.0.0-beta.19",
+				"data_as_of": "2026-11-09T17:42:43Z",
+				"schema_version": "1.0.0-beta.24",
 				"settle_after": "P7D",
 				"changes_window": "P90D",
 				"view": "settled",
 				"counts": {
-					"attractions": 21080,
-					"parks": 2170,
-					"manufacturers": 261,
-					"products": 1088,
-					"park_companies": 67
+					"attractions": 21552,
+					"parks": 2240,
+					"manufacturers": 262,
+					"products": 1122,
+					"park_companies": 72
 				},
 				"licence": {
 					"name": "CC BY-SA 4.0",
