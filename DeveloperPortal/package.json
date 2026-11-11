@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "aws4fetch": "1.0.20",
-    "hono": "4.13.16"
+    "hono": "4.13.18"
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "^1.4.8",
