@@ -10,7 +10,7 @@ import { rollUp, workerRequests } from './usage';
 
 export async function daily(env: Env, now = new Date()): Promise<void> {
 	try {
-		const keys = await rollUp(env);
+		const keys = await rollUp(env, now);
 		console.log(`rollup: ${keys} keys updated`);
 	} catch (e) {
 		console.error(`rollup failed: ${(e as Error).message}`);

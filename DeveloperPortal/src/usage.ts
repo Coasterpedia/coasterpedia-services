@@ -141,7 +141,7 @@ export async function accountDays(env: Env, account: string, days: number): Prom
  * The daily rollup: each key's last use (kept if older than Analytics
  * Engine's reach) and the kinds it read with a 200 over 30 days.
  */
-export async function rollUp(env: Env): Promise<number> {
+export async function rollUp(env: Env, now = new Date()): Promise<number> {
 	const [routes, last] = await Promise.all([
 		sql<{ account: string; prefix: string; route: string }>(env,
 			`SELECT blob1 AS account, blob2 AS prefix, blob3 AS route FROM ${env.USAGE_DATASET} WHERE timestamp > NOW() - INTERVAL '30' DAY AND blob4 = '200' GROUP BY account, prefix, route`),
@@ -172,7 +172,7 @@ export async function rollUp(env: Env): Promise<number> {
 	}
 	// A key with no 200 in 30 days uses nothing now.
 	statements.push(env.ACCOUNTS.prepare(`UPDATE keys SET uses = '[]' WHERE uses IS NOT NULL AND (last_used_at IS NULL OR last_used_at < ?)`)
-		.bind(new Date(Date.now() - 30 * 86400_000).toISOString()));
+		.bind(new Date(now.getTime() - 30 * 86400_000).toISOString()));
 	await env.ACCOUNTS.batch(statements);
 	return statements.length - 1;
 }
