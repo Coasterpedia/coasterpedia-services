@@ -68,7 +68,7 @@ public class FlickrFetcher : ISourceFetcher
             ContentType = MimeTypes.FromExtension(extension),
             SuggestedFileName = $"{photoId}{extension}",
             Title = string.IsNullOrWhiteSpace(photo.Title?.Content) ? photoId : photo.Title!.Content,
-            Author = string.IsNullOrWhiteSpace(photo.Owner.Realname) ? photo.Owner.Username : photo.Owner.Realname,
+            Author = FlickrCredit.For(photo.Owner.Realname, photo.Owner.Username),
             SourceUrl = photoPageUrl,
             Source = provenance.Source,
             License = provenance.License,
